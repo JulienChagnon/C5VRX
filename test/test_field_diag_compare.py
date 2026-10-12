@@ -10,10 +10,11 @@ spec.loader.exec_module(compare)
 
 class CompareTest(unittest.TestCase):
     def summary(self, text):
-        with tempfile.NamedTemporaryFile(mode="w") as f:
-            f.write(text)
-            f.flush()
-            return compare.summary(f.name)
+        # A directory, not NamedTemporaryFile: Windows cannot reopen an open temp file by name.
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "field.log"
+            path.write_text(text)
+            return compare.summary(str(path))
 
     def test_partial_coverage_and_trace_not_seconds(self):
         r = self.summary("FIELD_DIAG t=1 sync_valid_pct=50 measurement_coverage_pct=50 sync_given_measured_pct=100 gain=70 max=83\n"
