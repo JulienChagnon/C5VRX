@@ -53,7 +53,7 @@ int main(void)
     check("levels differ in the tracker half", differ > 0);
     check("ladder and tables agree on the level count", KP_LEVELS == KP_LADDER_LEVELS);
 
-    kp_ladder_t l;
+    kp_ladder_t l = {0};   /* zeroed like the firmware's static s_kp: reset keeps the counters */
     int64_t t = 0;
     /* Curves (best_combo.py): kp at a C/N per deviation class. */
     check("deviation 1.0, 20 dB C/N: kp 0.75", kp_level_x100[kp_ladder_target(200, 100)] == 75);
@@ -130,7 +130,7 @@ int main(void)
     check("steps at least KP_STEP_GAP_UP_US apart", min_gap >= KP_STEP_GAP_UP_US);
     /* Joint kp + LP ladder (kp_ladder_update_lp). */
     {
-        kp_ladder_t j;
+        kp_ladder_t j = {0};
         kp_ladder_reset(&j);
         int64_t tj = 0;
         for (int k = 0; k < 400; ++k, tj += TICK_US) (void)kp_ladder_update_lp(&j, 200, true, 100, tj, true);
@@ -170,7 +170,7 @@ int main(void)
         check("program switches at least KP_LP_GAP_US apart", min_gap >= KP_LP_GAP_US);
     }
     {   /* Narrow 10 MHz filter (MATCHED profiles): own curves, LP still allowed. */
-        kp_ladder_t n;
+        kp_ladder_t n = {0};
         int64_t tn = 0;
         kp_ladder_reset(&n);
         n.narrow = true;
