@@ -45,8 +45,9 @@ simulation with a physical RF result.
   See FINDINGS.md for evidence limits. This reduces interruption; it does
   not change the steady-state RF sensitivity.
 - Board G24 -> AUTO returned to G83 on the current firmware. Session 55
-  remains unexplained: neither a blocked write nor a fixed-code deadlock
-  has been proved.
+  now reproduces a gain-policy park from sparse outliers in an origin cloud;
+  a targeted correction passes recorded-IQ regression tests. Physical
+  weak-VTX recovery and the cause of the code outliers remain open.
 - Initial physical-ADC simulation: a float PLL improves line retention
   but does not uniformly improve luma SINAD over U85Q-LP. This is a
   candidate study, not an information-theoretic bound.

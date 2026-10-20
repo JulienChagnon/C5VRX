@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "gain.h"
+#include "phase8_gain_lut.h"
 
 unsigned char phy_param[2048];     /* arc_phy.c reference; unused for the 5 GHz table */
 
@@ -131,6 +132,53 @@ int main(void)
         h.current_gain = (uint8_t)(real + 3u);                             /* the core wrote, the PHY refused */
         dg_write_refused(&h, real);
         CHECK(h.current_gain == real && h.state == DG_HOLD && h.writes_refused == 1, "a refused write puts the core back");
+    }
+    {   /* Recorded G21 cloud: sparse outliers used to hold P95 at43,
+         * although the core classified every window as no carrier.
+         * Repeated capture is a controller regression, not a physical
+         * closed-loop RF simulation (gain changes cannot change old IQ). */
+        FILE *f = fopen("data/gain_session55_130.bin", "rb");
+        if (!f) f = fopen("test/data/gain_session55_130.bin", "rb");
+        CHECK(f != NULL, "recorded session55 fixture available");
+        if (f) {
+            uint8_t raw[8128];
+            size_t bytes = fread(raw, 1, sizeof(raw), f);
+            fclose(f);
+            CHECK(bytes == sizeof(raw), "complete recorded snapshot");
+            dg_observation_t obs[31];
+            unsigned outliers = 0;
+            for (unsigned i = 0; i < 31; ++i) {
+                obs[i] = dg_measure_gain(raw + 256u * i, 256, c5vrx_phase8_gain_lut, 1000);
+                outliers += obs[i].p95 > 30;
+            }
+            CHECK(outliers > 20, "fixture really exercises high P95 despite origin majority");
+            static direct_gain_t h;
+            dg_reset_context(&h, &table, 21, &c);
+            uint64_t u = 1000, first_write = 0;
+            for (unsigned i = 0; i < 1500; ++i, u += 200) {
+                dg_observation_t o = obs[i % 31]; o.observed_us = u;
+                uint8_t before = h.current_gain;
+                step(&h, o);
+                if (!first_write && h.current_gain != before) first_write = u - 1000;
+            }
+            CHECK(h.current_gain == table.max_index, "recorded empty cloud no longer parks at G21 (G%u)", h.current_gain);
+            CHECK(first_write >= 16000, "recovery retains peak hold (first write %llu us)",
+                  (unsigned long long)first_write);
+            memset(&h, 0, sizeof(h)); dg_reset_context(&h, &table, 40, &c);
+            for (unsigned i = 0; i < 200; ++i, u += 200) step(&h, carrier(u));
+            for (unsigned i = 0; i < 25; ++i, u += 200) {
+                dg_observation_t o = obs[i]; o.observed_us = u; step(&h, o);
+            }
+            for (unsigned i = 0; i < 200; ++i, u += 200) step(&h, carrier(u));
+            CHECK(h.current_gain == 40 && h.writes == 0, "5ms recorded-cloud fade does not pump gain");
+            /* The old fixed-point rule oscillated on off-origin DC. */
+            dg_observation_t dc = {.p50=60, .p95=60, .repeat_pm=1000, .span=0, .coherence=99};
+            for (unsigned i = 0; i < 1000; ++i, u += 200) { dc.observed_us=u; step(&h, dc); }
+            CHECK(h.current_gain == 40 && h.writes == 0, "off-origin fixed DC does not trigger max-gain recovery");
+            /* A returning strong carrier must still attack on raw rails. */
+            for (unsigned i = 0; i < 40; ++i, u += 200) step(&h, folded(u));
+            CHECK(h.current_gain < 40 && h.overloads > 0, "raw overload still wins after origin-cloud recovery");
+        }
     }
     printf("%s: %u checks, %u failures\n", s_fail ? "FAIL" : "PASS", s_run, s_fail);
     return s_fail ? 1 : 0;

@@ -899,7 +899,18 @@ uint8_t dg_tick(direct_gain_t *g, const dg_observation_t *o)
         dg7_peak_reset(g, now);
     }
     unsigned recent;
-    const unsigned peak = dg7_peak(g, o, &recent);
+    /* Session 55, G21/G24: an origin-dominated, heavily repeated cloud
+     * with sparse outliers has P50=1 but P95=43. It is already classified
+     * no_carrier above, yet its P95 kept the release gate closed forever.
+     * Use the central population only for release peak memory in this
+     * narrow case. Keep the ordinary peak hold, paced gain steps, and raw
+     * clipping/attack evidence. In particular this is NOT dg_stuck -> max:
+     * off-origin DC and clipped rows must still go through DC correction. */
+    dg_observation_t release_o = *o;
+    if (no_carrier && o->p50 <= 1u && o->origin_pm >= 850u &&
+        o->repeat_pm >= 300u && o->clip_pm == 0u)
+        release_o.p95 = o->p50;
+    const unsigned peak = dg7_peak(g, &release_o, &recent);
     /* Attack. */
     bool attack = false;
     int delta = 0;

@@ -1371,3 +1371,37 @@ before its IIR. A finite candidate comparison is not an ideal detector or
 an information-theoretic upper bound. Existing sensitivity JSON records
 explicitly assume NF (5 dB); previous claims of a measured ~6 dB hardware NF
 or an independently proved lossless RF input path were too strong.
+
+
+## Session 55 origin-cloud gain park (2026-10-20, PR #231)
+
+The initial hypothesis of a refused hardware write was not established.
+A VTX-off board check on the pre-fix current firmware returned G24 -> AUTO
+successfully to G83. A constant-code host probe also recovered, but did not
+reproduce the recorded signal.
+
+Replaying snapshot `snap_s0055_00130` (134930 ms, G21, 8128 bytes) through
+actual `dg_measure_gain` yields P50=1, origin 863-980 per mille, coherence
+0-7 and no clipping, but 28 of 31 256-byte windows have P95=43. Sparse
+outliers, primarily I=6 with Q=0, keep peak memory above the release gate.
+The existing `no_carrier` classification is true but did not influence
+release. Repeating these recorded windows at the controller's 200 us test
+cadence parks the old core at G21 indefinitely, with no refused write.
+This repetition is a control regression, not a physical gain-response model.
+
+The change uses P50 for release peak memory only with P50<=1,
+origin>=850/1000, repeat>=300/1000, coherence<20 and zero clipping. It
+retains normal 16 ms peak memory, home-row steps, settle and write pacing;
+all overload decisions still use original observations. Off-origin fixed DC
+is excluded, unlike the reverted unconditional fixed-point -> max change.
+On the 64 available bb10dec snapshots (1984 windows), 55 high-P95 qualifying
+windows occur, all in the two suspect session55 captures (125 and 130).
+Other qualifying near-origin windows already had low P95.
+
+The real capture and its metadata are preserved in test/data. Added
+regressions fail on the prior gain.c and pass with the fix: recovery,
+retained 16 ms hold, no gain pumping on a 5 ms fade, no boost on an
+off-origin DC point, and raw overload handling. The full host suite,
+ESP-IDF build and linked IRAM check pass. Weak-VTX boot and physical RF
+recovery are not yet verified; the source of the sparse code outliers is
+not established by these recordings.
