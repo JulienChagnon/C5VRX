@@ -1002,6 +1002,7 @@ uint8_t dg_tick(direct_gain_t *g, const dg_observation_t *o)
  * rows are 1.0 dB (model 0.83) and the G78/G77 baseband step 0.93 dB (model
  * 1.85); G83 -> G72 is 11.2 dB (model 10.2). Receiver noise is a constant
  * input, so its power per row is the row's real gain. */
+#define DG_ROW_STEP_Q8 256   /* 1.0 dB a row (measured, see below) */
 unsigned dg_apply_measured_gain(direct_gain_t *g, const float thermal_cells2[DG_STATES])
 {
     if (!g || !thermal_cells2) return 0u;
@@ -1028,9 +1029,12 @@ unsigned dg_apply_measured_gain(direct_gain_t *g, const float thermal_cells2[DG_
         while (b < top && thermal_cells2[b] <= 0.0f) ++b;
         q8[k] = (int16_t)(q8[a] + (q8[b] - q8[a]) * (k - a) / (b - a));
     }
-    /* Below the lowest measured row: the model, joined to it. */
-    const int shift = q8[low] - g->model_db_q8[low];
-    for (int k = 0; k < low; ++k) q8[k] = (int16_t)(g->model_db_q8[k] + shift);
+    /* Below the lowest measured row: DG_ROW_STEP_Q8 a row, joined to it. The
+     * board's table steps ~1 dB a row wherever it was measured on a carrier
+     * or on noise (G19-G31 0.93-1.08, G29-G39, G72-G83 0.94-1.03; PR #231);
+     * the RF-stage/BB/fine model has steps of -3.3 and +2.7 dB there and read
+     * 4.2 dB short at G24 (the dBm meter 4 dB low on a strong carrier). */
+    for (int k = 0; k < low; ++k) q8[k] = (int16_t)(q8[low] - (low - k) * DG_ROW_STEP_Q8);
     memcpy(g->model_db_q8, q8, sizeof(q8));
     keel_build(g);
     return set;

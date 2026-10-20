@@ -1296,3 +1296,22 @@ the ten raw edge IQ snapshots (M2M4 on the 4-bit samples):
 - **Gain writes on a still signal:** -47 dBm, VTX and receiver still: 0
   writes, 0 overloads, sync 90 %. The walk's 10-29 writes a second close
   in came from walking fades.
+
+## Antenna-to-pin budget and the gain table below G72 (2026-10-20, PR #231)
+
+VTX 100 mW, whoop antenna (linear) at 2 m indoors, receiver Lumenier AXII 2
+(RHCP) on the XIAO ESP32-C5 (U.FL straight to LNA_IN, no antenna switch).
+Free space: +20 dBm + ~1 dBi - 3 dB (linear to circular) + ~1.6 dBi - 53.8
+dB = about -34 dBm at the pin.
+
+- The pair sweep on the carrier (console Q) measured **~1.0 dB a row** over
+  G19-G31 (11.6 dB for 12 rows), as on noise at G72-G83 and the earlier
+  G29-G39 sweep. The RF-stage/BB/fine model has steps of -3.3 and +2.7 dB
+  there and is 4.2 dB short at G24.
+- Corrected for it, the carrier read -38.7 -> about -34.5 dBm: **the
+  antenna-to-pin path delivers what free space predicts (within ~1 dB)**.
+  An earlier -46.5 dBm at "2 m" (G37, model error ~0.7 dB) was the
+  placement indoors: 8 dB between two placements is ordinary multipath.
+- Below the noise-measured rows the gain table now steps 1.0 dB a row
+  (gain.c dg_apply_measured_gain), for the dBm meter and the KEEL-1 home
+  rows.
