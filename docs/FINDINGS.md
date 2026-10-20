@@ -1344,3 +1344,30 @@ inject corruption at the first and last entries, checking no hidden repair.
 The format harness checks the selected image prefix on forward and rollback
 paths for every supported kp/output/program combination. Physical restart
 failure injection and an RF/goggle walk remain unmeasured.
+
+
+## Detector comparison and range work plan (2026-10-20, PR #231)
+
+The next work is recorded in [PR231_RANGE_PLAN.md](PR231_RANGE_PLAN.md),
+including the operator's -100 dBm ambition and flywheel/restart hypothesis.
+`research/pll_compare.py --physical --workers 4 --output
+research/data/pll_compare_physical.json` compares identical input bytes
+across bit-exact kp 0.85/0.60/0.50, with/without LP, a discriminator and
+float second-order PLLs. PAL/NTSC, two seeds each, deviation 1.0, 12 MHz
+model filter, fixed physical-ADC gain 2.0 shared by noisy/clean cases.
+The same seed preserves raster/noise realization across C/N points.
+
+At model C/N 0 dB, mean correctly retained line fractions are 0.38 for
+U85Q-LP, 0.98 for PLL bandwidth parameter 0.04, and 0.96 with its LP20
+postfilter. Luma SINAD is respectively -0.7, -3.4, -1.5 dB. At 2 dB C/N,
+U85Q-LP and PLL+LP20 give 2.0 and 1.8 dB SINAD, with line fractions 0.94
+and 1.00. There is useful sync information beyond U85Q, but no demonstrated
+10 dB picture improvement. Retaining lines is not complete picture quality.
+
+Limitations: synthetic input; one filter/deviation/gain; clean-reference
+alignment/level calibration; float PLL has neither six-bit DAC quantization
+nor a proven BitScrambler implementation; LP20 decimates the PLL output
+before its IIR. A finite candidate comparison is not an ideal detector or
+an information-theoretic upper bound. Existing sensitivity JSON records
+explicitly assume NF (5 dB); previous claims of a measured ~6 dB hardware NF
+or an independently proved lossless RF input path were too strong.
