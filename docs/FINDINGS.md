@@ -1405,3 +1405,31 @@ off-origin DC point, and raw overload handling. The full host suite,
 ESP-IDF build and linked IRAM check pass. Weak-VTX boot and physical RF
 recovery are not yet verified; the source of the sparse code outliers is
 not established by these recordings.
+
+
+## Restart/dropout association in existing blackboxes (2026-10-20)
+
+`research/restart_dropout_audit.py '../bb*/session_*.json' --output
+research/data/restart_dropout_audit.json` merges overlapping saved exports
+by session and exact event identity, checks boot provenance, and records
+input hashes. 56 sessions contain 368 kp/program events and 54 dropouts.
+A restart precedes 16 dropout events within 1 s, 27 within 2 s, and 33
+within 5 s. None precedes within 100 ms. This does NOT exonerate brief
+restarts: diag.c emits dropout events from per-second observations, not
+physical sync edges. Conversely the associations do not prove causation;
+weak input itself can cause both a policy switch and loss of video.
+
+55 sessions have boot flywheel=1; one lacks boot metadata. Boot settings
+are not continuous intervention telemetry. These logs cannot identify an
+unbiased flywheel on/off sensitivity difference, and circular exports may
+omit events. The output retains session firmware identity and missing-data
+information rather than treating all historical revisions as current.
+
+Code inspection: normal kp/LP changes use the shared verified restart;
+`transport_sync_restart_begin/finish` preserves the flywheel clock lease
+across flagged restarts but invalidates native source evidence. A stale or
+unreadable source does not authorize repair. `transport_sync_live_tick`
+changes the demodulator format when entering/leaving flag mode, not on
+every ordinary loss of sync. This does not rule out CPU contention, wrong
+repair timing or goggle recovery losses. Existing runtime ownership tests
+pass; direct RF range attribution is still open.

@@ -52,6 +52,10 @@ simulation with a physical RF result.
   but does not uniformly improve luma SINAD over U85Q-LP. This is a
   candidate study, not an information-theoretic bound.
 
+- Restart/dropout audit saved: 56 sessions, 368 switch events, 54 dropouts;
+  27 dropouts have a preceding switch within 2 s. Temporal association only;
+  no matched flywheel on/off result. See FINDINGS.md and the audit JSON.
+
 ## Corrections to earlier conclusions
 
 - The recorded sensitivity model explicitly **assumes** NF (default 5 dB);

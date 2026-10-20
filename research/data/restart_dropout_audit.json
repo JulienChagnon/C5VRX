@@ -1,0 +1,4317 @@
+{
+  "scope": "Temporal association only; per-second dropout classifier; partial circular logs; no physical flywheel intervention trace",
+  "input_sha256": {
+    "session_0053.json:bb10dec": "2522a7b1b32f799b39a6bd8c2e087a67a95e0a47d8c30fbda602db6cf2252a64",
+    "session_0054.json:bb10dec": "678300a91a5e6b00a22b7029b9fe9fd9ff71ad498f75c5df4697fa7f12e17f64",
+    "session_0055.json:bb10dec": "2516acb25457fad31331a6de173d8a5dce6da20d695ee64d34fdfcb593f62af5",
+    "session_0056.json:bb10dec": "b5e02c7c38432fcd771713de33276a59011bedbbfb7334a9726462815350d826",
+    "session_0057.json:bb10dec": "c5c416ca203115c2288c01d992f81fc41a209b16dc2e9878db0b825fa234ea81",
+    "session_0058.json:bb10dec": "739b4af1bb910ece8bd9ba6bb129f19281338a68effc75e15d44b3121fa45e99",
+    "session_0059.json:bb10dec": "66841de4186f9e9379ac6ec38276f00bec1bd3d94fb842a8bf48e180fe4ce0b5",
+    "session_0060.json:bb10dec": "2a2a5009eefea072be2237b3522cf7274ed5ff79a3fde31074cf10a988587710",
+    "session_0061.json:bb10dec": "7f84890383e3de5f2c9ae70596e59a80beb4483abc3fd798e8314c6455d91923",
+    "session_0062.json:bb10dec": "03e9707df58dbd58e8040bccdbec1c3d1ab17e3c5fe037022b64884be8f92da1",
+    "session_0063.json:bb10dec": "52d84ea988a72bf3661a0cacec42875688df5aee6216df5bb445edca40441ed3",
+    "session_0064.json:bb10dec": "6265c4b17e77e32efecaf55ab90fc02f9863ee4594480f91e1427f6419e7d537",
+    "session_0065.json:bb10dec": "6b97a600a438d88794530757ae7f227df902b69df1cf02cb38574d74686c7d2c",
+    "session_0066.json:bb10dec": "3e9ad824af809b4a4aab0ce106d2f2c2b1e7daa50ac3c34d0900b5e45be7d9a1",
+    "session_0067.json:bb10dec": "43488584f8cbeb7432e01e2eeaa560c0146ce40fea19186b1cac65c9af56f1ad",
+    "session_0068.json:bb10dec": "16a0fd048b5fb7d65c33c926ea1cfcbb45684befdf1229e4f1c850526702b1f8",
+    "session_0069.json:bb10dec": "508385bccff2ce1c80d8a0b11040943ccb81a849d8faafe14f25da5c99799763",
+    "session_0070.json:bb10dec": "dfdd0a913a3972b6425e331afe6ed95a002f234bbf2d79e50c0478492a032e07",
+    "session_0001.json:bb3": "f519a936076662bf31700064cf86745f4a6f7c4e359aa8149e20f0ad69c52b2c",
+    "session_0002.json:bb3": "a2fa1051fb32c384b49482cad61966cd37c16a8f8d2445beb83aff650430101c",
+    "session_0003.json:bb3": "a8e027e4d658f00156409f0db23b9a98a3463f269e9652fa34fc054f58c9aec2",
+    "session_0004.json:bb3": "0d5db5aa88f1f99193496e7fdbbe206d881977f1303ac0cdded22996a25b7938",
+    "session_0005.json:bb3": "63a60374cc9d4ab6fa6451cb89ec412e30d4e569a8e9067ebad791740dd29ef6",
+    "session_0006.json:bb3": "21de82dec4ae90fe5bcaa61a31840297d35e6c39e1c28f383b5e6e9bb8fec979",
+    "session_0007.json:bb3": "cb8f34fbe9b35b09a492f92e85ca5c846d5485e47d4ff59dd2df73a93a80e4b3",
+    "session_0008.json:bb3": "682584f304c13fe98cc0dc3d4cea003d6cefa6d00ecd290e2b640671a4c53588",
+    "session_0009.json:bb3": "3f3b180d8b0156ffc548a993f50b175b58f1de96861249f8f1dc2819b9644903",
+    "session_0010.json:bb3": "c4f2edf22f47184d81a8621e1f9f7a6b3bb1d25fde6122f456ad5b01aebdb3f1",
+    "session_0011.json:bb3": "9c6a39f7c8975590beab8a5eed79d897a6acc8493f6ee7a014ef83323c509bca",
+    "session_0012.json:bb3": "0847bb5be868a076b68ab2496a6233471228a83651d0b4f51424d57b41559965",
+    "session_0013.json:bb3": "b752f003ef3a91cf66d3b18f8a651e4aa9df870112f88ac49b164ab44852c262",
+    "session_0001.json:bb4": "f519a936076662bf31700064cf86745f4a6f7c4e359aa8149e20f0ad69c52b2c",
+    "session_0002.json:bb4": "a2fa1051fb32c384b49482cad61966cd37c16a8f8d2445beb83aff650430101c",
+    "session_0003.json:bb4": "a8e027e4d658f00156409f0db23b9a98a3463f269e9652fa34fc054f58c9aec2",
+    "session_0004.json:bb4": "0d5db5aa88f1f99193496e7fdbbe206d881977f1303ac0cdded22996a25b7938",
+    "session_0005.json:bb4": "63a60374cc9d4ab6fa6451cb89ec412e30d4e569a8e9067ebad791740dd29ef6",
+    "session_0006.json:bb4": "21de82dec4ae90fe5bcaa61a31840297d35e6c39e1c28f383b5e6e9bb8fec979",
+    "session_0007.json:bb4": "cb8f34fbe9b35b09a492f92e85ca5c846d5485e47d4ff59dd2df73a93a80e4b3",
+    "session_0008.json:bb4": "682584f304c13fe98cc0dc3d4cea003d6cefa6d00ecd290e2b640671a4c53588",
+    "session_0009.json:bb4": "3f3b180d8b0156ffc548a993f50b175b58f1de96861249f8f1dc2819b9644903",
+    "session_0010.json:bb4": "c4f2edf22f47184d81a8621e1f9f7a6b3bb1d25fde6122f456ad5b01aebdb3f1",
+    "session_0011.json:bb4": "9c6a39f7c8975590beab8a5eed79d897a6acc8493f6ee7a014ef83323c509bca",
+    "session_0012.json:bb4": "0847bb5be868a076b68ab2496a6233471228a83651d0b4f51424d57b41559965",
+    "session_0013.json:bb4": "80548bcd653885168d8f8d36b37c732c019d0cd0a517bc04dfbf59cff454720a",
+    "session_0014.json:bb4": "e6fdfd51026335398f0af69a90ae3369a894b314e071da8b7342ab7f1579e67f",
+    "session_0015.json:bb4": "b32d9f99d6807ff1c11bffec33e30a5642f975394be1e12a2921ea6a021a416e",
+    "session_0016.json:bb4": "7d7138d556a71eece370e67c9297d0b1bb54b1703b79567944cc0b4586b57031",
+    "session_0017.json:bb4": "c5dc9ac4e1981524afa692613a8b47533c607b1224eefd8217d19e4c99177bb9",
+    "session_0018.json:bb4": "6712de72ca4ca9fec0cb9930d8d31234f783d727ba9275777bb3c872bb88c54f",
+    "session_0019.json:bb4": "0426f60a486b0509490292b89fc6e6c23bf3474fbd3d46a77310eb9e2349e7f4",
+    "session_0020.json:bb4": "42f274ee0ec9a0c9304b9f3d5d65a9e94fafed2eaa2833118e3f93b3583bae8e",
+    "session_0021.json:bb4": "21ddbff19ddcbddccbe6331c0108049aa37c3065720c67fdf21da672cad77c74",
+    "session_0022.json:bb4": "fbbc8fdff655fec65f8e477824be84e0e3177ffdb655a66b4373b4a10dcba1ca",
+    "session_0023.json:bb4": "f9e5abbc38322a4afddce77845156d021d4d9dfe55b2c8fb937f0f810b3b43fd",
+    "session_0024.json:bb4": "43e323666c0ca983567acb6e5f733a08488d1bbd719a4c2ffe305f7ea77b37d4",
+    "session_0001.json:bb5": "f519a936076662bf31700064cf86745f4a6f7c4e359aa8149e20f0ad69c52b2c",
+    "session_0002.json:bb5": "a2fa1051fb32c384b49482cad61966cd37c16a8f8d2445beb83aff650430101c",
+    "session_0003.json:bb5": "a8e027e4d658f00156409f0db23b9a98a3463f269e9652fa34fc054f58c9aec2",
+    "session_0004.json:bb5": "0d5db5aa88f1f99193496e7fdbbe206d881977f1303ac0cdded22996a25b7938",
+    "session_0005.json:bb5": "63a60374cc9d4ab6fa6451cb89ec412e30d4e569a8e9067ebad791740dd29ef6",
+    "session_0006.json:bb5": "21de82dec4ae90fe5bcaa61a31840297d35e6c39e1c28f383b5e6e9bb8fec979",
+    "session_0007.json:bb5": "cb8f34fbe9b35b09a492f92e85ca5c846d5485e47d4ff59dd2df73a93a80e4b3",
+    "session_0008.json:bb5": "682584f304c13fe98cc0dc3d4cea003d6cefa6d00ecd290e2b640671a4c53588",
+    "session_0009.json:bb5": "3f3b180d8b0156ffc548a993f50b175b58f1de96861249f8f1dc2819b9644903",
+    "session_0010.json:bb5": "c4f2edf22f47184d81a8621e1f9f7a6b3bb1d25fde6122f456ad5b01aebdb3f1",
+    "session_0011.json:bb5": "9c6a39f7c8975590beab8a5eed79d897a6acc8493f6ee7a014ef83323c509bca",
+    "session_0012.json:bb5": "0847bb5be868a076b68ab2496a6233471228a83651d0b4f51424d57b41559965",
+    "session_0013.json:bb5": "80548bcd653885168d8f8d36b37c732c019d0cd0a517bc04dfbf59cff454720a",
+    "session_0014.json:bb5": "e6fdfd51026335398f0af69a90ae3369a894b314e071da8b7342ab7f1579e67f",
+    "session_0015.json:bb5": "b32d9f99d6807ff1c11bffec33e30a5642f975394be1e12a2921ea6a021a416e",
+    "session_0016.json:bb5": "7d7138d556a71eece370e67c9297d0b1bb54b1703b79567944cc0b4586b57031",
+    "session_0017.json:bb5": "c5dc9ac4e1981524afa692613a8b47533c607b1224eefd8217d19e4c99177bb9",
+    "session_0018.json:bb5": "6712de72ca4ca9fec0cb9930d8d31234f783d727ba9275777bb3c872bb88c54f",
+    "session_0019.json:bb5": "0426f60a486b0509490292b89fc6e6c23bf3474fbd3d46a77310eb9e2349e7f4",
+    "session_0020.json:bb5": "42f274ee0ec9a0c9304b9f3d5d65a9e94fafed2eaa2833118e3f93b3583bae8e",
+    "session_0021.json:bb5": "21ddbff19ddcbddccbe6331c0108049aa37c3065720c67fdf21da672cad77c74",
+    "session_0022.json:bb5": "fbbc8fdff655fec65f8e477824be84e0e3177ffdb655a66b4373b4a10dcba1ca",
+    "session_0023.json:bb5": "f9e5abbc38322a4afddce77845156d021d4d9dfe55b2c8fb937f0f810b3b43fd",
+    "session_0024.json:bb5": "f324d787398c40f3188fc31e7a6205289297f7a29da22fb18f8b3bb1c85f7134",
+    "session_0025.json:bb5": "7557548499e0a5a08e7c1e6f53467afcec75c27dde6a88cf2bea6b8642a7ca2a",
+    "session_0026.json:bb5": "7cab28567db29d09168386ac0e326022c979d10fa0ec955c3962aa60f2eb49f5",
+    "session_0027.json:bb5": "5c8cfefa4def62945bbfdf0c4cc52a4d8569053cb7b8f101476a0c591e7fb834",
+    "session_0028.json:bb5": "fc666db498a8373db22828d75d4dd602d7d7571959f02391d3b8cd4b4cbcfc54",
+    "session_0001.json:bb6": "f519a936076662bf31700064cf86745f4a6f7c4e359aa8149e20f0ad69c52b2c",
+    "session_0002.json:bb6": "a2fa1051fb32c384b49482cad61966cd37c16a8f8d2445beb83aff650430101c",
+    "session_0003.json:bb6": "a8e027e4d658f00156409f0db23b9a98a3463f269e9652fa34fc054f58c9aec2",
+    "session_0004.json:bb6": "0d5db5aa88f1f99193496e7fdbbe206d881977f1303ac0cdded22996a25b7938",
+    "session_0005.json:bb6": "63a60374cc9d4ab6fa6451cb89ec412e30d4e569a8e9067ebad791740dd29ef6",
+    "session_0006.json:bb6": "21de82dec4ae90fe5bcaa61a31840297d35e6c39e1c28f383b5e6e9bb8fec979",
+    "session_0007.json:bb6": "cb8f34fbe9b35b09a492f92e85ca5c846d5485e47d4ff59dd2df73a93a80e4b3",
+    "session_0008.json:bb6": "682584f304c13fe98cc0dc3d4cea003d6cefa6d00ecd290e2b640671a4c53588",
+    "session_0009.json:bb6": "3f3b180d8b0156ffc548a993f50b175b58f1de96861249f8f1dc2819b9644903",
+    "session_0010.json:bb6": "c4f2edf22f47184d81a8621e1f9f7a6b3bb1d25fde6122f456ad5b01aebdb3f1",
+    "session_0011.json:bb6": "9c6a39f7c8975590beab8a5eed79d897a6acc8493f6ee7a014ef83323c509bca",
+    "session_0012.json:bb6": "0847bb5be868a076b68ab2496a6233471228a83651d0b4f51424d57b41559965",
+    "session_0013.json:bb6": "80548bcd653885168d8f8d36b37c732c019d0cd0a517bc04dfbf59cff454720a",
+    "session_0014.json:bb6": "e6fdfd51026335398f0af69a90ae3369a894b314e071da8b7342ab7f1579e67f",
+    "session_0015.json:bb6": "b32d9f99d6807ff1c11bffec33e30a5642f975394be1e12a2921ea6a021a416e",
+    "session_0016.json:bb6": "7d7138d556a71eece370e67c9297d0b1bb54b1703b79567944cc0b4586b57031",
+    "session_0017.json:bb6": "c5dc9ac4e1981524afa692613a8b47533c607b1224eefd8217d19e4c99177bb9",
+    "session_0018.json:bb6": "6712de72ca4ca9fec0cb9930d8d31234f783d727ba9275777bb3c872bb88c54f",
+    "session_0019.json:bb6": "0426f60a486b0509490292b89fc6e6c23bf3474fbd3d46a77310eb9e2349e7f4",
+    "session_0020.json:bb6": "42f274ee0ec9a0c9304b9f3d5d65a9e94fafed2eaa2833118e3f93b3583bae8e",
+    "session_0021.json:bb6": "21ddbff19ddcbddccbe6331c0108049aa37c3065720c67fdf21da672cad77c74",
+    "session_0022.json:bb6": "fbbc8fdff655fec65f8e477824be84e0e3177ffdb655a66b4373b4a10dcba1ca",
+    "session_0023.json:bb6": "f9e5abbc38322a4afddce77845156d021d4d9dfe55b2c8fb937f0f810b3b43fd",
+    "session_0024.json:bb6": "f324d787398c40f3188fc31e7a6205289297f7a29da22fb18f8b3bb1c85f7134",
+    "session_0025.json:bb6": "7557548499e0a5a08e7c1e6f53467afcec75c27dde6a88cf2bea6b8642a7ca2a",
+    "session_0026.json:bb6": "7cab28567db29d09168386ac0e326022c979d10fa0ec955c3962aa60f2eb49f5",
+    "session_0027.json:bb6": "5c8cfefa4def62945bbfdf0c4cc52a4d8569053cb7b8f101476a0c591e7fb834",
+    "session_0028.json:bb6": "361729785e72b755eb18a5b8cfbb0aab755572b503c880436741843108a14762",
+    "session_0029.json:bb6": "c61525c5dfc4cfad9b336ca36f93a6069abd44be613ce7a31904a15a0f5afb33",
+    "session_0030.json:bb6": "e27d516ad8b5f19de37d767ec33b75ee0ba472fa24d6d20155a41feff8ccc802",
+    "session_0001.json:bb7": "f519a936076662bf31700064cf86745f4a6f7c4e359aa8149e20f0ad69c52b2c",
+    "session_0002.json:bb7": "a2fa1051fb32c384b49482cad61966cd37c16a8f8d2445beb83aff650430101c",
+    "session_0003.json:bb7": "a8e027e4d658f00156409f0db23b9a98a3463f269e9652fa34fc054f58c9aec2",
+    "session_0004.json:bb7": "0d5db5aa88f1f99193496e7fdbbe206d881977f1303ac0cdded22996a25b7938",
+    "session_0005.json:bb7": "63a60374cc9d4ab6fa6451cb89ec412e30d4e569a8e9067ebad791740dd29ef6",
+    "session_0006.json:bb7": "21de82dec4ae90fe5bcaa61a31840297d35e6c39e1c28f383b5e6e9bb8fec979",
+    "session_0007.json:bb7": "cb8f34fbe9b35b09a492f92e85ca5c846d5485e47d4ff59dd2df73a93a80e4b3",
+    "session_0008.json:bb7": "682584f304c13fe98cc0dc3d4cea003d6cefa6d00ecd290e2b640671a4c53588",
+    "session_0009.json:bb7": "3f3b180d8b0156ffc548a993f50b175b58f1de96861249f8f1dc2819b9644903",
+    "session_0010.json:bb7": "c4f2edf22f47184d81a8621e1f9f7a6b3bb1d25fde6122f456ad5b01aebdb3f1",
+    "session_0011.json:bb7": "9c6a39f7c8975590beab8a5eed79d897a6acc8493f6ee7a014ef83323c509bca",
+    "session_0012.json:bb7": "0847bb5be868a076b68ab2496a6233471228a83651d0b4f51424d57b41559965",
+    "session_0013.json:bb7": "80548bcd653885168d8f8d36b37c732c019d0cd0a517bc04dfbf59cff454720a",
+    "session_0014.json:bb7": "e6fdfd51026335398f0af69a90ae3369a894b314e071da8b7342ab7f1579e67f",
+    "session_0015.json:bb7": "b32d9f99d6807ff1c11bffec33e30a5642f975394be1e12a2921ea6a021a416e",
+    "session_0016.json:bb7": "7d7138d556a71eece370e67c9297d0b1bb54b1703b79567944cc0b4586b57031",
+    "session_0017.json:bb7": "c5dc9ac4e1981524afa692613a8b47533c607b1224eefd8217d19e4c99177bb9",
+    "session_0018.json:bb7": "6712de72ca4ca9fec0cb9930d8d31234f783d727ba9275777bb3c872bb88c54f",
+    "session_0019.json:bb7": "0426f60a486b0509490292b89fc6e6c23bf3474fbd3d46a77310eb9e2349e7f4",
+    "session_0020.json:bb7": "42f274ee0ec9a0c9304b9f3d5d65a9e94fafed2eaa2833118e3f93b3583bae8e",
+    "session_0021.json:bb7": "21ddbff19ddcbddccbe6331c0108049aa37c3065720c67fdf21da672cad77c74",
+    "session_0022.json:bb7": "fbbc8fdff655fec65f8e477824be84e0e3177ffdb655a66b4373b4a10dcba1ca",
+    "session_0023.json:bb7": "f9e5abbc38322a4afddce77845156d021d4d9dfe55b2c8fb937f0f810b3b43fd",
+    "session_0024.json:bb7": "f324d787398c40f3188fc31e7a6205289297f7a29da22fb18f8b3bb1c85f7134",
+    "session_0025.json:bb7": "7557548499e0a5a08e7c1e6f53467afcec75c27dde6a88cf2bea6b8642a7ca2a",
+    "session_0026.json:bb7": "7cab28567db29d09168386ac0e326022c979d10fa0ec955c3962aa60f2eb49f5",
+    "session_0027.json:bb7": "5c8cfefa4def62945bbfdf0c4cc52a4d8569053cb7b8f101476a0c591e7fb834",
+    "session_0028.json:bb7": "361729785e72b755eb18a5b8cfbb0aab755572b503c880436741843108a14762",
+    "session_0029.json:bb7": "c61525c5dfc4cfad9b336ca36f93a6069abd44be613ce7a31904a15a0f5afb33",
+    "session_0030.json:bb7": "e27d516ad8b5f19de37d767ec33b75ee0ba472fa24d6d20155a41feff8ccc802",
+    "session_0031.json:bb7": "804039ad0fb8dd317c98e98aed5ef8c680d913738785e8dee567c5b35076b036",
+    "session_0032.json:bb7": "91c1b9074cd0ad82f45a4dd73e515feb69d3988ec08f04576c7cc68608c2f07f",
+    "session_0002.json:bb8": "b175c8e3af83e65205f8ba8306c5cfce3092200f349a76d8539ee29437db5c20",
+    "session_0003.json:bb8": "a8e027e4d658f00156409f0db23b9a98a3463f269e9652fa34fc054f58c9aec2",
+    "session_0004.json:bb8": "0d5db5aa88f1f99193496e7fdbbe206d881977f1303ac0cdded22996a25b7938",
+    "session_0005.json:bb8": "63a60374cc9d4ab6fa6451cb89ec412e30d4e569a8e9067ebad791740dd29ef6",
+    "session_0006.json:bb8": "21de82dec4ae90fe5bcaa61a31840297d35e6c39e1c28f383b5e6e9bb8fec979",
+    "session_0007.json:bb8": "cb8f34fbe9b35b09a492f92e85ca5c846d5485e47d4ff59dd2df73a93a80e4b3",
+    "session_0008.json:bb8": "682584f304c13fe98cc0dc3d4cea003d6cefa6d00ecd290e2b640671a4c53588",
+    "session_0009.json:bb8": "3f3b180d8b0156ffc548a993f50b175b58f1de96861249f8f1dc2819b9644903",
+    "session_0010.json:bb8": "c4f2edf22f47184d81a8621e1f9f7a6b3bb1d25fde6122f456ad5b01aebdb3f1",
+    "session_0011.json:bb8": "9c6a39f7c8975590beab8a5eed79d897a6acc8493f6ee7a014ef83323c509bca",
+    "session_0012.json:bb8": "0847bb5be868a076b68ab2496a6233471228a83651d0b4f51424d57b41559965",
+    "session_0013.json:bb8": "80548bcd653885168d8f8d36b37c732c019d0cd0a517bc04dfbf59cff454720a",
+    "session_0014.json:bb8": "e6fdfd51026335398f0af69a90ae3369a894b314e071da8b7342ab7f1579e67f",
+    "session_0015.json:bb8": "b32d9f99d6807ff1c11bffec33e30a5642f975394be1e12a2921ea6a021a416e",
+    "session_0016.json:bb8": "7d7138d556a71eece370e67c9297d0b1bb54b1703b79567944cc0b4586b57031",
+    "session_0017.json:bb8": "c5dc9ac4e1981524afa692613a8b47533c607b1224eefd8217d19e4c99177bb9",
+    "session_0018.json:bb8": "6712de72ca4ca9fec0cb9930d8d31234f783d727ba9275777bb3c872bb88c54f",
+    "session_0019.json:bb8": "0426f60a486b0509490292b89fc6e6c23bf3474fbd3d46a77310eb9e2349e7f4",
+    "session_0020.json:bb8": "42f274ee0ec9a0c9304b9f3d5d65a9e94fafed2eaa2833118e3f93b3583bae8e",
+    "session_0021.json:bb8": "21ddbff19ddcbddccbe6331c0108049aa37c3065720c67fdf21da672cad77c74",
+    "session_0022.json:bb8": "fbbc8fdff655fec65f8e477824be84e0e3177ffdb655a66b4373b4a10dcba1ca",
+    "session_0023.json:bb8": "f9e5abbc38322a4afddce77845156d021d4d9dfe55b2c8fb937f0f810b3b43fd",
+    "session_0024.json:bb8": "f324d787398c40f3188fc31e7a6205289297f7a29da22fb18f8b3bb1c85f7134",
+    "session_0025.json:bb8": "7557548499e0a5a08e7c1e6f53467afcec75c27dde6a88cf2bea6b8642a7ca2a",
+    "session_0026.json:bb8": "7cab28567db29d09168386ac0e326022c979d10fa0ec955c3962aa60f2eb49f5",
+    "session_0027.json:bb8": "5c8cfefa4def62945bbfdf0c4cc52a4d8569053cb7b8f101476a0c591e7fb834",
+    "session_0028.json:bb8": "361729785e72b755eb18a5b8cfbb0aab755572b503c880436741843108a14762",
+    "session_0029.json:bb8": "c61525c5dfc4cfad9b336ca36f93a6069abd44be613ce7a31904a15a0f5afb33",
+    "session_0030.json:bb8": "e27d516ad8b5f19de37d767ec33b75ee0ba472fa24d6d20155a41feff8ccc802",
+    "session_0031.json:bb8": "804039ad0fb8dd317c98e98aed5ef8c680d913738785e8dee567c5b35076b036",
+    "session_0032.json:bb8": "6ce7e808696593dc728c3c0a48f4b971d9f9dc25a9460657a0631550fd1a0f12",
+    "session_0033.json:bb8": "9423e514a4a6034349022ac3e05d00e786001e08f26225f622db82d56e3a4874",
+    "session_0034.json:bb8": "e4199396488897854d35d4498de8a4ca5be473451a7454f8197ff8c486b06e85",
+    "session_0002.json:bb8dec2": "b175c8e3af83e65205f8ba8306c5cfce3092200f349a76d8539ee29437db5c20",
+    "session_0003.json:bb8dec2": "a8e027e4d658f00156409f0db23b9a98a3463f269e9652fa34fc054f58c9aec2",
+    "session_0004.json:bb8dec2": "0d5db5aa88f1f99193496e7fdbbe206d881977f1303ac0cdded22996a25b7938",
+    "session_0005.json:bb8dec2": "63a60374cc9d4ab6fa6451cb89ec412e30d4e569a8e9067ebad791740dd29ef6",
+    "session_0006.json:bb8dec2": "21de82dec4ae90fe5bcaa61a31840297d35e6c39e1c28f383b5e6e9bb8fec979",
+    "session_0007.json:bb8dec2": "cb8f34fbe9b35b09a492f92e85ca5c846d5485e47d4ff59dd2df73a93a80e4b3",
+    "session_0008.json:bb8dec2": "682584f304c13fe98cc0dc3d4cea003d6cefa6d00ecd290e2b640671a4c53588",
+    "session_0009.json:bb8dec2": "3f3b180d8b0156ffc548a993f50b175b58f1de96861249f8f1dc2819b9644903",
+    "session_0010.json:bb8dec2": "c4f2edf22f47184d81a8621e1f9f7a6b3bb1d25fde6122f456ad5b01aebdb3f1",
+    "session_0011.json:bb8dec2": "9c6a39f7c8975590beab8a5eed79d897a6acc8493f6ee7a014ef83323c509bca",
+    "session_0012.json:bb8dec2": "0847bb5be868a076b68ab2496a6233471228a83651d0b4f51424d57b41559965",
+    "session_0013.json:bb8dec2": "80548bcd653885168d8f8d36b37c732c019d0cd0a517bc04dfbf59cff454720a",
+    "session_0014.json:bb8dec2": "e6fdfd51026335398f0af69a90ae3369a894b314e071da8b7342ab7f1579e67f",
+    "session_0015.json:bb8dec2": "b32d9f99d6807ff1c11bffec33e30a5642f975394be1e12a2921ea6a021a416e",
+    "session_0016.json:bb8dec2": "7d7138d556a71eece370e67c9297d0b1bb54b1703b79567944cc0b4586b57031",
+    "session_0017.json:bb8dec2": "c5dc9ac4e1981524afa692613a8b47533c607b1224eefd8217d19e4c99177bb9",
+    "session_0018.json:bb8dec2": "6712de72ca4ca9fec0cb9930d8d31234f783d727ba9275777bb3c872bb88c54f",
+    "session_0019.json:bb8dec2": "0426f60a486b0509490292b89fc6e6c23bf3474fbd3d46a77310eb9e2349e7f4",
+    "session_0020.json:bb8dec2": "42f274ee0ec9a0c9304b9f3d5d65a9e94fafed2eaa2833118e3f93b3583bae8e",
+    "session_0021.json:bb8dec2": "21ddbff19ddcbddccbe6331c0108049aa37c3065720c67fdf21da672cad77c74",
+    "session_0022.json:bb8dec2": "fbbc8fdff655fec65f8e477824be84e0e3177ffdb655a66b4373b4a10dcba1ca",
+    "session_0023.json:bb8dec2": "f9e5abbc38322a4afddce77845156d021d4d9dfe55b2c8fb937f0f810b3b43fd",
+    "session_0024.json:bb8dec2": "f324d787398c40f3188fc31e7a6205289297f7a29da22fb18f8b3bb1c85f7134",
+    "session_0025.json:bb8dec2": "7557548499e0a5a08e7c1e6f53467afcec75c27dde6a88cf2bea6b8642a7ca2a",
+    "session_0026.json:bb8dec2": "7cab28567db29d09168386ac0e326022c979d10fa0ec955c3962aa60f2eb49f5",
+    "session_0027.json:bb8dec2": "5c8cfefa4def62945bbfdf0c4cc52a4d8569053cb7b8f101476a0c591e7fb834",
+    "session_0028.json:bb8dec2": "361729785e72b755eb18a5b8cfbb0aab755572b503c880436741843108a14762",
+    "session_0029.json:bb8dec2": "c61525c5dfc4cfad9b336ca36f93a6069abd44be613ce7a31904a15a0f5afb33",
+    "session_0030.json:bb8dec2": "e27d516ad8b5f19de37d767ec33b75ee0ba472fa24d6d20155a41feff8ccc802",
+    "session_0031.json:bb8dec2": "804039ad0fb8dd317c98e98aed5ef8c680d913738785e8dee567c5b35076b036",
+    "session_0032.json:bb8dec2": "6ce7e808696593dc728c3c0a48f4b971d9f9dc25a9460657a0631550fd1a0f12",
+    "session_0033.json:bb8dec2": "9423e514a4a6034349022ac3e05d00e786001e08f26225f622db82d56e3a4874",
+    "session_0034.json:bb8dec2": "e4199396488897854d35d4498de8a4ca5be473451a7454f8197ff8c486b06e85",
+    "session_0049.json:bb9dec": "a45771c302998f7e7822bbaf31699f0952eb958d158b040dbd1baf2cf98f684b",
+    "session_0050.json:bb9dec": "0064e414240fb8a19fc2b252da3f185dbf11ed5496ecde16bb7cca74835f2b6b",
+    "session_0051.json:bb9dec": "130b9f53d75848d07be544f119b158044c9f785dd1ccf89a2a26879a100bffec",
+    "session_0052.json:bb9dec": "03b24ae709c511dff5756c4b3511a02a20e77699f40da78aac995d917271e19f",
+    "session_0053.json:bb9dec": "50cf60c6122d6b104524d9df3dcb4f9f83432fa583e093f83d99fd4727eec3b5"
+  },
+  "sessions": [
+    {
+      "session": 1,
+      "boot": {
+        "reset_reason": 11,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 3,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1666,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4621
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 2,
+      "boot": {
+        "reset_reason": 11,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 3,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1708,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4811
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 3,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 10,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1732,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4627
+        },
+        {
+          "t_ms": 88599,
+          "level": 1,
+          "lp": false,
+          "success": true,
+          "duration_us": 9755
+        },
+        {
+          "t_ms": 114589,
+          "level": 1,
+          "lp": true,
+          "success": true,
+          "duration_us": 7209
+        },
+        {
+          "t_ms": 119659,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 7980
+        },
+        {
+          "t_ms": 157894,
+          "level": 1,
+          "lp": false,
+          "success": true,
+          "duration_us": 5637
+        }
+      ],
+      "dropouts": [
+        {
+          "t_ms": 131984,
+          "category": "00",
+          "previous_restart_ms": 12325,
+          "next_restart_ms": 25910
+        }
+      ]
+    },
+    {
+      "session": 4,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 4,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1793,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4973
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 5,
+      "boot": {
+        "reset_reason": 11,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 4,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1682,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4661
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 6,
+      "boot": {
+        "reset_reason": 11,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 26,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1660,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5492
+        },
+        {
+          "t_ms": 462920,
+          "level": 0,
+          "lp": false,
+          "success": true,
+          "duration_us": 8012
+        },
+        {
+          "t_ms": 490980,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5575
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 7,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 3,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1739,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4836
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 8,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 3,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1756,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5333
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 9,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 3,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1712,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4597
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 10,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 3,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1704,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4549
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 11,
+      "boot": {
+        "reset_reason": 11,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 3,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1681,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5197
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 12,
+      "boot": {
+        "reset_reason": 11,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 3,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1680,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4667
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 13,
+      "boot": {
+        "reset_reason": 11,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 46,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1687,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4714
+        },
+        {
+          "t_ms": 764778,
+          "level": 1,
+          "lp": false,
+          "success": true,
+          "duration_us": 7218
+        },
+        {
+          "t_ms": 774896,
+          "level": 6,
+          "lp": false,
+          "success": true,
+          "duration_us": 8859
+        },
+        {
+          "t_ms": 779984,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 5583
+        },
+        {
+          "t_ms": 785741,
+          "level": 6,
+          "lp": false,
+          "success": true,
+          "duration_us": 6274
+        },
+        {
+          "t_ms": 789524,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 6545
+        },
+        {
+          "t_ms": 798012,
+          "level": 6,
+          "lp": true,
+          "success": true,
+          "duration_us": 5937
+        },
+        {
+          "t_ms": 803024,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 6408
+        },
+        {
+          "t_ms": 813116,
+          "level": 4,
+          "lp": true,
+          "success": true,
+          "duration_us": 6224
+        },
+        {
+          "t_ms": 819800,
+          "level": 3,
+          "lp": true,
+          "success": true,
+          "duration_us": 5959
+        },
+        {
+          "t_ms": 824835,
+          "level": 6,
+          "lp": true,
+          "success": true,
+          "duration_us": 5732
+        },
+        {
+          "t_ms": 829921,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 6207
+        },
+        {
+          "t_ms": 836507,
+          "level": 4,
+          "lp": true,
+          "success": true,
+          "duration_us": 5989
+        },
+        {
+          "t_ms": 841534,
+          "level": 6,
+          "lp": true,
+          "success": true,
+          "duration_us": 5963
+        },
+        {
+          "t_ms": 846582,
+          "level": 4,
+          "lp": true,
+          "success": true,
+          "duration_us": 5846
+        },
+        {
+          "t_ms": 851706,
+          "level": 3,
+          "lp": true,
+          "success": true,
+          "duration_us": 6369
+        },
+        {
+          "t_ms": 856772,
+          "level": 6,
+          "lp": true,
+          "success": true,
+          "duration_us": 6394
+        },
+        {
+          "t_ms": 861784,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 5672
+        },
+        {
+          "t_ms": 867011,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 6268
+        },
+        {
+          "t_ms": 875177,
+          "level": 6,
+          "lp": false,
+          "success": true,
+          "duration_us": 6329
+        },
+        {
+          "t_ms": 880718,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 5933
+        },
+        {
+          "t_ms": 892252,
+          "level": 5,
+          "lp": false,
+          "success": true,
+          "duration_us": 6534
+        },
+        {
+          "t_ms": 895719,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 8535
+        },
+        {
+          "t_ms": 900777,
+          "level": 2,
+          "lp": true,
+          "success": true,
+          "duration_us": 6432
+        }
+      ],
+      "dropouts": [
+        {
+          "t_ms": 834767,
+          "category": "01",
+          "previous_restart_ms": 4846,
+          "next_restart_ms": 1740
+        },
+        {
+          "t_ms": 896522,
+          "category": "00",
+          "previous_restart_ms": 803,
+          "next_restart_ms": 4255
+        }
+      ]
+    },
+    {
+      "session": 14,
+      "boot": {
+        "reset_reason": 11,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 4,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1678,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5051
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 15,
+      "boot": {
+        "reset_reason": 11,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 3,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1685,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5275
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 16,
+      "boot": {
+        "reset_reason": 11,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 3,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1676,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4910
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 17,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5180
+      },
+      "events": 20,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1759,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5209
+        },
+        {
+          "t_ms": 142645,
+          "level": 0,
+          "lp": false,
+          "success": true,
+          "duration_us": 5532
+        },
+        {
+          "t_ms": 266385,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 6025
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 18,
+      "boot": {
+        "reset_reason": 11,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5180
+      },
+      "events": 21,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1673,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4737
+        },
+        {
+          "t_ms": 60027,
+          "level": 0,
+          "lp": false,
+          "success": true,
+          "duration_us": 5827
+        },
+        {
+          "t_ms": 183690,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 6019
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 19,
+      "boot": {
+        "reset_reason": 11,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 3,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1674,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5478
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 20,
+      "boot": {
+        "reset_reason": 11,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 3,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1662,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4897
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 21,
+      "boot": {
+        "reset_reason": 11,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 13,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1668,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4970
+        },
+        {
+          "t_ms": 503066,
+          "level": 1,
+          "lp": false,
+          "success": true,
+          "duration_us": 5844
+        },
+        {
+          "t_ms": 545877,
+          "level": 5,
+          "lp": false,
+          "success": true,
+          "duration_us": 5850
+        },
+        {
+          "t_ms": 570591,
+          "level": 6,
+          "lp": false,
+          "success": true,
+          "duration_us": 9014
+        },
+        {
+          "t_ms": 575630,
+          "level": 5,
+          "lp": false,
+          "success": true,
+          "duration_us": 6360
+        },
+        {
+          "t_ms": 582589,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 6555
+        },
+        {
+          "t_ms": 587642,
+          "level": 2,
+          "lp": true,
+          "success": true,
+          "duration_us": 8223
+        }
+      ],
+      "dropouts": [
+        {
+          "t_ms": 583738,
+          "category": "01",
+          "previous_restart_ms": 1149,
+          "next_restart_ms": 3904
+        }
+      ]
+    },
+    {
+      "session": 22,
+      "boot": {
+        "reset_reason": 11,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 3,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1677,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4529
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 23,
+      "boot": {
+        "reset_reason": 11,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 10,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1664,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4772
+        },
+        {
+          "t_ms": 147536,
+          "level": 1,
+          "lp": false,
+          "success": true,
+          "duration_us": 6830
+        },
+        {
+          "t_ms": 187781,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5777
+        }
+      ],
+      "dropouts": [
+        {
+          "t_ms": 188239,
+          "category": "00",
+          "previous_restart_ms": 458,
+          "next_restart_ms": null
+        }
+      ]
+    },
+    {
+      "session": 24,
+      "boot": {
+        "reset_reason": 11,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 29,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1666,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4982
+        },
+        {
+          "t_ms": 413539,
+          "level": 1,
+          "lp": false,
+          "success": true,
+          "duration_us": 6141
+        },
+        {
+          "t_ms": 429286,
+          "level": 5,
+          "lp": false,
+          "success": true,
+          "duration_us": 5600
+        },
+        {
+          "t_ms": 430696,
+          "level": 6,
+          "lp": true,
+          "success": true,
+          "duration_us": 5606
+        },
+        {
+          "t_ms": 436784,
+          "level": 2,
+          "lp": true,
+          "success": true,
+          "duration_us": 5794
+        },
+        {
+          "t_ms": 444647,
+          "level": 3,
+          "lp": true,
+          "success": true,
+          "duration_us": 5750
+        },
+        {
+          "t_ms": 455925,
+          "level": 5,
+          "lp": false,
+          "success": true,
+          "duration_us": 6608
+        },
+        {
+          "t_ms": 461824,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 6349
+        },
+        {
+          "t_ms": 466887,
+          "level": 6,
+          "lp": false,
+          "success": true,
+          "duration_us": 5988
+        },
+        {
+          "t_ms": 475651,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 5594
+        },
+        {
+          "t_ms": 480831,
+          "level": 6,
+          "lp": false,
+          "success": true,
+          "duration_us": 5778
+        },
+        {
+          "t_ms": 488937,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 5932
+        },
+        {
+          "t_ms": 498307,
+          "level": 6,
+          "lp": false,
+          "success": true,
+          "duration_us": 7364
+        },
+        {
+          "t_ms": 503384,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 6468
+        },
+        {
+          "t_ms": 505651,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 5585
+        },
+        {
+          "t_ms": 510704,
+          "level": 2,
+          "lp": true,
+          "success": true,
+          "duration_us": 5727
+        }
+      ],
+      "dropouts": [
+        {
+          "t_ms": 430895,
+          "category": "00",
+          "previous_restart_ms": 199,
+          "next_restart_ms": 5889
+        },
+        {
+          "t_ms": 506973,
+          "category": "02",
+          "previous_restart_ms": 1322,
+          "next_restart_ms": 3731
+        }
+      ]
+    },
+    {
+      "session": 25,
+      "boot": {
+        "reset_reason": 11,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 147,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1665,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4850
+        },
+        {
+          "t_ms": 514862,
+          "level": 1,
+          "lp": false,
+          "success": true,
+          "duration_us": 5615
+        },
+        {
+          "t_ms": 525488,
+          "level": 5,
+          "lp": false,
+          "success": true,
+          "duration_us": 6341
+        },
+        {
+          "t_ms": 530546,
+          "level": 6,
+          "lp": false,
+          "success": true,
+          "duration_us": 6611
+        },
+        {
+          "t_ms": 539083,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 6134
+        },
+        {
+          "t_ms": 544161,
+          "level": 6,
+          "lp": true,
+          "success": true,
+          "duration_us": 5341
+        },
+        {
+          "t_ms": 549213,
+          "level": 4,
+          "lp": true,
+          "success": true,
+          "duration_us": 5609
+        },
+        {
+          "t_ms": 554266,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 5570
+        },
+        {
+          "t_ms": 559318,
+          "level": 4,
+          "lp": true,
+          "success": true,
+          "duration_us": 5465
+        },
+        {
+          "t_ms": 569176,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 5777
+        },
+        {
+          "t_ms": 574222,
+          "level": 4,
+          "lp": true,
+          "success": true,
+          "duration_us": 5628
+        },
+        {
+          "t_ms": 579229,
+          "level": 5,
+          "lp": true,
+          "success": true,
+          "duration_us": 5589
+        },
+        {
+          "t_ms": 584431,
+          "level": 4,
+          "lp": true,
+          "success": true,
+          "duration_us": 5428
+        },
+        {
+          "t_ms": 589442,
+          "level": 5,
+          "lp": true,
+          "success": true,
+          "duration_us": 5428
+        },
+        {
+          "t_ms": 596029,
+          "level": 2,
+          "lp": true,
+          "success": true,
+          "duration_us": 5595
+        },
+        {
+          "t_ms": 607212,
+          "level": 6,
+          "lp": true,
+          "success": true,
+          "duration_us": 7405
+        },
+        {
+          "t_ms": 612237,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 5684
+        },
+        {
+          "t_ms": 617246,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 5812
+        },
+        {
+          "t_ms": 625849,
+          "level": 6,
+          "lp": false,
+          "success": true,
+          "duration_us": 8125
+        },
+        {
+          "t_ms": 627206,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 7154
+        },
+        {
+          "t_ms": 638411,
+          "level": 2,
+          "lp": true,
+          "success": true,
+          "duration_us": 5981
+        },
+        {
+          "t_ms": 648976,
+          "level": 5,
+          "lp": false,
+          "success": true,
+          "duration_us": 5853
+        },
+        {
+          "t_ms": 658009,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 9330
+        },
+        {
+          "t_ms": 664774,
+          "level": 6,
+          "lp": false,
+          "success": true,
+          "duration_us": 7676
+        },
+        {
+          "t_ms": 669791,
+          "level": 5,
+          "lp": false,
+          "success": true,
+          "duration_us": 10000
+        },
+        {
+          "t_ms": 674847,
+          "level": 3,
+          "lp": false,
+          "success": true,
+          "duration_us": 5806
+        },
+        {
+          "t_ms": 680304,
+          "level": 4,
+          "lp": false,
+          "success": true,
+          "duration_us": 6029
+        },
+        {
+          "t_ms": 714862,
+          "level": 4,
+          "lp": true,
+          "success": true,
+          "duration_us": 5747
+        },
+        {
+          "t_ms": 719912,
+          "level": 1,
+          "lp": true,
+          "success": true,
+          "duration_us": 5620
+        },
+        {
+          "t_ms": 724956,
+          "level": 2,
+          "lp": true,
+          "success": true,
+          "duration_us": 5621
+        },
+        {
+          "t_ms": 730008,
+          "level": 3,
+          "lp": true,
+          "success": true,
+          "duration_us": 5497
+        },
+        {
+          "t_ms": 735349,
+          "level": 2,
+          "lp": true,
+          "success": true,
+          "duration_us": 5248
+        },
+        {
+          "t_ms": 740411,
+          "level": 3,
+          "lp": true,
+          "success": true,
+          "duration_us": 5752
+        },
+        {
+          "t_ms": 749592,
+          "level": 4,
+          "lp": true,
+          "success": true,
+          "duration_us": 5855
+        },
+        {
+          "t_ms": 754639,
+          "level": 2,
+          "lp": true,
+          "success": true,
+          "duration_us": 6192
+        },
+        {
+          "t_ms": 763016,
+          "level": 4,
+          "lp": false,
+          "success": true,
+          "duration_us": 5818
+        },
+        {
+          "t_ms": 766203,
+          "level": 4,
+          "lp": true,
+          "success": true,
+          "duration_us": 5731
+        },
+        {
+          "t_ms": 771250,
+          "level": 1,
+          "lp": true,
+          "success": true,
+          "duration_us": 6684
+        },
+        {
+          "t_ms": 789016,
+          "level": 3,
+          "lp": true,
+          "success": true,
+          "duration_us": 5788
+        },
+        {
+          "t_ms": 796297,
+          "level": 4,
+          "lp": false,
+          "success": true,
+          "duration_us": 5940
+        },
+        {
+          "t_ms": 801340,
+          "level": 6,
+          "lp": false,
+          "success": true,
+          "duration_us": 6199
+        },
+        {
+          "t_ms": 806378,
+          "level": 4,
+          "lp": false,
+          "success": true,
+          "duration_us": 6265
+        },
+        {
+          "t_ms": 811392,
+          "level": 5,
+          "lp": false,
+          "success": true,
+          "duration_us": 6719
+        },
+        {
+          "t_ms": 816417,
+          "level": 3,
+          "lp": false,
+          "success": true,
+          "duration_us": 8576
+        },
+        {
+          "t_ms": 837410,
+          "level": 5,
+          "lp": false,
+          "success": true,
+          "duration_us": 5518
+        },
+        {
+          "t_ms": 842420,
+          "level": 4,
+          "lp": false,
+          "success": true,
+          "duration_us": 6063
+        },
+        {
+          "t_ms": 843549,
+          "level": 4,
+          "lp": true,
+          "success": true,
+          "duration_us": 6059
+        },
+        {
+          "t_ms": 848559,
+          "level": 1,
+          "lp": true,
+          "success": true,
+          "duration_us": 6202
+        },
+        {
+          "t_ms": 868389,
+          "level": 4,
+          "lp": true,
+          "success": true,
+          "duration_us": 5768
+        },
+        {
+          "t_ms": 878194,
+          "level": 2,
+          "lp": true,
+          "success": true,
+          "duration_us": 6201
+        },
+        {
+          "t_ms": 884559,
+          "level": 4,
+          "lp": false,
+          "success": true,
+          "duration_us": 6296
+        },
+        {
+          "t_ms": 890173,
+          "level": 6,
+          "lp": true,
+          "success": true,
+          "duration_us": 5605
+        },
+        {
+          "t_ms": 895216,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 5611
+        },
+        {
+          "t_ms": 900266,
+          "level": 6,
+          "lp": false,
+          "success": true,
+          "duration_us": 5721
+        },
+        {
+          "t_ms": 905976,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 5565
+        },
+        {
+          "t_ms": 907558,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 5444
+        },
+        {
+          "t_ms": 943762,
+          "level": 4,
+          "lp": true,
+          "success": true,
+          "duration_us": 5734
+        },
+        {
+          "t_ms": 954790,
+          "level": 3,
+          "lp": true,
+          "success": true,
+          "duration_us": 5794
+        },
+        {
+          "t_ms": 961149,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 7301
+        },
+        {
+          "t_ms": 972058,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 6756
+        },
+        {
+          "t_ms": 978957,
+          "level": 5,
+          "lp": false,
+          "success": true,
+          "duration_us": 8031
+        },
+        {
+          "t_ms": 984013,
+          "level": 6,
+          "lp": false,
+          "success": true,
+          "duration_us": 6171
+        },
+        {
+          "t_ms": 989019,
+          "level": 5,
+          "lp": false,
+          "success": true,
+          "duration_us": 6008
+        },
+        {
+          "t_ms": 1002813,
+          "level": 6,
+          "lp": false,
+          "success": true,
+          "duration_us": 6026
+        },
+        {
+          "t_ms": 1014739,
+          "level": 4,
+          "lp": false,
+          "success": true,
+          "duration_us": 8392
+        },
+        {
+          "t_ms": 1017736,
+          "level": 4,
+          "lp": true,
+          "success": true,
+          "duration_us": 5949
+        },
+        {
+          "t_ms": 1022745,
+          "level": 1,
+          "lp": true,
+          "success": true,
+          "duration_us": 5654
+        }
+      ],
+      "dropouts": [
+        {
+          "t_ms": 578811,
+          "category": "01",
+          "previous_restart_ms": 4589,
+          "next_restart_ms": 418
+        },
+        {
+          "t_ms": 596227,
+          "category": "01",
+          "previous_restart_ms": 198,
+          "next_restart_ms": 10985
+        },
+        {
+          "t_ms": 607513,
+          "category": "01",
+          "previous_restart_ms": 301,
+          "next_restart_ms": 4724
+        },
+        {
+          "t_ms": 628124,
+          "category": "01",
+          "previous_restart_ms": 918,
+          "next_restart_ms": 10287
+        },
+        {
+          "t_ms": 767012,
+          "category": "01",
+          "previous_restart_ms": 809,
+          "next_restart_ms": 4238
+        },
+        {
+          "t_ms": 844209,
+          "category": "01",
+          "previous_restart_ms": 660,
+          "next_restart_ms": 4350
+        },
+        {
+          "t_ms": 1018953,
+          "category": "01",
+          "previous_restart_ms": 1217,
+          "next_restart_ms": 3792
+        }
+      ]
+    },
+    {
+      "session": 26,
+      "boot": {
+        "reset_reason": 11,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 83,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1679,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4992
+        },
+        {
+          "t_ms": 120224,
+          "level": 1,
+          "lp": false,
+          "success": true,
+          "duration_us": 8209
+        },
+        {
+          "t_ms": 135794,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5709
+        },
+        {
+          "t_ms": 222233,
+          "level": 1,
+          "lp": false,
+          "success": true,
+          "duration_us": 6951
+        },
+        {
+          "t_ms": 237396,
+          "level": 4,
+          "lp": false,
+          "success": true,
+          "duration_us": 6175
+        },
+        {
+          "t_ms": 246688,
+          "level": 5,
+          "lp": false,
+          "success": true,
+          "duration_us": 7246
+        },
+        {
+          "t_ms": 251717,
+          "level": 4,
+          "lp": false,
+          "success": true,
+          "duration_us": 7615
+        },
+        {
+          "t_ms": 277949,
+          "level": 3,
+          "lp": false,
+          "success": true,
+          "duration_us": 6929
+        },
+        {
+          "t_ms": 284347,
+          "level": 5,
+          "lp": false,
+          "success": true,
+          "duration_us": 7618
+        },
+        {
+          "t_ms": 293274,
+          "level": 4,
+          "lp": false,
+          "success": true,
+          "duration_us": 7683
+        },
+        {
+          "t_ms": 296433,
+          "level": 4,
+          "lp": true,
+          "success": true,
+          "duration_us": 7227
+        },
+        {
+          "t_ms": 301447,
+          "level": 1,
+          "lp": true,
+          "success": true,
+          "duration_us": 7307
+        },
+        {
+          "t_ms": 322719,
+          "level": 3,
+          "lp": false,
+          "success": true,
+          "duration_us": 5843
+        },
+        {
+          "t_ms": 336946,
+          "level": 4,
+          "lp": false,
+          "success": true,
+          "duration_us": 6202
+        },
+        {
+          "t_ms": 341962,
+          "level": 3,
+          "lp": false,
+          "success": true,
+          "duration_us": 5563
+        },
+        {
+          "t_ms": 348064,
+          "level": 4,
+          "lp": false,
+          "success": true,
+          "duration_us": 6205
+        },
+        {
+          "t_ms": 348973,
+          "level": 3,
+          "lp": true,
+          "success": true,
+          "duration_us": 7741
+        },
+        {
+          "t_ms": 354024,
+          "level": 1,
+          "lp": true,
+          "success": true,
+          "duration_us": 5948
+        },
+        {
+          "t_ms": 693874,
+          "level": 2,
+          "lp": true,
+          "success": true,
+          "duration_us": 8478
+        },
+        {
+          "t_ms": 698926,
+          "level": 3,
+          "lp": false,
+          "success": true,
+          "duration_us": 6166
+        },
+        {
+          "t_ms": 703970,
+          "level": 4,
+          "lp": false,
+          "success": true,
+          "duration_us": 6697
+        },
+        {
+          "t_ms": 706607,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 5260
+        },
+        {
+          "t_ms": 724177,
+          "level": 2,
+          "lp": true,
+          "success": true,
+          "duration_us": 5702
+        },
+        {
+          "t_ms": 729220,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 5621
+        },
+        {
+          "t_ms": 734473,
+          "level": 2,
+          "lp": true,
+          "success": true,
+          "duration_us": 5610
+        },
+        {
+          "t_ms": 742917,
+          "level": 4,
+          "lp": true,
+          "success": true,
+          "duration_us": 5722
+        },
+        {
+          "t_ms": 747979,
+          "level": 6,
+          "lp": true,
+          "success": true,
+          "duration_us": 5635
+        },
+        {
+          "t_ms": 754656,
+          "level": 5,
+          "lp": true,
+          "success": true,
+          "duration_us": 5641
+        },
+        {
+          "t_ms": 759745,
+          "level": 6,
+          "lp": true,
+          "success": true,
+          "duration_us": 5707
+        },
+        {
+          "t_ms": 770079,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 7798
+        },
+        {
+          "t_ms": 778675,
+          "level": 6,
+          "lp": false,
+          "success": true,
+          "duration_us": 6562
+        },
+        {
+          "t_ms": 783713,
+          "level": 4,
+          "lp": false,
+          "success": true,
+          "duration_us": 9000
+        },
+        {
+          "t_ms": 788751,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 5465
+        },
+        {
+          "t_ms": 793812,
+          "level": 4,
+          "lp": false,
+          "success": true,
+          "duration_us": 5599
+        },
+        {
+          "t_ms": 798852,
+          "level": 5,
+          "lp": false,
+          "success": true,
+          "duration_us": 5985
+        },
+        {
+          "t_ms": 811778,
+          "level": 6,
+          "lp": false,
+          "success": true,
+          "duration_us": 5901
+        },
+        {
+          "t_ms": 819323,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 8137
+        },
+        {
+          "t_ms": 821397,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 7587
+        },
+        {
+          "t_ms": 826415,
+          "level": 2,
+          "lp": true,
+          "success": true,
+          "duration_us": 5592
+        },
+        {
+          "t_ms": 869268,
+          "level": 6,
+          "lp": false,
+          "success": true,
+          "duration_us": 6358
+        },
+        {
+          "t_ms": 877297,
+          "level": 5,
+          "lp": false,
+          "success": true,
+          "duration_us": 7179
+        },
+        {
+          "t_ms": 884664,
+          "level": 3,
+          "lp": false,
+          "success": true,
+          "duration_us": 5900
+        },
+        {
+          "t_ms": 897383,
+          "level": 4,
+          "lp": false,
+          "success": true,
+          "duration_us": 8329
+        },
+        {
+          "t_ms": 912267,
+          "level": 3,
+          "lp": true,
+          "success": true,
+          "duration_us": 6135
+        },
+        {
+          "t_ms": 917317,
+          "level": 1,
+          "lp": true,
+          "success": true,
+          "duration_us": 5844
+        }
+      ],
+      "dropouts": [
+        {
+          "t_ms": 296835,
+          "category": "00",
+          "previous_restart_ms": 402,
+          "next_restart_ms": 4612
+        },
+        {
+          "t_ms": 350364,
+          "category": "00",
+          "previous_restart_ms": 1391,
+          "next_restart_ms": 3660
+        },
+        {
+          "t_ms": 821641,
+          "category": "00",
+          "previous_restart_ms": 244,
+          "next_restart_ms": 4774
+        },
+        {
+          "t_ms": 913280,
+          "category": "01",
+          "previous_restart_ms": 1013,
+          "next_restart_ms": 4037
+        }
+      ]
+    },
+    {
+      "session": 27,
+      "boot": {
+        "reset_reason": 11,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 25,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1660,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4599
+        },
+        {
+          "t_ms": 6246319,
+          "level": 1,
+          "lp": false,
+          "success": true,
+          "duration_us": 5797
+        },
+        {
+          "t_ms": 6256501,
+          "level": 5,
+          "lp": false,
+          "success": true,
+          "duration_us": 5634
+        },
+        {
+          "t_ms": 6257064,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 5590
+        },
+        {
+          "t_ms": 6272559,
+          "level": 2,
+          "lp": true,
+          "success": true,
+          "duration_us": 5613
+        },
+        {
+          "t_ms": 6289347,
+          "level": 3,
+          "lp": false,
+          "success": true,
+          "duration_us": 5607
+        },
+        {
+          "t_ms": 6382989,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 8940
+        },
+        {
+          "t_ms": 6398319,
+          "level": 6,
+          "lp": false,
+          "success": true,
+          "duration_us": 9575
+        },
+        {
+          "t_ms": 6403331,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 6203
+        },
+        {
+          "t_ms": 6404472,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 6019
+        },
+        {
+          "t_ms": 6409480,
+          "level": 2,
+          "lp": true,
+          "success": true,
+          "duration_us": 7861
+        }
+      ],
+      "dropouts": [
+        {
+          "t_ms": 6262569,
+          "category": "01",
+          "previous_restart_ms": 5505,
+          "next_restart_ms": 9990
+        },
+        {
+          "t_ms": 6282053,
+          "category": "01",
+          "previous_restart_ms": 9494,
+          "next_restart_ms": 7294
+        },
+        {
+          "t_ms": 6297416,
+          "category": "01",
+          "previous_restart_ms": 8069,
+          "next_restart_ms": 85573
+        },
+        {
+          "t_ms": 6327085,
+          "category": "01",
+          "previous_restart_ms": 37738,
+          "next_restart_ms": 55904
+        },
+        {
+          "t_ms": 6404880,
+          "category": "01",
+          "previous_restart_ms": 408,
+          "next_restart_ms": 4600
+        }
+      ]
+    },
+    {
+      "session": 28,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 17,
+      "dropped_event_records": 2,
+      "switches": [
+        {
+          "t_ms": 1723,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4762
+        },
+        {
+          "t_ms": 14232,
+          "level": 1,
+          "lp": false,
+          "success": true,
+          "duration_us": 5601
+        },
+        {
+          "t_ms": 30088,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 7631
+        },
+        {
+          "t_ms": 55756,
+          "level": 6,
+          "lp": true,
+          "success": true,
+          "duration_us": 8362
+        },
+        {
+          "t_ms": 65341,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 6081
+        },
+        {
+          "t_ms": 91522,
+          "level": 6,
+          "lp": false,
+          "success": true,
+          "duration_us": 6635
+        },
+        {
+          "t_ms": 100669,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 8335
+        },
+        {
+          "t_ms": 105715,
+          "level": 2,
+          "lp": true,
+          "success": true,
+          "duration_us": 5727
+        }
+      ],
+      "dropouts": [
+        {
+          "t_ms": 101595,
+          "category": "00",
+          "previous_restart_ms": 926,
+          "next_restart_ms": 4120
+        }
+      ]
+    },
+    {
+      "session": 29,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 28,
+      "dropped_event_records": 8,
+      "switches": [
+        {
+          "t_ms": 1710,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4701
+        },
+        {
+          "t_ms": 424176,
+          "level": 1,
+          "lp": false,
+          "success": true,
+          "duration_us": 6035
+        },
+        {
+          "t_ms": 439386,
+          "level": 5,
+          "lp": false,
+          "success": true,
+          "duration_us": 5528
+        },
+        {
+          "t_ms": 444481,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 7502
+        },
+        {
+          "t_ms": 459065,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 5462
+        },
+        {
+          "t_ms": 493608,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 6035
+        },
+        {
+          "t_ms": 499796,
+          "level": 6,
+          "lp": false,
+          "success": true,
+          "duration_us": 5820
+        },
+        {
+          "t_ms": 505465,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 8402
+        },
+        {
+          "t_ms": 514650,
+          "level": 5,
+          "lp": false,
+          "success": true,
+          "duration_us": 5819
+        },
+        {
+          "t_ms": 519676,
+          "level": 6,
+          "lp": false,
+          "success": true,
+          "duration_us": 6210
+        },
+        {
+          "t_ms": 520318,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 5456
+        },
+        {
+          "t_ms": 525325,
+          "level": 2,
+          "lp": true,
+          "success": true,
+          "duration_us": 5651
+        }
+      ],
+      "dropouts": [
+        {
+          "t_ms": 521455,
+          "category": "00",
+          "previous_restart_ms": 1137,
+          "next_restart_ms": 3870
+        }
+      ]
+    },
+    {
+      "session": 30,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 5,
+      "dropped_event_records": 2,
+      "switches": [
+        {
+          "t_ms": 1734,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5121
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 31,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 3,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1690,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5118
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 32,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 23,
+      "dropped_event_records": 2,
+      "switches": [
+        {
+          "t_ms": 1745,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5114
+        },
+        {
+          "t_ms": 26787,
+          "level": 1,
+          "lp": false,
+          "success": true,
+          "duration_us": 6017
+        },
+        {
+          "t_ms": 85203,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 6012
+        },
+        {
+          "t_ms": 106446,
+          "level": 6,
+          "lp": true,
+          "success": true,
+          "duration_us": 5838
+        },
+        {
+          "t_ms": 112173,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 5904
+        },
+        {
+          "t_ms": 132985,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 6139
+        },
+        {
+          "t_ms": 153646,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 6932
+        },
+        {
+          "t_ms": 158688,
+          "level": 2,
+          "lp": true,
+          "success": true,
+          "duration_us": 6010
+        }
+      ],
+      "dropouts": [
+        {
+          "t_ms": 154914,
+          "category": "00",
+          "previous_restart_ms": 1268,
+          "next_restart_ms": 3774
+        }
+      ]
+    },
+    {
+      "session": 33,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 3,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1760,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5155
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 34,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 323,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1720,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4784
+        },
+        {
+          "t_ms": 154294,
+          "level": 1,
+          "lp": false,
+          "success": true,
+          "duration_us": 6213
+        },
+        {
+          "t_ms": 169348,
+          "level": 2,
+          "lp": false,
+          "success": true,
+          "duration_us": 6383
+        },
+        {
+          "t_ms": 178274,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 7046
+        },
+        {
+          "t_ms": 205808,
+          "level": 5,
+          "lp": true,
+          "success": true,
+          "duration_us": 5252
+        },
+        {
+          "t_ms": 210864,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 5972
+        },
+        {
+          "t_ms": 235418,
+          "level": 2,
+          "lp": false,
+          "success": true,
+          "duration_us": 6496
+        },
+        {
+          "t_ms": 248469,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 6455
+        },
+        {
+          "t_ms": 253517,
+          "level": 2,
+          "lp": true,
+          "success": true,
+          "duration_us": 6247
+        },
+        {
+          "t_ms": 261467,
+          "level": 5,
+          "lp": true,
+          "success": true,
+          "duration_us": 5750
+        },
+        {
+          "t_ms": 267045,
+          "level": 6,
+          "lp": true,
+          "success": true,
+          "duration_us": 6564
+        },
+        {
+          "t_ms": 281811,
+          "level": 4,
+          "lp": true,
+          "success": true,
+          "duration_us": 6350
+        },
+        {
+          "t_ms": 286862,
+          "level": 6,
+          "lp": true,
+          "success": true,
+          "duration_us": 6204
+        }
+      ],
+      "dropouts": [
+        {
+          "t_ms": 249127,
+          "category": "00",
+          "previous_restart_ms": 658,
+          "next_restart_ms": 4390
+        }
+      ]
+    },
+    {
+      "session": 49,
+      "boot": null,
+      "events": 373,
+      "dropped_event_records": 0,
+      "switches": [],
+      "dropouts": []
+    },
+    {
+      "session": 50,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 17,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5752
+      },
+      "events": 140,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1717,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5021
+        },
+        {
+          "t_ms": 290415,
+          "level": 1,
+          "lp": false,
+          "success": true,
+          "duration_us": 5777
+        },
+        {
+          "t_ms": 300241,
+          "level": 5,
+          "lp": false,
+          "success": true,
+          "duration_us": 6126
+        },
+        {
+          "t_ms": 305279,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 5960
+        },
+        {
+          "t_ms": 312457,
+          "level": 4,
+          "lp": false,
+          "success": true,
+          "duration_us": 5929
+        },
+        {
+          "t_ms": 346947,
+          "level": 5,
+          "lp": false,
+          "success": true,
+          "duration_us": 6054
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 51,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 3,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1722,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5316
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 52,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 3,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1723,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5533
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 53,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+unknown",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 242,
+      "dropped_event_records": 2,
+      "switches": [
+        {
+          "t_ms": 1710,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4545
+        },
+        {
+          "t_ms": 14523,
+          "level": 1,
+          "lp": false,
+          "success": true,
+          "duration_us": 4710
+        },
+        {
+          "t_ms": 42984,
+          "level": 4,
+          "lp": false,
+          "success": true,
+          "duration_us": 6625
+        },
+        {
+          "t_ms": 45016,
+          "level": 2,
+          "lp": true,
+          "success": true,
+          "duration_us": 5894
+        },
+        {
+          "t_ms": 61680,
+          "level": 3,
+          "lp": true,
+          "success": true,
+          "duration_us": 5782
+        },
+        {
+          "t_ms": 67364,
+          "level": 2,
+          "lp": true,
+          "success": true,
+          "duration_us": 6127
+        },
+        {
+          "t_ms": 73642,
+          "level": 1,
+          "lp": true,
+          "success": true,
+          "duration_us": 6107
+        },
+        {
+          "t_ms": 78675,
+          "level": 2,
+          "lp": true,
+          "success": true,
+          "duration_us": 5413
+        },
+        {
+          "t_ms": 92633,
+          "level": 3,
+          "lp": false,
+          "success": true,
+          "duration_us": 5521
+        },
+        {
+          "t_ms": 104647,
+          "level": 5,
+          "lp": false,
+          "success": true,
+          "duration_us": 10714
+        },
+        {
+          "t_ms": 111739,
+          "level": 2,
+          "lp": false,
+          "success": true,
+          "duration_us": 5869
+        },
+        {
+          "t_ms": 117209,
+          "level": 3,
+          "lp": true,
+          "success": true,
+          "duration_us": 6374
+        },
+        {
+          "t_ms": 122232,
+          "level": 1,
+          "lp": true,
+          "success": true,
+          "duration_us": 5805
+        }
+      ],
+      "dropouts": [
+        {
+          "t_ms": 46896,
+          "category": "00",
+          "previous_restart_ms": 1880,
+          "next_restart_ms": 14784
+        },
+        {
+          "t_ms": 65429,
+          "category": "01",
+          "previous_restart_ms": 3749,
+          "next_restart_ms": 1935
+        },
+        {
+          "t_ms": 117761,
+          "category": "01",
+          "previous_restart_ms": 552,
+          "next_restart_ms": 4471
+        }
+      ]
+    },
+    {
+      "session": 54,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+8739bb011096",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 17,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1715,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5255
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 55,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+8739bb011096",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 101,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1731,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5219
+        },
+        {
+          "t_ms": 61563,
+          "level": 1,
+          "lp": false,
+          "success": true,
+          "duration_us": 6555
+        },
+        {
+          "t_ms": 87376,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 6383
+        },
+        {
+          "t_ms": 104928,
+          "level": 0,
+          "lp": false,
+          "success": true,
+          "duration_us": 6251
+        },
+        {
+          "t_ms": 112641,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5990
+        },
+        {
+          "t_ms": 128320,
+          "level": 0,
+          "lp": false,
+          "success": true,
+          "duration_us": 6405
+        },
+        {
+          "t_ms": 135637,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4801
+        },
+        {
+          "t_ms": 171901,
+          "level": 0,
+          "lp": false,
+          "success": true,
+          "duration_us": 6845
+        },
+        {
+          "t_ms": 252967,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 6140
+        },
+        {
+          "t_ms": 258150,
+          "level": 0,
+          "lp": false,
+          "success": true,
+          "duration_us": 5744
+        },
+        {
+          "t_ms": 266680,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 6407
+        },
+        {
+          "t_ms": 280466,
+          "level": 0,
+          "lp": false,
+          "success": true,
+          "duration_us": 6254
+        }
+      ],
+      "dropouts": [
+        {
+          "t_ms": 63027,
+          "category": "01",
+          "previous_restart_ms": 1464,
+          "next_restart_ms": 24349
+        },
+        {
+          "t_ms": 88662,
+          "category": "00",
+          "previous_restart_ms": 1286,
+          "next_restart_ms": 16266
+        },
+        {
+          "t_ms": 107052,
+          "category": "00",
+          "previous_restart_ms": 2124,
+          "next_restart_ms": 5589
+        },
+        {
+          "t_ms": 134752,
+          "category": "01",
+          "previous_restart_ms": 6432,
+          "next_restart_ms": 885
+        }
+      ]
+    },
+    {
+      "session": 56,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+8739bb011096",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 265,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1716,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4875
+        },
+        {
+          "t_ms": 179547,
+          "level": 1,
+          "lp": false,
+          "success": true,
+          "duration_us": 6338
+        },
+        {
+          "t_ms": 185998,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 6075
+        },
+        {
+          "t_ms": 191014,
+          "level": 2,
+          "lp": true,
+          "success": true,
+          "duration_us": 6749
+        },
+        {
+          "t_ms": 273213,
+          "level": 2,
+          "lp": false,
+          "success": true,
+          "duration_us": 6457
+        },
+        {
+          "t_ms": 282594,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 10302
+        },
+        {
+          "t_ms": 293825,
+          "level": 2,
+          "lp": false,
+          "success": true,
+          "duration_us": 6568
+        },
+        {
+          "t_ms": 390376,
+          "level": 3,
+          "lp": false,
+          "success": true,
+          "duration_us": 6218
+        },
+        {
+          "t_ms": 422428,
+          "level": 2,
+          "lp": false,
+          "success": true,
+          "duration_us": 6085
+        },
+        {
+          "t_ms": 433057,
+          "level": 5,
+          "lp": false,
+          "success": true,
+          "duration_us": 5547
+        },
+        {
+          "t_ms": 438066,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 5608
+        },
+        {
+          "t_ms": 441469,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 6768
+        },
+        {
+          "t_ms": 447417,
+          "level": 5,
+          "lp": true,
+          "success": true,
+          "duration_us": 6251
+        },
+        {
+          "t_ms": 463139,
+          "level": 3,
+          "lp": false,
+          "success": true,
+          "duration_us": 6488
+        },
+        {
+          "t_ms": 468171,
+          "level": 6,
+          "lp": false,
+          "success": true,
+          "duration_us": 6622
+        },
+        {
+          "t_ms": 469628,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 6488
+        },
+        {
+          "t_ms": 476842,
+          "level": 5,
+          "lp": true,
+          "success": true,
+          "duration_us": 6556
+        },
+        {
+          "t_ms": 486770,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 5455
+        },
+        {
+          "t_ms": 491825,
+          "level": 2,
+          "lp": false,
+          "success": true,
+          "duration_us": 6609
+        },
+        {
+          "t_ms": 523890,
+          "level": 3,
+          "lp": false,
+          "success": true,
+          "duration_us": 6784
+        },
+        {
+          "t_ms": 531205,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 6688
+        },
+        {
+          "t_ms": 536248,
+          "level": 5,
+          "lp": true,
+          "success": true,
+          "duration_us": 6329
+        }
+      ],
+      "dropouts": [
+        {
+          "t_ms": 25226,
+          "category": "00",
+          "previous_restart_ms": 23510,
+          "next_restart_ms": 154321
+        },
+        {
+          "t_ms": 33485,
+          "category": "00",
+          "previous_restart_ms": 31769,
+          "next_restart_ms": 146062
+        },
+        {
+          "t_ms": 37603,
+          "category": "00",
+          "previous_restart_ms": 35887,
+          "next_restart_ms": 141944
+        },
+        {
+          "t_ms": 56141,
+          "category": "00",
+          "previous_restart_ms": 54425,
+          "next_restart_ms": 123406
+        },
+        {
+          "t_ms": 84021,
+          "category": "00",
+          "previous_restart_ms": 82305,
+          "next_restart_ms": 95526
+        },
+        {
+          "t_ms": 97390,
+          "category": "00",
+          "previous_restart_ms": 95674,
+          "next_restart_ms": 82157
+        },
+        {
+          "t_ms": 108683,
+          "category": "00",
+          "previous_restart_ms": 106967,
+          "next_restart_ms": 70864
+        },
+        {
+          "t_ms": 113823,
+          "category": "00",
+          "previous_restart_ms": 112107,
+          "next_restart_ms": 65724
+        },
+        {
+          "t_ms": 135428,
+          "category": "00",
+          "previous_restart_ms": 133712,
+          "next_restart_ms": 44119
+        },
+        {
+          "t_ms": 186868,
+          "category": "00",
+          "previous_restart_ms": 870,
+          "next_restart_ms": 4146
+        },
+        {
+          "t_ms": 469879,
+          "category": "00",
+          "previous_restart_ms": 251,
+          "next_restart_ms": 6963
+        },
+        {
+          "t_ms": 532486,
+          "category": "01",
+          "previous_restart_ms": 1281,
+          "next_restart_ms": 3762
+        }
+      ]
+    },
+    {
+      "session": 57,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+8739bb011096",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 21,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1719,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5047
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 58,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+8739bb011096",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 17,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5752
+      },
+      "events": 17,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1737,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5066
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 59,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+8739bb011096",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 29,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1714,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 4926
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 60,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+adcbf3c4bf61",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 3,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1717,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5220
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 61,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+9acf6f10932f",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 3,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1727,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5131
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 62,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+9acf6f10932f",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 6,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1723,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5463
+        },
+        {
+          "t_ms": 39292,
+          "level": 1,
+          "lp": true,
+          "success": true,
+          "duration_us": 5768
+        },
+        {
+          "t_ms": 50433,
+          "level": 255,
+          "lp": false,
+          "success": true,
+          "duration_us": 5271
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 63,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+9acf6f10932f",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 8,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 38971,
+          "level": 1,
+          "lp": false,
+          "success": true,
+          "duration_us": 5933
+        },
+        {
+          "t_ms": 49144,
+          "level": 2,
+          "lp": false,
+          "success": true,
+          "duration_us": 6228
+        },
+        {
+          "t_ms": 59240,
+          "level": 1,
+          "lp": false,
+          "success": true,
+          "duration_us": 5337
+        },
+        {
+          "t_ms": 69417,
+          "level": 255,
+          "lp": true,
+          "success": true,
+          "duration_us": 4707
+        },
+        {
+          "t_ms": 79572,
+          "level": 255,
+          "lp": false,
+          "success": true,
+          "duration_us": 4413
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 64,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+61b5e464ae85",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 9,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 39037,
+          "level": 1,
+          "lp": false,
+          "success": true,
+          "duration_us": 5954
+        },
+        {
+          "t_ms": 49182,
+          "level": 0,
+          "lp": false,
+          "success": true,
+          "duration_us": 5393
+        },
+        {
+          "t_ms": 51741,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5733
+        },
+        {
+          "t_ms": 56782,
+          "level": 0,
+          "lp": false,
+          "success": true,
+          "duration_us": 5780
+        },
+        {
+          "t_ms": 78602,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 5850
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 65,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+cd8d8b900e85",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 31,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 1712,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 3791
+        }
+      ],
+      "dropouts": []
+    },
+    {
+      "session": 66,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+e2675607d49e",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 2,
+      "dropped_event_records": 0,
+      "switches": [],
+      "dropouts": []
+    },
+    {
+      "session": 67,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+e2675607d49e",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 138,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 13232,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 3901
+        },
+        {
+          "t_ms": 18265,
+          "level": 1,
+          "lp": false,
+          "success": true,
+          "duration_us": 4580
+        },
+        {
+          "t_ms": 50321,
+          "level": 2,
+          "lp": false,
+          "success": true,
+          "duration_us": 6147
+        },
+        {
+          "t_ms": 64426,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 12314
+        },
+        {
+          "t_ms": 69492,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 5819
+        },
+        {
+          "t_ms": 92569,
+          "level": 6,
+          "lp": true,
+          "success": true,
+          "duration_us": 6033
+        },
+        {
+          "t_ms": 144931,
+          "level": 5,
+          "lp": true,
+          "success": true,
+          "duration_us": 5998
+        },
+        {
+          "t_ms": 281103,
+          "level": 6,
+          "lp": true,
+          "success": true,
+          "duration_us": 6335
+        },
+        {
+          "t_ms": 313158,
+          "level": 5,
+          "lp": true,
+          "success": true,
+          "duration_us": 6747
+        },
+        {
+          "t_ms": 345194,
+          "level": 6,
+          "lp": true,
+          "success": true,
+          "duration_us": 6032
+        },
+        {
+          "t_ms": 380810,
+          "level": 5,
+          "lp": true,
+          "success": true,
+          "duration_us": 6253
+        },
+        {
+          "t_ms": 388271,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 6956
+        },
+        {
+          "t_ms": 525690,
+          "level": 6,
+          "lp": true,
+          "success": true,
+          "duration_us": 6545
+        },
+        {
+          "t_ms": 557730,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 7129
+        },
+        {
+          "t_ms": 663968,
+          "level": 5,
+          "lp": true,
+          "success": true,
+          "duration_us": 6623
+        },
+        {
+          "t_ms": 669015,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 6146
+        },
+        {
+          "t_ms": 697822,
+          "level": 5,
+          "lp": true,
+          "success": true,
+          "duration_us": 6465
+        },
+        {
+          "t_ms": 706354,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 5345
+        }
+      ],
+      "dropouts": [
+        {
+          "t_ms": 67368,
+          "category": "00",
+          "previous_restart_ms": 2942,
+          "next_restart_ms": 2124
+        }
+      ]
+    },
+    {
+      "session": 68,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+8fb0eadcdb8c",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 2,
+      "dropped_event_records": 0,
+      "switches": [],
+      "dropouts": []
+    },
+    {
+      "session": 69,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+8fb0eadcdb8c",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 97,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 232616,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 6028
+        },
+        {
+          "t_ms": 237662,
+          "level": 1,
+          "lp": false,
+          "success": true,
+          "duration_us": 6041
+        },
+        {
+          "t_ms": 267760,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 12643
+        },
+        {
+          "t_ms": 272793,
+          "level": 6,
+          "lp": false,
+          "success": true,
+          "duration_us": 6735
+        },
+        {
+          "t_ms": 297173,
+          "level": 4,
+          "lp": false,
+          "success": true,
+          "duration_us": 6024
+        },
+        {
+          "t_ms": 305687,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 6355
+        },
+        {
+          "t_ms": 311162,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 6654
+        },
+        {
+          "t_ms": 397087,
+          "level": 6,
+          "lp": true,
+          "success": true,
+          "duration_us": 5960
+        },
+        {
+          "t_ms": 429165,
+          "level": 5,
+          "lp": true,
+          "success": true,
+          "duration_us": 5724
+        },
+        {
+          "t_ms": 684443,
+          "level": 1,
+          "lp": false,
+          "success": true,
+          "duration_us": 5632
+        },
+        {
+          "t_ms": 697824,
+          "level": 5,
+          "lp": false,
+          "success": true,
+          "duration_us": 5642
+        },
+        {
+          "t_ms": 702915,
+          "level": 0,
+          "lp": false,
+          "success": true,
+          "duration_us": 5261
+        },
+        {
+          "t_ms": 932685,
+          "level": 1,
+          "lp": false,
+          "success": true,
+          "duration_us": 6233
+        },
+        {
+          "t_ms": 937693,
+          "level": 3,
+          "lp": false,
+          "success": true,
+          "duration_us": 5874
+        },
+        {
+          "t_ms": 946638,
+          "level": 6,
+          "lp": false,
+          "success": true,
+          "duration_us": 6014
+        },
+        {
+          "t_ms": 978709,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 5748
+        },
+        {
+          "t_ms": 1044562,
+          "level": 3,
+          "lp": true,
+          "success": true,
+          "duration_us": 6352
+        },
+        {
+          "t_ms": 1086518,
+          "level": 2,
+          "lp": true,
+          "success": true,
+          "duration_us": 5979
+        }
+      ],
+      "dropouts": [
+        {
+          "t_ms": 250666,
+          "category": "00",
+          "previous_restart_ms": 13004,
+          "next_restart_ms": 17094
+        },
+        {
+          "t_ms": 308279,
+          "category": "00",
+          "previous_restart_ms": 2592,
+          "next_restart_ms": 2883
+        },
+        {
+          "t_ms": 731041,
+          "category": "01",
+          "previous_restart_ms": 28126,
+          "next_restart_ms": 201644
+        },
+        {
+          "t_ms": 745425,
+          "category": "01",
+          "previous_restart_ms": 42510,
+          "next_restart_ms": 187260
+        },
+        {
+          "t_ms": 811006,
+          "category": "00",
+          "previous_restart_ms": 108091,
+          "next_restart_ms": 121679
+        },
+        {
+          "t_ms": 910952,
+          "category": "00",
+          "previous_restart_ms": 208037,
+          "next_restart_ms": 21733
+        }
+      ]
+    },
+    {
+      "session": 70,
+      "boot": {
+        "reset_reason": 1,
+        "firmware": "5.0.0-dev+f85a58414c2e",
+        "cal_generation": 1,
+        "chip_rev": 100,
+        "board_id": "b26ef545",
+        "gain_max": 83,
+        "channel_index": 8,
+        "gain_mode": 0,
+        "flywheel": 1,
+        "profile_live": 1,
+        "freq_mhz": 5865
+      },
+      "events": 145,
+      "dropped_event_records": 0,
+      "switches": [
+        {
+          "t_ms": 17053,
+          "level": 0,
+          "lp": true,
+          "success": true,
+          "duration_us": 3756
+        },
+        {
+          "t_ms": 24490,
+          "level": 1,
+          "lp": false,
+          "success": true,
+          "duration_us": 5443
+        },
+        {
+          "t_ms": 40960,
+          "level": 4,
+          "lp": false,
+          "success": true,
+          "duration_us": 6422
+        },
+        {
+          "t_ms": 49660,
+          "level": 2,
+          "lp": false,
+          "success": true,
+          "duration_us": 6030
+        },
+        {
+          "t_ms": 68380,
+          "level": 7,
+          "lp": false,
+          "success": true,
+          "duration_us": 6205
+        },
+        {
+          "t_ms": 119606,
+          "level": 7,
+          "lp": true,
+          "success": true,
+          "duration_us": 5975
+        },
+        {
+          "t_ms": 141258,
+          "level": 6,
+          "lp": true,
+          "success": true,
+          "duration_us": 6781
+        },
+        {
+          "t_ms": 173304,
+          "level": 5,
+          "lp": true,
+          "success": true,
+          "duration_us": 6463
+        },
+        {
+          "t_ms": 217553,
+          "level": 4,
+          "lp": true,
+          "success": true,
+          "duration_us": 5799
+        },
+        {
+          "t_ms": 281764,
+          "level": 2,
+          "lp": true,
+          "success": true,
+          "duration_us": 5244
+        }
+      ],
+      "dropouts": [
+        {
+          "t_ms": 63959,
+          "category": "00",
+          "previous_restart_ms": 14299,
+          "next_restart_ms": 4421
+        }
+      ]
+    }
+  ],
+  "totals": {
+    "sessions": 56,
+    "switches": 368,
+    "dropouts": 54,
+    "dropouts_preceded_by_restart": {
+      "100": 0,
+      "1000": 16,
+      "2000": 27,
+      "5000": 33
+    },
+    "boot_flywheel_counts": {
+      "1": 55,
+      "missing": 1
+    }
+  }
+}
