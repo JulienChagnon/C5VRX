@@ -1315,3 +1315,32 @@ dB = about -34 dBm at the pin.
 - Below the noise-measured rows the gain table now steps 1.0 dB a row
   (gain.c dg_apply_measured_gain), for the dBm meter and the KEEL-1 home
   rows.
+
+
+## Single program-image LUT load (2026-10-20, PR #231)
+
+The restart now prepares the selected LUT in an IDF V1 program image before
+quiescing the pipeline. Its LUT storage replaces the previous work LUT; the
+header/instruction prefix adds 300 bytes. The SDK writes the target once;
+full instruction and LUT readback still gate publication. A mismatch enters
+the existing bounded rollback, whose image restores the verified instructions
+and transformed LUT (including output scaling and flywheel flag format).
+
+Board COM10, VTX off, build from 270553e plus this change: four manual LP
+switches took 3437, 3614, 3776 and 3238 us. Two kp switches took 4712 and
+5327 us including target preparation and scheduling. Recorded LUT verify
+stages were about 1195-1304 us versus 2463 us in the pre-change status;
+these are small bench samples, not a controlled RF or visible-picture A/B.
+All six switches left instruction/LUT verification, restart failures,
+TX empty, RX overflow, DMA fault and BS overload counters at zero.
+Gain returned to AUTO/G83; original kp_auto=2 restored after manual tests.
+The counter kp_writes now includes all 1024 SDK table writes per successful
+program load, rather than only subsequent corrective writes.
+
+Validation: host C suite, runtime diagnostic suite (including actual
+format/publication/rollback branches), research CI checks, ESP-IDF v6.0.2
+firmware build and linked IRAM check passed. Read-only verification tests
+inject corruption at the first and last entries, checking no hidden repair.
+The format harness checks the selected image prefix on forward and rollback
+paths for every supported kp/output/program combination. Physical restart
+failure injection and an RF/goggle walk remain unmeasured.

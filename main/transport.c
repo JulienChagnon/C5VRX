@@ -6,6 +6,7 @@
 #include "receiver.h"
 #include <string.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include "driver/bitscrambler.h"
 #include "driver/parlio_rx.h"
 #include "driver/parlio_tx.h"
@@ -233,7 +234,16 @@ static esp_err_t start_tx(void)
 static uint16_t s_lut_live[1024];   /* what the LUT RAM holds */
 static bool s_lut_known;            /* shadow valid: U85Q program, LUT16 */
 static uint8_t s_kp_target;
-static uint16_t s_lut_work[1024];
+/* IDF V1 image: 3 header words, 8 instructions of 9 words, LUT16.
+ * Reuse the target LUT storage; only the 300-byte prefix is additional.
+ * Prepare before halting so the driver writes the target exactly once. */
+typedef struct {
+    uint32_t prefix[3u + 8u * 9u];
+    uint16_t lut[1024];
+} tracker_image_t;
+static tracker_image_t s_program_work;
+#define s_lut_work s_program_work.lut
+_Static_assert(offsetof(tracker_image_t, lut) == 300u, "BitScrambler V1 LUT offset");
 static uint32_t s_kp_writes, s_kp_verify_fail;
 static uint32_t s_kp_switches, s_kp_restart_fail, s_kp_restart_us;
 static bool resume_live(const uint16_t *restore_lut);
@@ -517,6 +527,9 @@ static bool restart_stage(void *ctx, tr_stage_t stage, bool rollback)
         r->flag = s_verified_flag;
         s_flag_format=s_verified_flag;
         r->program = tracker_format_program(r->lp,r->flag);
+        const uint8_t *inst;
+        if (!program_words(r->program, &inst)) return false;
+        memcpy(s_program_work.prefix, r->program, sizeof(s_program_work.prefix));
         memcpy(s_lut_work, s_lut_live, sizeof(s_lut_work));
     }
     esp_err_t err = ESP_OK;
@@ -525,7 +538,10 @@ static bool restart_stage(void *ctx, tr_stage_t stage, bool rollback)
         err = bitscrambler_enable(s_bs);
         if (err == ESP_OK) s_bs_enabled = true;
         break;
-    case TR_PROGRAM_LOAD: err = bitscrambler_load_program(s_bs, r->program); break;
+    case TR_PROGRAM_LOAD:
+        err = bitscrambler_load_program(s_bs, &s_program_work);
+        if (err == ESP_OK) s_kp_writes += KP_LUT_ENTRIES;
+        break;
     case TR_INSTRUCTION_VERIFY: {
         const uint8_t *inst;
         if (!program_words(r->program, &inst)) { ++s_prog_verify_fail; return false; }
@@ -546,8 +562,7 @@ static bool restart_stage(void *ctx, tr_stage_t stage, bool rollback)
         break;
     }
     case TR_LUT_VERIFY:
-        if (!kp_lut_load_delta(s_lut_work, s_lut_work, NULL, select_lut_entry, store_lut_entry, read_lut_entry,
-                               &s_kp_writes, &s_kp_verify_fail)) {
+        if (!kp_lut_verify(s_lut_work, NULL, select_lut_entry, read_lut_entry, &s_kp_verify_fail)) {
             printf("TRANSPORT restart lut_verify failed rollback=%u\n", rollback);
             return false;
         }
@@ -738,6 +753,9 @@ static bool resume_live(const uint16_t *restore_lut)
     if (s_transport_fault) return false;
     restart_t r = {.program=tracker_format_program(s_prog_lp,s_flag_format), .level=0,
         .lp=s_prog_lp,.flag=s_flag_format,.output=s_output};
+    const uint8_t *program_inst;
+    if (!program_words(r.program, &program_inst)) return false;
+    memcpy(s_program_work.prefix, r.program, sizeof(s_program_work.prefix));
     if (!restore_lut) restore_lut = kp_tables[s_kp_target];
     if(restore_lut==s_lut_live && s_flag_format!=s_verified_flag)
         restore_lut=kp_tables[s_verified_level];

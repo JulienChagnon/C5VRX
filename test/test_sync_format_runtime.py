@@ -15,16 +15,17 @@ PREFIX = r'''
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stddef.h>
 #include "kp_tables.h"
 #include "sync_flag.h"
 #include "transport_recovery.h"
-static const uint8_t s_u85q[32]={1,0,3,8,0,2,1};
-static const uint8_t s_u85q_lp[32]={1,0,3,8,0,2,1};
-static const uint8_t s_u85q_lp_flag[32]={1,0,3,8,0,2,1};
+static const uint8_t s_u85q[300]={1,0,3,8,0,2,1,[12]=1};
+static const uint8_t s_u85q_lp[300]={1,0,3,8,0,2,1,[12]=2};
+static const uint8_t s_u85q_lp_flag[300]={1,0,3,8,0,2,1,[12]=3};
 static bool s_started,s_transport_fault,s_lut_known,s_have_verified;
 static bool s_prog_lp,s_flag_format,s_verified_lp,s_verified_flag;
 static unsigned s_output,s_verified_output,s_output_clipped;
-static uint16_t s_lut_live[1024],s_lut_work[1024],before[1024];
+static uint16_t s_lut_live[1024],before[1024];
 static uint8_t s_kp_target;
 static int s_verified_level;
 static uint32_t s_restart_errors,s_rollback_fail,s_rollbacks,s_control_epoch;
@@ -61,6 +62,7 @@ STAGES = r'''
     assert(s_verified_level==before_level && s_verified_output==before_output &&
         s_verified_lp==before_lp && s_verified_flag==before_flag);
     assert(r->program==tracker_format_program(r->lp,r->flag));
+    assert(!memcmp(s_program_work.prefix,r->program,sizeof(s_program_work.prefix)));
     if(stage==TR_LUT_VERIFY){
         for(unsigned i=0;i<1024;++i){
             bool clipped;
@@ -163,6 +165,9 @@ def main():
     def segment(start,stop):
         a=source.index(start);return source[a:source.index(stop,a)]
     tracker=segment('static const void *tracker_program(bool lp)', '/* 6-bit resistor DAC')
+    image=segment('typedef struct {\n    uint32_t prefix[', 'static uint32_t s_kp_writes')
+    prefix=PREFIX.replace('static uint16_t s_lut_live[1024],before[1024];',
+                          image+'\nstatic uint16_t s_lut_live[1024],before[1024];')
     # Keep only production selectors; state lives in the fixture above.
     tracker=tracker.replace('static bool s_flag_format,s_verified_flag;','')
     words=segment('static bool program_words(', '/* All live kp/program writes')
@@ -172,7 +177,7 @@ def main():
     publication=segment('static bool resume_live(const uint16_t *restore_lut)\n{','void transport_resume_live(void)')
     with tempfile.TemporaryDirectory() as directory:
         path=Path(directory);unit=path/'run.c';binary=path/'run'
-        unit.write_text(PREFIX+tracker+words+restart+rollback+STAGES+publication+SUFFIX)
+        unit.write_text(prefix+tracker+words+restart+rollback+STAGES+publication+SUFFIX)
         subprocess.run([os.environ.get('CC','cc'),'-O2','-std=c11','-Wall','-Wextra','-Werror',
             '-I',str(ROOT/'main'),str(unit),'-o',str(binary)],check=True)
         subprocess.run([str(binary)],check=True)
