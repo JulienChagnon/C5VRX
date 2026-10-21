@@ -612,6 +612,15 @@ static RTC_FAST_ATTR uint8_t s_cal_scratch[24u * PROBE_BYTES];
 _Static_assert(sizeof(s_cal_scratch) >= 4092u, "DC trim needs one control window");
 #define s_env_buf s_cal_scratch
 static uint8_t s_dco_banned[ARC_VENDOR_GAIN_MAX + 1u];
+/* A ban expires: released for good, a row that railed once (often its own
+ * DC, which the servo would have fixed) stayed on the chip's DC with the
+ * servo skipping it (board 2026-10-20: G83 banned, 4 cells of DC, every
+ * probe clipped, KEEL holding G83 on one-sided clipping: a deadlock). The
+ * hold is tried again after DCO_BAN_US, doubling per repeat up to 32 s. */
+#define DCO_BAN_US     2000000LL
+#define DCO_BAN_MAX_US 32000000LL
+static int64_t s_dco_ban_until[ARC_VENDOR_GAIN_MAX + 1u], s_dco_ban_len[ARC_VENDOR_GAIN_MAX + 1u];
+static uint32_t s_dco_unbans;
 static uint8_t s_dco_floor;
 static bool s_dco_dirty;
 static uint32_t s_dco_searches, s_dco_hook_holds, s_dco_aborts, s_dco_carrier_searches;
@@ -753,6 +762,8 @@ static void dco_select(void)
     (void)phy_dco_release();
     memset(s_dco_found_us, 0, sizeof(s_dco_found_us));
     memset(s_dco_banned, 0, sizeof(s_dco_banned));
+    memset(s_dco_ban_until, 0, sizeof(s_dco_ban_until));
+    memset(s_dco_ban_len, 0, sizeof(s_dco_ban_len));
     s_dco_floor = 0;
     s_dco_seed_mhz = 0;
     dco_index_load();
@@ -1436,6 +1447,9 @@ static void dco_service(void)
     if (!quiet_owner()) return;
     dco_select();
     if (s_dco_dirty && s_gain.state == DG_HOLD && dco_save()) s_dco_dirty = false;
+    const int64_t now = esp_timer_get_time();
+    for (unsigned r = 0; r <= ARC_VENDOR_GAIN_MAX; ++r)
+        if (s_dco_banned[r] && now >= s_dco_ban_until[r]) { s_dco_banned[r] = 0; ++s_dco_unbans; }
     /* Hold guard: held codes must never coincide with dead or railing IQ. */
     static unsigned bad_ticks;
     const uint8_t g = s_current_gain;
@@ -1444,6 +1458,9 @@ static void dco_service(void)
         if (bad_ticks >= 3u) {
             (void)phy_dco_release();
             s_dco_banned[g] = 1u;
+            s_dco_ban_len[g] = s_dco_ban_len[g] && now - s_dco_ban_until[g] < 60000000LL ?
+                               (s_dco_ban_len[g] * 2 > DCO_BAN_MAX_US ? DCO_BAN_MAX_US : s_dco_ban_len[g] * 2) : DCO_BAN_US;
+            s_dco_ban_until[g] = now + s_dco_ban_len[g];
             bad_ticks = 0;
             ++s_dco_aborts;
             printf("DCO hold abort gain=%u\n", g);
@@ -2176,6 +2193,7 @@ void calibration_print(void)
            "searched from a converged neighbour; a missing row holds the nearest converged one's codes)\n",
            (unsigned long)s_dco_bad_dropped, (unsigned long)s_dco_repairs, (unsigned long)s_dco_repair_fails,
            (unsigned long)s_dco_borrowed);
+    printf("DCO_BAN unbans=%lu (a railing hold is released for 2-32 s, then held again)\n", (unsigned long)s_dco_unbans);
     printf("DCO_ADOPT rows=%lu (template rows taken as own codes after the servo held them on receiver noise)\n",
            (unsigned long)s_dco_adopted);
     printf("DCO_CONTEXT table_freq=%u table_bw20=%u table_code=%d table_skirt=%d "

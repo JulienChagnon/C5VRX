@@ -35,8 +35,9 @@ int main(void)
     check("the top row keeps its model value", g.model_db_q8[83] == model83);
     check("an unmeasured row between measured ones is interpolated (G75 ~8 dB under G83)",
           fabs((g.model_db_q8[83] - g.model_db_q8[75]) / 256.0 - 7.93) < 0.3);
-    check("rows below follow the model, joined to the lowest measured row",
-          g.model_db_q8[72] - g.model_db_q8[71] == model72 - model71 && g.model_db_q8[72] - g.model_db_q8[40] == model72 - model40);
+    (void)model71; (void)model40;
+    check("rows below step 1.0 dB a row (measured on the board), joined to the lowest measured row",
+          g.model_db_q8[72] - g.model_db_q8[71] == 256 && g.model_db_q8[72] - g.model_db_q8[40] == 32 * 256);
     /* home rows 3 dB apart on the measured gains */
     bool spaced = g.keel_rows >= 3u;
     for (unsigned k = 1; k < g.keel_rows && g.keel_row[k] >= 72u; ++k) {

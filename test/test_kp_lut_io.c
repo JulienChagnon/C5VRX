@@ -108,6 +108,19 @@ int main(void)
         assert(df == 1 && !memcmp(shadow, kp_tables[0], sizeof(shadow)));
         port.fail_entry = -1;
     }
-    puts("PASS: LUT16 addressing, refreshed readback, full verification, rollback, all kp tables, delta load");
+    /* Single-load path reads all entries and never repairs a corrupt load
+     * behind the restart state machine's back. Include the last entry. */
+    for (unsigned k = 0; k < KP_LEVELS; ++k) {
+        memcpy(port.ram, kp_tables[k], sizeof(port.ram));
+        unsigned before = port.writes;
+        uint32_t vf = 0;
+        assert(kp_lut_verify(kp_tables[k], &port, select_entry, read_port, &vf));
+        assert(vf == 0 && port.writes == before);
+        port.ram[0] ^= 1;
+        port.ram[1023] ^= 1;
+        assert(!kp_lut_verify(kp_tables[k], &port, select_entry, read_port, &vf));
+        assert(vf == 2 && port.writes == before);
+    }
+    puts("PASS: LUT16 addressing, refreshed readback, full verification, rollback, all kp tables, delta and single load");
     return 0;
 }

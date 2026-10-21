@@ -1,0 +1,26 @@
+{
+ "slot": 34,
+ "ok": true,
+ "trigger": "recover",
+ "session": 55,
+ "seq": 130,
+ "t_ms": 134930,
+ "freq_mhz": 5865,
+ "gain": 21,
+ "lane": 2,
+ "filter_key": "1120",
+ "profile": "DEFAULT",
+ "kp": 0,
+ "lp": 0,
+ "offset_codes": [
+  -20,
+  60
+ ],
+ "dc_mcells": [
+  966,
+  -1405
+ ],
+ "bytes": 8128,
+ "rate_hz": 40000000,
+ "format": "Ihigh_Qlow"
+}

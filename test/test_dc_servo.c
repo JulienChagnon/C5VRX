@@ -242,6 +242,22 @@ int main(void)
         printf("     lost slope, 9 cells (pinned), sigma 1.5: %u cases, worst |DC| after 120 periods %d mcells\n", cases_run, worst_dc);
         check("lost slope on a clipped cloud: converges (<= 0.5 cells), never runs to the clamp", bad_cases == 0u);
     }
+    {   /* Board 2026-10-20 (new antenna): a proven positive polarity, then a
+         * strong carrier folds the IQ for seconds; the sign share says
+         * nothing about the DC then. The polarity must hold. */
+        dc_servo_t p;
+        dc_servo_init(&p);
+        (void)run(1.5, 1.5, 200, 200, 1.9, 0., 20, &p, NULL);   /* linear zone: polarity learned */
+        const int votes_ok = p.pol_votes[0] >= 1 && p.pol_votes[1] >= 1;
+        static const int folded_dc[2] = {3800, -4100}, folded_share[2] = {30, 970};
+        for (unsigned k = 0; k < 200u; ++k) {
+            int st[2];
+            dc_servo_decide_sign(&p, 83u, folded_dc, folded_share, st);
+            dc_servo_applied(&p, 83u, folded_dc, st);
+        }
+        printf("     polarity votes %d/%d, slope after folding %d/%d, turns %lu\n", p.pol_votes[0], p.pol_votes[1], p.slope[0], p.slope[1], (unsigned long)p.turns);
+        check("a proven polarity is not flipped by seconds of folded IQ", votes_ok && p.slope[0] > 0 && p.slope[1] > 0);
+    }
     printf("%u/%u dc servo checks passed\n", s_run - s_fail, s_run);
     return s_fail != 0;
 }

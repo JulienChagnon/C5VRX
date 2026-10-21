@@ -58,6 +58,7 @@
 typedef struct {
     int slope[2];       /* mcells per code, signed, shared by the rows */
     uint8_t known[2];   /* slope measured (not the default) */
+    int8_t pol_votes[2]; /* polarity evidence from linear-zone steps (+ / -), kept across relearns */
     struct { int last_dc[2], last_step[2]; uint8_t bad[2], last_folded[2]; int fold_walk[2], last_pneg[2], fold_window[2]; uint8_t fold_bad[2]; } row[DC_SERVO_ROWS];
     uint32_t steps, learned, relearned, sign_rejects, forgotten, turns;
 } dc_servo_t;
@@ -109,7 +110,9 @@ static inline void dc_servo_decide_sign(dc_servo_t *s, unsigned r, const int dc[
              * 500; twice the other way is the wrong polarity */
             const int was = dc_servo_abs(s->row[r].last_pneg[a] - 500), now = dc_servo_abs(pneg[a] - 500);
             if (was < 499 && now >= was + 5) {
-                if (++s->row[r].fold_bad[a] >= 2u) {
+                const bool proven = s->pol_votes[a] >= 1 ? s->slope[a] > 0 :
+                                    s->pol_votes[a] <= -1 ? s->slope[a] < 0 : false;
+                if (++s->row[r].fold_bad[a] >= 2u && !proven) {
                     s->slope[a] = -s->slope[a]; s->known[a] = 0; s->row[r].fold_bad[a] = 0;
                     s->row[r].fold_walk[a] = 0; ++s->turns;
                     s->row[r].fold_window[a] = s->row[r].fold_window[a] ? s->row[r].fold_window[a] : DC_SERVO_FOLD_FLIP;
@@ -131,6 +134,8 @@ static inline void dc_servo_decide_sign(dc_servo_t *s, unsigned r, const int dc[
                  * polarity does not change, a DC jump of something else does
                  * (board 2026-10-19: a channel round taught -88 for +400 and
                  * left 3.6 cells). Repeated failure relearns it (bad). */
+                const int v = s->pol_votes[a] + (slope > 0 ? 1 : -1);
+                s->pol_votes[a] = (int8_t)(v > 4 ? 4 : v < -4 ? -4 : v);
                 if (!s->known[a]) { s->slope[a] = slope; s->known[a] = 1; ++s->learned; }
                 else if ((s->slope[a] > 0) == (slope > 0)) { s->slope[a] = (s->slope[a] + slope) / 2; ++s->learned; }
                 else ++s->sign_rejects;
@@ -155,6 +160,17 @@ static inline void dc_servo_decide_sign(dc_servo_t *s, unsigned r, const int dc[
         if (!folded && dc_servo_abs(dc[a]) <= DC_SERVO_DEADBAND) continue;
         int st;
         if (folded) {
+            /* A polarity with net linear-zone evidence is not flipped here:
+             * a strong carrier folds the IQ and the sign share says nothing
+             * about the DC then (board 2026-10-20, new antenna: the I slope
+             * flipped to -537, the DC ran to 4 cells). Only an unproven
+             * (default) polarity walks back. */
+            const bool proven = s->pol_votes[a] >= 1 ? s->slope[a] > 0 : s->pol_votes[a] <= -1 ? s->slope[a] < 0 : false;
+            if (proven && s->row[r].fold_walk[a] >= s->row[r].fold_window[a]) {
+                s->row[r].fold_walk[a] = 0;
+                s->row[r].fold_window[a] = s->row[r].fold_window[a] * 2 > DC_SERVO_FOLD_FLIP_MAX ?
+                                           DC_SERVO_FOLD_FLIP_MAX : s->row[r].fold_window[a] * 2;
+            }
             if (s->row[r].fold_walk[a] >= s->row[r].fold_window[a]) {
                 s->slope[a] = -s->slope[a];          /* walked this far and still folded: wrong polarity */
                 s->known[a] = 0;

@@ -1296,3 +1296,140 @@ the ten raw edge IQ snapshots (M2M4 on the 4-bit samples):
 - **Gain writes on a still signal:** -47 dBm, VTX and receiver still: 0
   writes, 0 overloads, sync 90 %. The walk's 10-29 writes a second close
   in came from walking fades.
+
+## Antenna-to-pin budget and the gain table below G72 (2026-10-20, PR #231)
+
+VTX 100 mW, whoop antenna (linear) at 2 m indoors, receiver Lumenier AXII 2
+(RHCP) on the XIAO ESP32-C5 (U.FL straight to LNA_IN, no antenna switch).
+Free space: +20 dBm + ~1 dBi - 3 dB (linear to circular) + ~1.6 dBi - 53.8
+dB = about -34 dBm at the pin.
+
+- The pair sweep on the carrier (console Q) measured **~1.0 dB a row** over
+  G19-G31 (11.6 dB for 12 rows), as on noise at G72-G83 and the earlier
+  G29-G39 sweep. The RF-stage/BB/fine model has steps of -3.3 and +2.7 dB
+  there and is 4.2 dB short at G24.
+- Corrected for it, the carrier read -38.7 -> about -34.5 dBm: **the
+  antenna-to-pin path delivers what free space predicts (within ~1 dB)**.
+  An earlier -46.5 dBm at "2 m" (G37, model error ~0.7 dB) was the
+  placement indoors: 8 dB between two placements is ordinary multipath.
+- Below the noise-measured rows the gain table now steps 1.0 dB a row
+  (gain.c dg_apply_measured_gain), for the dBm meter and the KEEL-1 home
+  rows.
+
+
+## Single program-image LUT load (2026-10-20, PR #231)
+
+The restart now prepares the selected LUT in an IDF V1 program image before
+quiescing the pipeline. Its LUT storage replaces the previous work LUT; the
+header/instruction prefix adds 300 bytes. The SDK writes the target once;
+full instruction and LUT readback still gate publication. A mismatch enters
+the existing bounded rollback, whose image restores the verified instructions
+and transformed LUT (including output scaling and flywheel flag format).
+
+Board COM10, VTX off, build from 270553e plus this change: four manual LP
+switches took 3437, 3614, 3776 and 3238 us. Two kp switches took 4712 and
+5327 us including target preparation and scheduling. Recorded LUT verify
+stages were about 1195-1304 us versus 2463 us in the pre-change status;
+these are small bench samples, not a controlled RF or visible-picture A/B.
+All six switches left instruction/LUT verification, restart failures,
+TX empty, RX overflow, DMA fault and BS overload counters at zero.
+Gain returned to AUTO/G83; original kp_auto=2 restored after manual tests.
+The counter kp_writes now includes all 1024 SDK table writes per successful
+program load, rather than only subsequent corrective writes.
+
+Validation: host C suite, runtime diagnostic suite (including actual
+format/publication/rollback branches), research CI checks, ESP-IDF v6.0.2
+firmware build and linked IRAM check passed. Read-only verification tests
+inject corruption at the first and last entries, checking no hidden repair.
+The format harness checks the selected image prefix on forward and rollback
+paths for every supported kp/output/program combination. Physical restart
+failure injection and an RF/goggle walk remain unmeasured.
+
+
+## Detector comparison and range work plan (2026-10-20, PR #231)
+
+The next work is recorded in [PR231_RANGE_PLAN.md](PR231_RANGE_PLAN.md),
+including the operator's -100 dBm ambition and flywheel/restart hypothesis.
+`research/pll_compare.py --physical --workers 4 --output
+research/data/pll_compare_physical.json` compares identical input bytes
+across bit-exact kp 0.85/0.60/0.50, with/without LP, a discriminator and
+float second-order PLLs. PAL/NTSC, two seeds each, deviation 1.0, 12 MHz
+model filter, fixed physical-ADC gain 2.0 shared by noisy/clean cases.
+The same seed preserves raster/noise realization across C/N points.
+
+At model C/N 0 dB, mean correctly retained line fractions are 0.38 for
+U85Q-LP, 0.98 for PLL bandwidth parameter 0.04, and 0.96 with its LP20
+postfilter. Luma SINAD is respectively -0.7, -3.4, -1.5 dB. At 2 dB C/N,
+U85Q-LP and PLL+LP20 give 2.0 and 1.8 dB SINAD, with line fractions 0.94
+and 1.00. There is useful sync information beyond U85Q, but no demonstrated
+10 dB picture improvement. Retaining lines is not complete picture quality.
+
+Limitations: synthetic input; one filter/deviation/gain; clean-reference
+alignment/level calibration; float PLL has neither six-bit DAC quantization
+nor a proven BitScrambler implementation; LP20 decimates the PLL output
+before its IIR. A finite candidate comparison is not an ideal detector or
+an information-theoretic upper bound. Existing sensitivity JSON records
+explicitly assume NF (5 dB); previous claims of a measured ~6 dB hardware NF
+or an independently proved lossless RF input path were too strong.
+
+
+## Session 55 origin-cloud gain park (2026-10-20, PR #231)
+
+The initial hypothesis of a refused hardware write was not established.
+A VTX-off board check on the pre-fix current firmware returned G24 -> AUTO
+successfully to G83. A constant-code host probe also recovered, but did not
+reproduce the recorded signal.
+
+Replaying snapshot `snap_s0055_00130` (134930 ms, G21, 8128 bytes) through
+actual `dg_measure_gain` yields P50=1, origin 863-980 per mille, coherence
+0-7 and no clipping, but 28 of 31 256-byte windows have P95=43. Sparse
+outliers, primarily I=6 with Q=0, keep peak memory above the release gate.
+The existing `no_carrier` classification is true but did not influence
+release. Repeating these recorded windows at the controller's 200 us test
+cadence parks the old core at G21 indefinitely, with no refused write.
+This repetition is a control regression, not a physical gain-response model.
+
+The change uses P50 for release peak memory only with P50<=1,
+origin>=850/1000, repeat>=300/1000, coherence<20 and zero clipping. It
+retains normal 16 ms peak memory, home-row steps, settle and write pacing;
+all overload decisions still use original observations. Off-origin fixed DC
+is excluded, unlike the reverted unconditional fixed-point -> max change.
+On the 64 available bb10dec snapshots (1984 windows), 55 high-P95 qualifying
+windows occur, all in the two suspect session55 captures (125 and 130).
+Other qualifying near-origin windows already had low P95.
+
+The real capture and its metadata are preserved in test/data. Added
+regressions fail on the prior gain.c and pass with the fix: recovery,
+retained 16 ms hold, no gain pumping on a 5 ms fade, no boost on an
+off-origin DC point, and raw overload handling. The full host suite,
+ESP-IDF build and linked IRAM check pass. Weak-VTX boot and physical RF
+recovery are not yet verified; the source of the sparse code outliers is
+not established by these recordings.
+
+
+## Restart/dropout association in existing blackboxes (2026-10-20)
+
+`research/restart_dropout_audit.py '../bb*/session_*.json' --output
+research/data/restart_dropout_audit.json` merges overlapping saved exports
+by session and exact event identity, checks boot provenance, and records
+input hashes. 56 sessions contain 368 kp/program events and 54 dropouts.
+A restart precedes 16 dropout events within 1 s, 27 within 2 s, and 33
+within 5 s. None precedes within 100 ms. This does NOT exonerate brief
+restarts: diag.c emits dropout events from per-second observations, not
+physical sync edges. Conversely the associations do not prove causation;
+weak input itself can cause both a policy switch and loss of video.
+
+55 sessions have boot flywheel=1; one lacks boot metadata. Boot settings
+are not continuous intervention telemetry. These logs cannot identify an
+unbiased flywheel on/off sensitivity difference, and circular exports may
+omit events. The output retains session firmware identity and missing-data
+information rather than treating all historical revisions as current.
+
+Code inspection: normal kp/LP changes use the shared verified restart;
+`transport_sync_restart_begin/finish` preserves the flywheel clock lease
+across flagged restarts but invalidates native source evidence. A stale or
+unreadable source does not authorize repair. `transport_sync_live_tick`
+changes the demodulator format when entering/leaving flag mode, not on
+every ordinary loss of sync. This does not rule out CPU contention, wrong
+repair timing or goggle recovery losses. Existing runtime ownership tests
+pass; direct RF range attribution is still open.

@@ -899,7 +899,18 @@ uint8_t dg_tick(direct_gain_t *g, const dg_observation_t *o)
         dg7_peak_reset(g, now);
     }
     unsigned recent;
-    const unsigned peak = dg7_peak(g, o, &recent);
+    /* Session 55, G21/G24: an origin-dominated, heavily repeated cloud
+     * with sparse outliers has P50=1 but P95=43. It is already classified
+     * no_carrier above, yet its P95 kept the release gate closed forever.
+     * Use the central population only for release peak memory in this
+     * narrow case. Keep the ordinary peak hold, paced gain steps, and raw
+     * clipping/attack evidence. In particular this is NOT dg_stuck -> max:
+     * off-origin DC and clipped rows must still go through DC correction. */
+    dg_observation_t release_o = *o;
+    if (no_carrier && o->p50 <= 1u && o->origin_pm >= 850u &&
+        o->repeat_pm >= 300u && o->clip_pm == 0u)
+        release_o.p95 = o->p50;
+    const unsigned peak = dg7_peak(g, &release_o, &recent);
     /* Attack. */
     bool attack = false;
     int delta = 0;
@@ -1002,6 +1013,7 @@ uint8_t dg_tick(direct_gain_t *g, const dg_observation_t *o)
  * rows are 1.0 dB (model 0.83) and the G78/G77 baseband step 0.93 dB (model
  * 1.85); G83 -> G72 is 11.2 dB (model 10.2). Receiver noise is a constant
  * input, so its power per row is the row's real gain. */
+#define DG_ROW_STEP_Q8 256   /* 1.0 dB a row (measured, see below) */
 unsigned dg_apply_measured_gain(direct_gain_t *g, const float thermal_cells2[DG_STATES])
 {
     if (!g || !thermal_cells2) return 0u;
@@ -1028,9 +1040,12 @@ unsigned dg_apply_measured_gain(direct_gain_t *g, const float thermal_cells2[DG_
         while (b < top && thermal_cells2[b] <= 0.0f) ++b;
         q8[k] = (int16_t)(q8[a] + (q8[b] - q8[a]) * (k - a) / (b - a));
     }
-    /* Below the lowest measured row: the model, joined to it. */
-    const int shift = q8[low] - g->model_db_q8[low];
-    for (int k = 0; k < low; ++k) q8[k] = (int16_t)(g->model_db_q8[k] + shift);
+    /* Below the lowest measured row: DG_ROW_STEP_Q8 a row, joined to it. The
+     * board's table steps ~1 dB a row wherever it was measured on a carrier
+     * or on noise (G19-G31 0.93-1.08, G29-G39, G72-G83 0.94-1.03; PR #231);
+     * the RF-stage/BB/fine model has steps of -3.3 and +2.7 dB there and read
+     * 4.2 dB short at G24 (the dBm meter 4 dB low on a strong carrier). */
+    for (int k = 0; k < low; ++k) q8[k] = (int16_t)(q8[low] - (low - k) * DG_ROW_STEP_Q8);
     memcpy(g->model_db_q8, q8, sizeof(q8));
     keel_build(g);
     return set;

@@ -633,9 +633,12 @@ static void control_task(void *arg)
              * single kp level waits; the ladder keeps its own level. */
             static int64_t last_kp_restart_us;
             const int applied = transport_kp_level();
+            static int skipped_level = -1;   /* count a skipped restart once per wanted level, not per tick */
             if (!kp_switch_worth(level, s_kp.lp, applied, transport_lp(), last_kp_restart_us, now)) {
+                if ((int)level != skipped_level) { skipped_level = level; ++s_kp_restarts_skipped; }
                 level = (uint8_t)applied;
-                ++s_kp_restarts_skipped;
+            } else {
+                skipped_level = -1;
             }
             /* Confirm the program and the direction, not the exact level the
              * ladder is stepping through (kp_switch_guard.h). */
