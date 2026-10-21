@@ -399,6 +399,24 @@ int main(void)
         for (int k = 0; k < 400; ++k, tc += TICK_US)
             (void)kp_ladder_update_evidence(&c, CN_UNKNOWN_X10, true, true, 100, tc, true);
         check("C/N rescue: an unknown C/N holds U85Q too (no phantom LP with the VTX off)", !c.lp);
+        /* control.c resets and rebinds the ladder on every afc_context()
+         * change, even when the profile stays DEFAULT. Model a low-C/N old
+         * channel followed by a new channel with no noise map: its UNKNOWN
+         * windows must not finish the old channel's pending LP entry. */
+        kp_ladder_reset(&c);
+        c.lp_by_cn = true;
+        for (int k = 0; k < 10; ++k, tc += TICK_US)
+            (void)kp_ladder_update_lp(&c, 30, true, 100, tc, true);
+        check("C/N rescue: old context has cached C/N and a pending LP entry",
+              c.cn_init && c.lp_pending == 1 && !c.lp);
+        kp_ladder_reset(&c);                 /* control.c context rebind */
+        c.level = 0;                         /* currently applied U85Q level */
+        c.lp = false;                        /* currently applied program */
+        c.lp_by_cn = true;
+        for (int k = 0; k < 40; ++k, tc += TICK_US)
+            (void)kp_ladder_update_evidence(&c, CN_UNKNOWN_X10, true, true, 100, tc, true);
+        check("C/N rescue: new uncalibrated context cannot inherit or finish old LP evidence",
+              !c.cn_init && c.lp_pending == -1 && !c.lp);
         check("C/N rescue table: narrow 10 MHz enters later, wide 16 MHz earlier",
               kp_ladder_want_lp_cn(KP_CLASS_NORMAL, 40, false, true, false) == false &&
               kp_ladder_want_lp_cn(KP_CLASS_NORMAL, 40, false, false, false) == true &&
