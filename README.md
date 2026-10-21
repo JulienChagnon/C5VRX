@@ -13,6 +13,11 @@
     <img src="https://img.shields.io/badge/output-analog%20CVBS%20PAL%2FNTSC-orange" alt="Analog CVBS" />
     <img src="https://img.shields.io/badge/license-GPL--3.0--only-blue" alt="GPL-3.0-only" />
   </p>
+
+  <p>
+    <img src="assets/C5VRX-1.jpg" alt="C5VRX receiver module with micro drone" width="49%" />
+    <img src="assets/C5VRX-2.jpg" alt="C5VRX receiver module installed in Fat Shark goggles" width="49%" />
+  </p>
 </div>
 
 ---
