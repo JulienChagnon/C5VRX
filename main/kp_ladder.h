@@ -24,8 +24,8 @@
  *   part of it; receiver noise near the threshold fails it, and with it the
  *   ladder froze at the range edge (research README section 18).
  * LP follows the gain even without usable IQ; only retune/PHY ownership
- * holds that policy. Missing C/N holds kp. The C/N estimate comes from the
- * IQ envelope, not from the tracker,
+ * holds that policy. Missing C/N holds kp. The C/N estimate comes from IQ
+ * power over a per-context thermal-noise reference, not from the tracker,
  * so a kp change cannot feed back into it. Pure logic: host test
  * test/test_kp_ladder.c. */
 #pragma once
@@ -98,14 +98,14 @@ typedef struct {
 
 /* A control window the ladder may use: settled after a retune or restart,
  * unchanged context, no gain write in the last KP_GAIN_WRITE_GUARD_US. The
- * C/N comes from the gain observer's envelope, so a noisy, non-stationary
- * window is evidence (the floor), never a reason to hold.
+ * C/N comes from the gain observer's noise-referenced power estimate. A
+ * context without that reference is unknown and holds the policy.
  *
- * The envelope is one ~6 us observer probe taken right before the control
- * window reads it, and Direct Gain settles a write in 0.3-1 ms. A 100 ms
- * guard plus "no write during the 50 ms window" made every window unusable
- * while the carrier faded: 50-120 writes a second at the range edge (board
- * walk 2026-10-13, docs/FINDINGS.md). 5 ms covers the settle. */
+ * The power estimate accumulates 16 settled observer probes (~13 ms), and
+ * Direct Gain settles a write in 0.3-1 ms. A 100 ms guard plus "no write
+ * during the 50 ms window" made every window unusable while the carrier
+ * faded: 50-120 writes a second at the range edge (board walk 2026-10-13,
+ * docs/FINDINGS.md). 5 ms covers the measured write settle. */
 #define KP_GAIN_WRITE_GUARD_US 5000LL
 static inline bool kp_ladder_window_usable(bool settled, bool context_unchanged, int64_t since_gain_write_us)
 {
@@ -345,7 +345,7 @@ static inline uint8_t kp_ladder_update_evidence(kp_ladder_t *l, int cn_x10, bool
     }
     const int cn = l->cn_init ? l->cn_q4 / 16 : 0;
     /* A known gain is evidence for LP without any IQ measurement. Retunes
-     * and PHY ownership still hold it. The C/N fallback needs a window. */
+     * and PHY ownership still hold it. The C/N policy needs a referenced window. */
     const bool cn_fresh = l->cn_init && now_us - l->cn_known_us <= KP_CN_FRESH_US;
     const bool program_evidence = program_ok && (l->lp_by_cn ? cn_fresh : (l->gain || window_ok));
     if (program_evidence) l->last_program_us = now_us;

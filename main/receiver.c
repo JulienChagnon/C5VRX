@@ -341,7 +341,9 @@ void receiver_level_feed(const uint8_t *window, size_t bytes)
  *   with no carrier (calibration.c), learned in service only on no-carrier
  *   evidence (envelope kurtosis + level + no video for 2 s), kept in NVS;
  * - power around each row's long-term DC (not the window mean);
- * - M2M4 as a cross-check; envelope (cn_estimate.h) only as the fallback.
+ * - M2M4 and envelope (cn_estimate.h) as diagnostics only. Actuators use
+ *   only input-referred power against a per-context thermal-noise map: an
+ *   uncalibrated envelope can turn multipath amplitude changes into fake C/N.
  * Every 4th settled probe feeds it (~1.3 kHz, ~2 % CPU). */
 #define CNA_PROBE_DIV      4u
 #define CNA_EST_PROBES     16u      /* probes per estimate (~13 ms) */
@@ -578,35 +580,18 @@ cna_reading_t receiver_cn_reading(void)
 
 int receiver_obs_cn_x10(void)
 {
-    {   /* One scale: C/N-AUTO's power estimate whenever the row has a noise
-         * reference (measured or borrowed), whatever its confidence; the
-         * envelope model below only without any reference. Switching per
-         * window between the two (confidence >= OK) jumped by 5-9 dB on the
-         * walk of 2026-10-20 (A1): the M2M4 cross-check fails in walking
-         * fades, the 4-bit rows capped the confidence, and the kp ladder and
-         * LP gates followed the jumps. */
-        const cna_reading_t r = receiver_cn_reading();
-        if ((r.source & ~CNA_SRC_DISTORTED) == CNA_SRC_POWER) {   /* no carrier: unknown, as before */
-            /* A small carrier on a 4-bit-limited row (just after a fade, the
-             * gain still low) reads up to 8 dB high: hold, not a number. */
-            if (s_obs_stuck || r.x10 == CNA_UNKNOWN_X10 || (r.source & CNA_SRC_DISTORTED) ||
-                !cn_gain_settled((uint64_t)esp_timer_get_time(), (uint64_t)s_last_gain_write_us,
-                                 s_gain.state == DG_SETTLE)) return CN_UNKNOWN_X10;
-            return r.x10;
-        }
-    }
-    /* Envelope model (cn_estimate.h); a fixed IQ point has no envelope to
-     * judge and read 14-20 dB in the coherence model with no VTX at all. */
-    uint32_t seq = s_cn_sequence;
-    __sync_synchronize();
-    cn_observation_t o = s_cn;
-    __sync_synchronize();
-    if ((seq & 1u) || seq != s_cn_sequence || s_obs_stuck || !receiver_active() ||
+    /* One actuator scale: power over the thermal-noise reference for this
+     * channel/filter/gain context. Switching between power and envelope on
+     * the 2026-10-20 walk jumped 5-9 dB; issue #222 also gives a noiseless
+     * amplitude sequence that the envelope table calls ~3 dB C/N. Without a
+     * noise reference, hold the last safe policy instead of inventing RF C/N.
+     * M2M4/envelope remain visible in CN_AUTO telemetry. */
+    const cna_reading_t r = receiver_cn_reading();
+    const int x10 = cna_control_x10(&r);
+    if (x10 == CNA_UNKNOWN_X10 || s_obs_stuck || !receiver_active() ||
         !cn_gain_settled((uint64_t)esp_timer_get_time(), (uint64_t)s_last_gain_write_us,
-                         s_gain.state == DG_SETTLE) ||
-        !cn_observation_fresh(&o, (uint64_t)esp_timer_get_time(), s_gain_epoch, s_control_epoch,
-                             phy_generation(), rf_table_generation())) return CN_UNKNOWN_X10;
-    return cn_estimate_env_x10(o.ratio, calibration_filter_class_mhz());
+                         s_gain.state == DG_SETTLE)) return CN_UNKNOWN_X10;
+    return x10;
 }
 
 /* DC of every settled observer probe, one sum per gain row, for the live
@@ -885,8 +870,9 @@ void receiver_print(void)
         const cna_reading_t c = receiver_cn_reading();
         unsigned measured = 0;
         for (unsigned k = 0; k < CNA_ROWS; ++k) measured += s_cna_map.n[k] >= CNA_MIN_SAMPLES;
-        printf("CN_AUTO cn_x10=%d power_x10=%d m2m4_x10=%d confidence=%u source=%u flags=0x%02x noise_cells2=%.3f rows_with_noise=%u learned=%lu absent_rejects=%lu estimates=%lu nbw_khz=%u (self-calibrating C/N, cn_auto.h)\n",
-               c.x10, c.power_x10, c.m2m4_x10, c.confidence, c.source, c.flags, (double)c.noise_cells2, measured,
+        printf("CN_AUTO estimate_x10=%d control_x10=%d power_x10=%d m2m4_x10=%d confidence=%u source=%u flags=0x%02x noise_cells2=%.3f rows_with_noise=%u learned=%lu absent_rejects=%lu estimates=%lu nbw_khz=%u (self-calibrating C/N, cn_auto.h)\n",
+               c.x10, receiver_obs_cn_x10(), c.power_x10, c.m2m4_x10, c.confidence, c.source, c.flags,
+               (double)c.noise_cells2, measured,
                (unsigned long)s_cna_learned, (unsigned long)s_cna_absent_rejects, (unsigned long)s_cna_estimates,
                calibration_filter_nbw_khz());
     }

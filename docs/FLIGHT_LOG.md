@@ -94,7 +94,7 @@ One per second while the receiver runs; ~7 hours in the ring.
 | demodulator | profile, kp level, LP (packed), sampling-phase state and last probe excess |
 | received level | carrier at the chip pin (0.1 dBm), the noise it is measured against (dBm), flags: valid, above the noise, exact (G54+), noise learned (`main/rx_level.h`) |
 | gain write reasons | writes down (attack), writes up (release), fast-path overloads forwarded (sentinel), overloads within 5 ms of a write |
-| C/N-AUTO | power C/N, M2M4 C/N, envelope C/N (0.1 dB, -990 unknown), confidence and source (+32: a small carrier on a 4-bit-limited row, not used for decisions), flags (`main/cn_auto.h`) |
+| C/N-AUTO | decision C/N plus power, M2M4 and envelope estimates (0.1 dB, -990 unknown), confidence and source (+32: a small carrier on a 4-bit-limited row, not used for decisions), flags (`main/cn_auto.h`); only noise-referenced power may drive AFC/profile/kp/LP |
 | environment | temperature (degC) |
 | flags | menu, scan, calibrating, paused, fault latched, flywheel active, status screen |
 

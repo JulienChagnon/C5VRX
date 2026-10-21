@@ -716,6 +716,26 @@ filter itself not reaching 10 MHz costs the ladder ~0.65 dB at deviation
 `lp`; `tools/field_diag_compare.py` reports `edge_s`, `edge_lp_pct`,
 `edge_kp_median` (C/N below 6 dB) and `strong_kp_median` (>= 12 dB).
 
+## 20. C/N provenance: envelope dB is not RF dB (2026-10-21)
+
+C/N-AUTO's power estimate is input-referred because it subtracts a measured
+thermal-noise value for the active channel/filter/gain context. The older
+envelope statistic is not: ordinary amplitude variation also increases its
+variance. With no noise map, firmware still returned that envelope number to
+AFC, profile selection and the kp/LP ladder.
+
+Issue #222's noiseless two-level example (power 13/61) gives an envelope ratio
+of 238, which the 12 MHz table maps to about 3.1 dB C/N and therefore an LP
+request for a normal-deviation profile. This is a deterministic ambiguity,
+not a simulated RF gain. The actuator path now accepts only C/N-AUTO power
+with a noise reference; M2M4/envelope stay visible as diagnostic estimates.
+Without a reference, C/N is UNKNOWN and the C/N-driven policy holds.
+
+This closes a way for firmware to make a wrong dB-dependent choice, but does
+not establish a measured sensitivity improvement. Board validation should
+count suppressed decisions on a VTX-on first boot and compare a calibrated
+A/B/A run; do not report the 3.1 dB counterexample as recovered range.
+
 ## Not firmware levers
 
 - The second IQ40 sample of every span (+0.5..1.1 dB in the C5VRX-4 ledger)

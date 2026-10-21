@@ -558,7 +558,7 @@ static void control_task(void *arg)
         if (!s_afc_locked && valid && !s_menu_active &&
             phy_try_actuator(phy_generation())) {
             int32_t step = 0;
-            const bool strong = receiver_obs_cn_x10() >= AFC_MIN_CN_X10;   /* envelope C/N model */
+            const bool strong = receiver_obs_cn_x10() >= AFC_MIN_CN_X10;   /* noise-referenced power C/N */
             if (afc2_ctrl_decide(&afc, gain_epoch == s_gain_epoch && strong, &step)) {
                 rf_set_offset_khz(rf_offset_khz() + (int)step);
                 s_last_gain_write_us = esp_timer_get_time();   /* restore re-forces gain */

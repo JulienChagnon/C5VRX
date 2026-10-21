@@ -22,7 +22,9 @@
  * - a borrowed noise value (row not measured) lowers the confidence;
  * - folding is reported clipped and gives no reading;
  * - M2M4 agrees within 4 dB in its region (2-15 dB);
- * - unknown is never a low number.
+ * - unknown is never a low number;
+ * - an uncalibrated envelope/M2M4 estimate stays out of the actuator path,
+ *   including the issue #222 amplitude-fade counterexample.
  *
  *   cc -O2 -std=c11 -I../main test_cn_auto.c -lm -o t && ./t
  */
@@ -30,6 +32,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "cn_auto.h"
+#include "cn_estimate.h"
+#include "kp_ladder.h"
 
 static unsigned s_fail, s_run;
 static void check(const char *name, int ok)
@@ -273,6 +277,29 @@ int main(void)
         const float n = cna_noise_at(&empty, 80, s_model_q8, 0, &flags, &u);
         const cna_reading_t r = cna_estimate(10.0, 150.0, n, u, flags, 13600u, 12, CNA_UNKNOWN_X10);
         check("without any noise measurement the power source is unavailable", r.source != CNA_SRC_POWER && r.confidence <= CNA_CONF_LOW);
+    }
+
+    {   /* Issue #222: two noiseless amplitude plateaus. The envelope's
+         * mean^2/variance is a valid statistic, but not an RF C/N identity. */
+        const double mean = (13.0 + 61.0) / 2.0;
+        const double variance = ((13.0 - mean) * (13.0 - mean) + (61.0 - mean) * (61.0 - mean)) / 2.0;
+        const int ratio_x100 = (int)lround(100.0 * mean * mean / variance);
+        const int env_x10 = cn_estimate_env_x10(ratio_x100, 12);
+        const cna_reading_t envelope = {.x10=env_x10, .confidence=CNA_CONF_LOW, .source=CNA_SRC_ENVELOPE};
+        const cna_reading_t m2m4 = {.x10=env_x10, .confidence=CNA_CONF_LOW, .source=CNA_SRC_M2M4};
+        const cna_reading_t power = {.x10=env_x10, .confidence=CNA_CONF_OK, .source=CNA_SRC_POWER};
+        const cna_reading_t distorted = {.x10=env_x10, .confidence=CNA_CONF_LOW,
+                                         .source=CNA_SRC_POWER | CNA_SRC_DISTORTED};
+        printf("     amplitude plateaus: ratio %d -> envelope %.1f dB, normal-profile LP=%u\n",
+               ratio_x100, env_x10 / 10.0,
+               (unsigned)kp_ladder_want_lp_cn(KP_CLASS_NORMAL, env_x10, false, false, false));
+        check("amplitude fading alone can cross the normal-profile LP threshold",
+              env_x10 > 0 && env_x10 < kp_lp_enter12_x10[KP_CLASS_NORMAL] &&
+              kp_ladder_want_lp_cn(KP_CLASS_NORMAL, env_x10, false, false, false));
+        check("an envelope-only C/N never drives RF decisions", cna_control_x10(&envelope) == CNA_UNKNOWN_X10);
+        check("an unreferenced M2M4 C/N never drives RF decisions", cna_control_x10(&m2m4) == CNA_UNKNOWN_X10);
+        check("a noise-referenced power C/N remains available to decisions", cna_control_x10(&power) == env_x10);
+        check("a quantisation-distorted power C/N remains unknown", cna_control_x10(&distorted) == CNA_UNKNOWN_X10);
     }
 
     {   /* a weak carrier learned again and again cannot pull an anchored row */

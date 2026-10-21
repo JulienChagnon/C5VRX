@@ -886,6 +886,11 @@ out above the 0 dB crossover, per deviation class and measured filter
 gain no longer decides. Replay of three walks (`research/lp_policy_replay.py`):
 57-88 % less LP above the exit C/N, no missed rescue. The earlier
 gain-driven LP (G70/G65, PR #218 follow-up) stays selectable with `O`.
+Runtime C/N decisions require C/N-AUTO's noise-referenced power source;
+uncalibrated envelope/M2M4 estimates are telemetry only (issue #222). With
+no per-context noise reference, AFC/profile/kp/LP see UNKNOWN and hold or
+refuse the action; do not restore the envelope fallback without independent
+input-referred evidence.
 `SYNC_FLYWHEEL_LOAD` measures
 flywheel ISR occupancy; board numbers pending (`docs/FINDINGS.md`).
 
