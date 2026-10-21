@@ -405,7 +405,7 @@ int main(void)
          * windows must not finish the old channel's pending LP entry. */
         kp_ladder_reset(&c);
         c.lp_by_cn = true;
-        for (int k = 0; k < 10; ++k, tc += TICK_US)
+        for (int k = 0; k < 5; ++k, tc += TICK_US)   /* 0.20 s < the 0.30 s entry hold */
             (void)kp_ladder_update_lp(&c, 30, true, 100, tc, true);
         check("C/N rescue: old context has cached C/N and a pending LP entry",
               c.cn_init && c.lp_pending == 1 && !c.lp);
