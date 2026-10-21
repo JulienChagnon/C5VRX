@@ -17,9 +17,10 @@
  *   levels. Toward a sharper kp (lower level) the hold and gap are shorter:
  *   near the floor a calm tracker loses lock first, so a collapsing carrier
  *   must get back up quickly.
- * - A noise-like window (CN_UNKNOWN_X10: envelope at or below plain noise)
- *   is the floor, not missing evidence: it targets the curve's 0 dB point.
- *   Only an unusable window (retune, gain write, menu) holds the level:
+ * - CN_UNKNOWN_X10 is missing input-referred evidence, never a synthetic
+ *   0 dB point: it holds kp and every C/N-driven program decision. Only the
+ *   independent AUTO-gain policy may still drive LP without C/N.
+ *   An unusable window (retune, gain write, menu) also holds the level:
  *   kp_ladder_window_usable(); a short unusable gap keeps pending changes. The AFC's envelope-stationarity test is not
  *   part of it; receiver noise near the threshold fails it, and with it the
  *   ladder froze at the range edge (research README section 18).
@@ -306,8 +307,9 @@ static inline bool kp_ladder_want_lp(int cls, int cn_x10, bool lp)
 }
 
 /* Separate evidence: window_ok controls C/N/kp, program_ok controls LP.
- * A usable noise-like window passes CN_UNKNOWN_X10 and means the floor.
- * Returns the level the LUT should move to. */
+ * CN_UNKNOWN_X10 means no input-referred C/N and holds kp plus C/N-based
+ * LP; AUTO gain remains independent evidence for gain-based LP. Returns the
+ * level the LUT should move to. */
 static inline uint8_t kp_ladder_update_evidence(kp_ladder_t *l, int cn_x10, bool window_ok, bool program_ok,
                                                 int dev_x100, int64_t now_us, bool allow_lp)
 {
@@ -327,27 +329,26 @@ static inline uint8_t kp_ladder_update_evidence(kp_ladder_t *l, int cn_x10, bool
         ++l->steps;
         return l->level;
     }
+    const bool cn_known = cn_x10 > CN_UNKNOWN_X10;
+    if (!cn_known) {
+        l->pending_dir = 0;                 /* never finish a cached C/N step */
+        if (l->lp_by_cn || !l->gain) l->lp_pending = -1;
+    }
     if (now_us - l->last_usable_us > KP_STALE_US) l->pending_dir = 0;
     if (now_us - l->last_program_us > KP_STALE_US) l->lp_pending = -1;
     /* Per-window estimates jitter by a few dB: decide on a smoothed C/N
-     * (first-order, 1/8 per 50 ms window, ~0.4 s). A noise-like window
-     * counts as 0 dB. */
-    if (window_ok) {
+     * (first-order, 1/8 per 50 ms window, ~0.4 s). */
+    if (window_ok && cn_known) {
         l->last_usable_us = now_us;
-        if (cn_x10 > CN_UNKNOWN_X10) {
-            l->cn_known_us = now_us;
-            if (!l->cn_init) { l->cn_q4 = cn_x10 * 16; l->cn_init = true; }
-            else l->cn_q4 += (cn_x10 * 16 - l->cn_q4) / 8;
-        } else if (!l->lp_by_cn) {   /* the gain policy's floor: a noise-like window counts as 0 dB */
-            if (!l->cn_init) { l->cn_q4 = 0; l->cn_init = true; }
-            else l->cn_q4 += (0 - l->cn_q4) / 8;
-        }
+        l->cn_known_us = now_us;
+        if (!l->cn_init) { l->cn_q4 = cn_x10 * 16; l->cn_init = true; }
+        else l->cn_q4 += (cn_x10 * 16 - l->cn_q4) / 8;
     }
     const int cn = l->cn_init ? l->cn_q4 / 16 : 0;
     /* A known gain is evidence for LP without any IQ measurement. Retunes
      * and PHY ownership still hold it. The C/N policy needs a referenced window. */
-    const bool cn_fresh = l->cn_init && now_us - l->cn_known_us <= KP_CN_FRESH_US;
-    const bool program_evidence = program_ok && (l->lp_by_cn ? cn_fresh : (l->gain || window_ok));
+    const bool cn_fresh = cn_known && l->cn_init && now_us - l->cn_known_us <= KP_CN_FRESH_US;
+    const bool program_evidence = program_ok && (l->lp_by_cn ? cn_fresh : (l->gain || (window_ok && cn_known)));
     if (program_evidence) l->last_program_us = now_us;
     if (allow_lp && program_evidence) {
         /* Program first: a switch lands on the new program's curve level at
@@ -378,7 +379,7 @@ static inline uint8_t kp_ladder_update_evidence(kp_ladder_t *l, int cn_x10, bool
             return l->level;
         }
     }
-    if (!window_ok) return l->level;
+    if (!window_ok || !cn_known) return l->level;
     const uint8_t target = kp_ladder_target_g(cn, dev_x100, l->lp, l->narrow, l->wide);
     const int8_t dir = target > l->level ? 1 : target < l->level ? -1 : 0;
     if (dir != l->pending_dir) {

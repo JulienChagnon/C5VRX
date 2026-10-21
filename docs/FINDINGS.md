@@ -447,8 +447,10 @@ placed where the picture is between desync and just video):
   `lp_switches` 4 -> 6. Here this is the curve, not a gate: the deviation
   is unknown (`deviation_x100=0`), so the ladder uses the wide class, whose
   LP window is 2.0-8.5 dB (`kp_lp_floor_x10` 1.5 dB + hysteresis/3) and
-  whose kp row is 0.85 up to 2 dB. A noise-like window counts as 0 dB, so
-  at the edge the wanted pair is U85Q kp 0.85, the pair already running.
+  whose kp row is 0.85 up to 2 dB. In that firmware a noise-like window
+  counted as 0 dB, so at the edge the wanted pair was U85Q kp 0.85, the pair
+  already running. This historical behavior is superseded by the 2026-10-21
+  provenance fix below: UNKNOWN now holds C/N-driven decisions.
 - The deviation is never measured because `profile_observe()` needs
   `s_afc_locked`, and the AFC never locked in either boot, even close in
   (sync 52-62 %, `afc_corrections=0`). With no deviation the ladder can
@@ -475,9 +477,10 @@ each 1 s FIELD_DIAG C/N held for its 20 windows):
   ladder's share from below only. 57-77 s add the gain writes (50-120/s).
   Which gate fails the other windows is not visible in the log: `T` has no
   counter for unusable ladder windows or guard resets.
-- **Even the best case flaps.** 15 program restarts in 114 s in the walk;
-  at the edge LP is on for 2-4 s and off again, because a noise-like window
-  counts as 0 dB, which is below the wide class's 1.5 dB LP floor.
+- **Even the best case flapped in that firmware.** 15 program restarts in
+  114 s in the walk; at the edge LP was on for 2-4 s and off again, because
+  a noise-like window counted as 0 dB, below the wide class's 1.5 dB LP
+  floor. UNKNOWN no longer has that meaning (2026-10-21 fix below).
 - **The deviation decides most of the range and is never known.** The
   wide class (unknown deviation) keeps U85Q kp 0.85 below 2 dB and gains
   0.36 dB from the ladder in simulation; for deviation 1.0 the kp + LP
@@ -1458,6 +1461,13 @@ reference. Envelope and M2M4 estimates remain in `CN_AUTO` telemetry as
 holds the C/N-driven kp/LP policy, refuses an AFC correction and prevents
 profile narrowing; it is never converted to a low-C/N rescue request. The
 host regression checks the false LP request and the provenance gate.
+
+Review found two cache paths behind that boundary. The kp/LP ladder now resets
+and rebinds to the applied program on every channel/filter/offset/RF-table/PHY
+context change, not only on a profile-name change. It also treats a current
+UNKNOWN as an immediate kp hold and cancels pending C/N-driven steps; cached
+C/N can no longer finish a decision. AUTO gain remains independent evidence
+for the optional gain-driven LP policy.
 
 Evidence boundary: this prevents an uncalibrated control-induced loss; it is
 not a measured dBm or range gain. In an already calibrated context the active
