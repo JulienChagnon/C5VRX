@@ -7,6 +7,7 @@
   <p>
     <a href="https://twotoz.github.io/C5VRX/"><img src="https://img.shields.io/badge/Web%20Flasher-Online-1f6feb?style=flat" alt="Web Flasher" /></a>
     <a href="https://discord.gg/3YNgJRHmzD"><img src="https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&amp;logoColor=white" alt="Join the C5VRX Discord" /></a>
+    <a href="https://www.youtube.com/watch?v=Gp3xmLrn_34"><img src="https://img.shields.io/badge/YouTube-Range%20Test-FF0000?logo=youtube&amp;logoColor=white" alt="YouTube Range Test" /></a>
     <img src="https://img.shields.io/badge/firmware-C5VRX--5-success" alt="C5VRX-5" />
     <img src="https://img.shields.io/badge/chip-ESP32--C5-111111" alt="ESP32-C5" />
     <img src="https://img.shields.io/badge/RF-5.8%20GHz%20(48%20channels)-6f42c1" alt="5.8 GHz" />
@@ -78,6 +79,18 @@ it is not a demonstrated video or range improvement.
   Camera/monitor acceptance remains experimental; compare OFF on the ground.
 - **Simple menu**: band, channel, scan, video standard, calibrate, output
   level, gain, flywheel, exit.
+
+## Video
+
+Side-by-side flight range test comparing C5VRX-5 with C5VRX-4 by Louis Hitchcock:
+
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=Gp3xmLrn_34">
+    <img src="https://img.youtube.com/vi/Gp3xmLrn_34/maxresdefault.jpg" alt="C5VRX-5 Vs C5VRX-4 Range Test" width="700" />
+  </a>
+  <br>
+  <a href="https://www.youtube.com/watch?v=Gp3xmLrn_34"><strong>Watch: C5VRX-5 Vs C5VRX-4 Range Test on YouTube</strong></a>
+</p>
 
 ## Hardware
 
