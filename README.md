@@ -34,6 +34,45 @@ scoring corrections and failed experiments, is preserved in
 is host-only (its read-only firmware shadow `J` was removed 2026-10-12);
 it is not a demonstrated video or range improvement.
 
+## Experimental firmware — flight safety warning
+
+> [!WARNING]
+> **C5VRX is an experimental FPV receiver. Bugs, signal loss, automatic
+> receive-chain changes or incompatibility with your camera/goggles can cause
+> sudden loss of video or sync, even after an apparently successful test.
+> Loss of FPV video can lead to a crash, property damage or serious injury.**
+> Do not rely on C5VRX as your only means of maintaining safe control of an aircraft.
+
+- **Test every new firmware version and hardware/settings combination on the
+  ground first.** Remove propellers for bench tests. Check startup and
+  calibration, weak-signal behaviour, recovery after video loss, and your actual
+  camera/goggles. Complete calibration before takeoff.
+- **Keep disruptive controls on the ground:** calibration, scanning, channel
+  changes, menu entry/exit, DAC tests and diagnostics can interrupt or replace
+  the live picture. Do not flash firmware or run bench tests during flight.
+- **Automatic changes are experimental too.** Live filter/profile switching is
+  currently documented as enabled by default and awaiting board validation.
+  It restarts part of the receive chain and may interrupt video. Console
+  `A` disables live profile switching (report-only mode); confirm the state
+  with `T` on your build. Automatic kp/LP changes also restart the pipeline;
+  console `K` selects AUTO OFF. These settings do not establish flight safety.
+- If you proceed to flight testing, use a controlled area clear of people,
+  traffic and property, keep the aircraft close, and have a safe way to recover
+  control if video disappears. Follow applicable local rules, including visual
+  line-of-sight and observer requirements.
+- **A versioned release, a “Latest” label or passing CI is not flight
+  qualification.** Unmerged PR builds are development builds. Check the exact
+  build's documented hardware and flight-test evidence; a test of an earlier
+  build does not validate later changes.
+- Report unexpected video loss with the exact firmware version/commit, hardware,
+  settings, reproduction steps and any available logs/DVR footage. Preserve
+  evidence after an incident, and investigate on the ground before flying again.
+
+The firmware is provided under [GPL-3.0-only](LICENSE), including its warranty
+and liability provisions in sections 15–17, to the extent permitted by
+applicable law. This warning does not replace those terms or limit rights
+that cannot legally be excluded.
+
 ## What it does
 
 - **U85Q demodulator** in the TX BitScrambler: an untrained 32-phase tracker
@@ -177,6 +216,9 @@ raster if the interlaced chain does not fit. Menu entry/exit includes a
 150-ms relock gap; verify the picture on the connected monitor.
 
 ## Flashing
+
+Read the [flight safety warning](#experimental-firmware--flight-safety-warning)
+before selecting or flashing a build. Ground-test the exact build before use.
 
 - **Web flasher**: [twotoz.github.io/C5VRX](https://twotoz.github.io/C5VRX/),
   tab **C5VRX-5**, *Full firmware* when coming from another generation.
