@@ -212,7 +212,7 @@ static void snapshot(uint8_t trigger)
 
 void flightlog_snapshot_request(uint8_t trigger)
 {
-    if (s_ready && !s_snap_request) s_snap_request = trigger;
+    if (s_ready) s_snap_request = flog_snap_request_merge(s_snap_request, trigger);
 }
 
 static void logger_task(void *arg)
