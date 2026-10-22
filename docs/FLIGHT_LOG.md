@@ -126,7 +126,10 @@ recent ~7 hours are always there. The snapshot ring keeps the moments that
 went wrong longest: a new snapshot takes an empty slot, else the oldest slot
 of the lowest priority not above its own (dropout > picture drop > first
 carrier > periodic); a periodic one never replaces a dropout and is skipped
-(`snapshots_skipped` in `Y`) when every slot is more important.
+(`snapshots_skipped` in `Y`) when every slot is more important. A request is
+also dropped, and counted, when the heap has no block for the IQ copy plus
+8 KiB left free for the menu (`snapshots_no_memory`), or when the receiver
+is busy (menu, pause, startup) or its gain is settling (`snapshots_refused`).
 
 Triggers, at most one per 10 s:
 

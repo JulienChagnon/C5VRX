@@ -37,6 +37,9 @@ static uint8_t s_slot_trigger[FLOG_SNAP_SLOTS];
 static uint32_t s_slot_seq[FLOG_SNAP_SLOTS];
 static bool s_slot_used[FLOG_SNAP_SLOTS];
 static uint32_t s_snap_skipped;
+/* Requests dropped without a snapshot: too little heap, or a busy or unsettled
+ * receiver (each request is consumed, the moment is lost). */
+static uint32_t s_snap_no_memory, s_snap_refused;
 static unsigned s_block;            /* record block (0..FLOG_RECORD_BLOCKS-1) being written */
 static unsigned s_used;             /* record bytes in it */
 static bool s_block_open;
@@ -158,14 +161,16 @@ static void snapshot(uint8_t trigger)
 {
     const int victim = flog_snap_victim(s_slot_trigger, s_slot_seq, s_slot_used, FLOG_SNAP_SLOTS, trigger);
     if (victim < 0) { ++s_snap_skipped; return; }   /* every slot holds a more important moment */
-    if (s_menu_active || receiver_paused() || calibration_in_startup()) return;
-    if (heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT) < C5V4_LEVEL_SAMPLE_BYTES + 8192u)
+    if (s_menu_active || receiver_paused() || calibration_in_startup()) { ++s_snap_refused; return; }
+    if (heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT) < C5V4_LEVEL_SAMPLE_BYTES + 8192u) {
+        ++s_snap_no_memory;
         return;
+    }
     uint8_t *raw = malloc(C5V4_LEVEL_SAMPLE_BYTES);
-    if (!raw) return;
+    if (!raw) { ++s_snap_no_memory; return; }
     const uint32_t epoch = s_gain_epoch;
     const bool settled = esp_timer_get_time() - s_last_gain_write_us >= 500 && s_gain.state != DG_SETTLE;
-    if (!settled || !copy_snapshot(raw) || epoch != s_gain_epoch) { free(raw); return; }
+    if (!settled || !copy_snapshot(raw) || epoch != s_gain_epoch) { free(raw); ++s_snap_refused; return; }
     int dc[2] = {0, 0}, off[2] = {0, 0};
     uint32_t writes;
     uint8_t sph;
@@ -489,9 +494,11 @@ void flightlog_console(char key)
     const int64_t now = esp_timer_get_time();
     if (key == 'Y') {
         printf("FLOG status ok=1 format=%u session=%lu block=%u used=%u seq=%lu blocks_used=%u blocks_written=%lu "
-               "snapshots=%lu snapshot_seq=%lu snapshots_skipped=%lu queue=%u dropped=%lu flash_errors=%lu\n", FLOG_FORMAT,
+               "snapshots=%lu snapshot_seq=%lu snapshots_skipped=%lu snapshots_no_memory=%lu snapshots_refused=%lu "
+               "queue=%u dropped=%lu flash_errors=%lu\n", FLOG_FORMAT,
                (unsigned long)s_session, s_block, s_used, (unsigned long)s_seq, used_blocks(),
-               (unsigned long)s_blocks_written, (unsigned long)s_snapshots, (unsigned long)s_snap_seq, (unsigned long)s_snap_skipped, s_queue_len,
+               (unsigned long)s_blocks_written, (unsigned long)s_snapshots, (unsigned long)s_snap_seq, (unsigned long)s_snap_skipped,
+               (unsigned long)s_snap_no_memory, (unsigned long)s_snap_refused, s_queue_len,
                (unsigned long)s_dropped, (unsigned long)s_flash_errors);
     } else if (key == 'W') {
         dump();
