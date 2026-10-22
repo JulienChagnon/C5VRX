@@ -402,11 +402,10 @@ Firmware (fresh settings default to AUTO kp+LP; a saved OFF is respected):
   curve per deviation class (section 14).
   - It takes one level per step: after 1 s of agreement and 0.5 s apart
     toward a calmer kp, after 0.3 s and 0.2 s apart toward a sharper one.
-  - A noise-like window (C/N estimate unknown, coherence at plain noise) is
-    the floor and targets the curve's 0 dB point. A collapsing carrier
-    therefore climbs back to the lock-safe kp (deviation 0.69: 0.50 -> 0.70
-    in 0.9 s) instead of freezing deep. Only unusable windows (retune, gain
-    write, menu) hold the level.
+  - A noise-like or otherwise unavailable input-referred C/N is UNKNOWN and
+    holds kp; it is not a synthetic 0 dB point. Context changes clear cached
+    C/N and pending C/N-driven kp/LP decisions. The independent AUTO-gain
+    policy may still request LP without usable C/N.
   - `test/test_kp_ladder.c` checks this, including no hopping under +-3 dB
     of estimate noise.
 - `transport_kp_tick` applies a complete, verified LUT16 target through a
@@ -715,6 +714,28 @@ filter itself not reaching 10 MHz costs the ladder ~0.65 dB at deviation
 **Ladder evidence on the board.** FIELD_DIAG records carry `kp_x100` and
 `lp`; `tools/field_diag_compare.py` reports `edge_s`, `edge_lp_pct`,
 `edge_kp_median` (C/N below 6 dB) and `strong_kp_median` (>= 12 dB).
+
+## 20. C/N provenance: envelope dB is not RF dB (2026-10-21)
+
+C/N-AUTO's power estimate is input-referred because it subtracts a measured
+thermal-noise value for the active channel/filter/gain context. The older
+envelope statistic is not: ordinary amplitude variation also increases its
+variance. With no noise map, firmware still returned that envelope number to
+AFC, profile selection and the kp/LP ladder.
+
+Issue #222's noiseless two-level example (power 13/61) gives an envelope ratio
+of 238, which the 12 MHz table maps to about 3.1 dB C/N and therefore an LP
+request for a normal-deviation profile. This is a deterministic ambiguity,
+not a simulated RF gain. The actuator path now accepts only C/N-AUTO power
+with a noise reference; M2M4/envelope stay visible as diagnostic estimates.
+Without a reference, C/N is UNKNOWN and the C/N-driven policy holds. The
+ladder also cancels cached pending C/N steps on UNKNOWN and clears its C/N
+state across channel/filter/offset/RF-table/PHY context changes.
+
+This closes a way for firmware to make a wrong dB-dependent choice, but does
+not establish a measured sensitivity improvement. Board validation should
+count suppressed decisions on a VTX-on first boot and compare a calibrated
+A/B/A run; do not report the 3.1 dB counterexample as recovered range.
 
 ## Not firmware levers
 

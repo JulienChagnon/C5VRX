@@ -1,6 +1,8 @@
 /* C5VRX-5 by Twotoz and the C5VRX contributors: carrier-to-noise models.
- * Runtime decisions use cn_estimate_env_x10 below. The historical model
- * is retained for comparison tests: it uses phase coherence (share of
+ * These correlation/envelope models are diagnostics and simulation
+ * references. Runtime RF decisions use the input-referred power result in
+ * cn_auto.h; an uncalibrated envelope must not actuate AFC/profile/kp/LP.
+ * The historical model uses phase coherence (share of
  * adjacent pairs with power >= 8 and a phase step within 45 degrees).
  *
  * The same coherence means a different C/N per analog filter: 4-bit
@@ -14,7 +16,7 @@
  * 4092-byte windows, median over 3 seeds; reproduce with
  * research/afc_bias.py --coherence). C/N is per 20 MHz channel, as in
  * research/README.md (usable-picture threshold ~1-5 dB). A model
- * estimate for decisions and diagnostics, not a calibrated RF measurement. */
+ * estimate for diagnostics, not a calibrated RF measurement. */
 #pragma once
 #include <stdint.h>
 

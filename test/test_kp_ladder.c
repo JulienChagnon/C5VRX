@@ -101,19 +101,14 @@ int main(void)
     }
     snprintf(name, sizeof(name), "C/N 10 dB +-3 dB noise for 60 s: level %u..%u around %u", lo, hi, mid);
     check(name, hi - lo <= 2);
-    /* Collapse: deep (kp 0.50 at 6 dB, deviation 0.69), then the estimate
-     * goes noise-like. The ladder must climb back to the floor point (0.70),
-     * not freeze at 0.50. */
+    /* Missing input-referred evidence is not a synthetic 0 dB sample. */
     kp_ladder_reset(&l);
     (void)run(&l, 60, 0, 69, 20, &t, NULL);
-    int64_t t0 = t, back = -1;
-    for (int k = 0; k < 100; ++k, t += TICK_US) {     /* 5 s */
-        uint8_t v = kp_ladder_update(&l, CN_UNKNOWN_X10, true, 69, t);
-        if (back < 0 && kp_level_x100[v] == 70) back = t - t0;
-    }
-    snprintf(name, sizeof(name), "collapse to noise-like: back to kp 0.%02u after %.2f s", kp_level_x100[l.level],
-             back / 1e6);
-    check(name, kp_level_x100[l.level] == 70 && back >= 0 && back <= 1500000);
+    uint8_t unknown_held = l.level;
+    for (int k = 0; k < 100; ++k, t += TICK_US)
+        (void)kp_ladder_update(&l, CN_UNKNOWN_X10, true, 69, t);
+    check("unknown C/N holds kp and cancels its pending direction",
+          l.level == unknown_held && l.pending_dir == 0);
     /* Unusable windows (retune, gain write, menu) hold the level. */
     kp_ladder_reset(&l);
     (void)run(&l, 60, 0, 100, 20, &t, NULL);
@@ -185,7 +180,7 @@ int main(void)
         for (int k = 0; k < 400; ++k, tj += TICK_US) (void)kp_ladder_update_lp(&j, 50, true, 140, tj, true);
         check("joint, wide VTX at 5 dB: LP kp 0.85", j.lp && kp_level_x100[j.level] == 85);
         for (int k = 0; k < 400; ++k, tj += TICK_US) (void)kp_ladder_update_lp(&j, CN_UNKNOWN_X10, true, 140, tj, true);
-        check("joint, wide VTX at the noise floor: back to U85Q", !j.lp);
+        check("joint, unknown C/N holds the current program", j.lp);
         /* Not allowed: never LP, and leaves LP at once when disallowed. */
         kp_ladder_reset(&j);
         for (int k = 0; k < 400; ++k, tj += TICK_US) (void)kp_ladder_update_lp(&j, 40, true, 100, tj, true);
@@ -399,6 +394,24 @@ int main(void)
         for (int k = 0; k < 400; ++k, tc += TICK_US)
             (void)kp_ladder_update_evidence(&c, CN_UNKNOWN_X10, true, true, 100, tc, true);
         check("C/N rescue: an unknown C/N holds U85Q too (no phantom LP with the VTX off)", !c.lp);
+        /* control.c resets and rebinds the ladder on every afc_context()
+         * change, even when the profile stays DEFAULT. Model a low-C/N old
+         * channel followed by a new channel with no noise map: its UNKNOWN
+         * windows must not finish the old channel's pending LP entry. */
+        kp_ladder_reset(&c);
+        c.lp_by_cn = true;
+        for (int k = 0; k < 5; ++k, tc += TICK_US)   /* 0.20 s < the 0.30 s entry hold */
+            (void)kp_ladder_update_lp(&c, 30, true, 100, tc, true);
+        check("C/N rescue: old context has cached C/N and a pending LP entry",
+              c.cn_init && c.lp_pending == 1 && !c.lp);
+        kp_ladder_reset(&c);                 /* control.c context rebind */
+        c.level = 0;                         /* currently applied U85Q level */
+        c.lp = false;                        /* currently applied program */
+        c.lp_by_cn = true;
+        for (int k = 0; k < 40; ++k, tc += TICK_US)
+            (void)kp_ladder_update_evidence(&c, CN_UNKNOWN_X10, true, true, 100, tc, true);
+        check("C/N rescue: new uncalibrated context cannot inherit or finish old LP evidence",
+              !c.cn_init && c.lp_pending == -1 && c.level == 0 && !c.lp);
         check("C/N rescue table: narrow 10 MHz enters later, wide 16 MHz earlier",
               kp_ladder_want_lp_cn(KP_CLASS_NORMAL, 40, false, true, false) == false &&
               kp_ladder_want_lp_cn(KP_CLASS_NORMAL, 40, false, false, false) == true &&

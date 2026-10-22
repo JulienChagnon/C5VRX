@@ -23,6 +23,10 @@
  * - A second estimate from the second and fourth moments (M2M4) checks it.
  *   Disagreement lowers the confidence; it never teaches an offset.
  * - The output carries confidence and source. Unknown is never low.
+ * - Only an input-referred power result backed by a noise map may drive
+ *   AFC/profile/kp/LP decisions. M2M4 and the envelope model remain useful
+ *   diagnostics, but amplitude fading can make either look like thermal
+ *   noise without changing the RF C/N (issue #222).
  *
  * Units: moments in cells^2 / cells^4; C/N in 0.1 dB; noise bandwidth in
  * kHz. Pure functions, host test test/test_cn_auto.c. */
@@ -71,6 +75,20 @@ typedef struct {
     uint8_t confidence, source, flags;
     float noise_cells2;          /* the noise used */
 } cna_reading_t;
+
+/* The control plane needs input-referred C/N, not merely a plausible number.
+ * In particular CNA_SRC_ENVELOPE can read a strong amplitude-varying carrier
+ * as a few dB C/N and select LP or an AFC gate. Keep non-power estimates in
+ * telemetry until a per-context thermal-noise reference exists. */
+static inline int cna_control_x10(const cna_reading_t *r)
+{
+    if (!r || r->x10 == CNA_UNKNOWN_X10 || r->confidence == CNA_CONF_NONE ||
+        (r->source & CNA_SRC_DISTORTED) ||
+        (r->source & ~CNA_SRC_DISTORTED) != CNA_SRC_POWER ||
+        (r->flags & (CNA_F_CLIPPED | CNA_F_UNSETTLED | CNA_F_NO_CARRIER)))
+        return CNA_UNKNOWN_X10;
+    return r->x10;
+}
 
 static inline float cna_db(float r) { return 10.0f * log10f(r > 1e-9f ? r : 1e-9f); }
 

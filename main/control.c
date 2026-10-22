@@ -410,6 +410,7 @@ static void control_task(void *arg)
     int64_t next_control_us = esp_timer_get_time();
     int seen_profile = profile_active();
     uint32_t seen_phy = phy_generation(), seen_control = s_control_epoch;
+    uint32_t seen_ladder_context = afc_context();
     uint32_t seen_restart_errors = transport_restart_errors();
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(2));
@@ -558,7 +559,7 @@ static void control_task(void *arg)
         if (!s_afc_locked && valid && !s_menu_active &&
             phy_try_actuator(phy_generation())) {
             int32_t step = 0;
-            const bool strong = receiver_obs_cn_x10() >= AFC_MIN_CN_X10;   /* envelope C/N model */
+            const bool strong = receiver_obs_cn_x10() >= AFC_MIN_CN_X10;   /* noise-referenced power C/N */
             if (afc2_ctrl_decide(&afc, gain_epoch == s_gain_epoch && strong, &step)) {
                 rf_set_offset_khz(rf_offset_khz() + (int)step);
                 s_last_gain_write_us = esp_timer_get_time();   /* restore re-forces gain */
@@ -602,17 +603,23 @@ static void control_task(void *arg)
         /* The ladder owns kp/LP on every profile (one U85Q topology; a
          * profile only sets the filter and the start level). It is inactive
          * only while the verified level is unknown (fault, pending restart).
-         * A profile change restarts it from the level that now runs. */
+         * A profile or receiver context change restarts it from the level
+         * that now runs, so C/N never survives a channel/filter/offset/PHY
+         * change into a context without its own noise reference. */
         const bool ladder_active = transport_kp_level() >= 0;
         const int profile = profile_active();
-        if (ladder_active && (!ladder_was_active || profile != seen_profile)) {   /* start from what runs */
+        if (ladder_active && (!ladder_was_active || profile != seen_profile ||
+                              ctx != seen_ladder_context)) {   /* start from what runs */
             kp_ladder_reset(&s_kp);
             s_kp.level = (uint8_t)transport_kp_level();
             s_kp.lp = transport_lp();
             s_auto_candidate.candidate = false;
         }
         ladder_was_active = ladder_active;
-        if (ladder_active) seen_profile = profile;
+        if (ladder_active) {
+            seen_profile = profile;
+            seen_ladder_context = ctx;
+        }
         if (s_kp_auto && !s_menu_active && !ladder_active) {
             s_auto_candidate.candidate = false;
         } else if (s_kp_auto && !s_menu_active) {
