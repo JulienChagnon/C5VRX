@@ -172,9 +172,66 @@ static void restore_lock(void)
     if (s_post_gain_hook) s_post_gain_hook(s_gain);
 }
 
+/* The reconstructed table against the PHY's AGC memory (T GAIN_TABLE_HW).
+ * The window is mapped as vendor apb_get_mem() does it: MEM_CONF and the
+ * SYSCON test config cleared, every modem clock forced on, the AGC memory
+ * selected, then all restored; 64 words per critical section. */
+#define LPCON_MEM_CONF    0x600af02cu
+#define LPCON_APB_MEM_SEL 0x600af038u
+#define APB_SEL_AGC       4u
+#define SYSCON_TEST_CONF  0x600a9c00u
+#define SYSCON_CLK_CONF1  0x600a9c14u
+#define APB_MEM_WINDOW    0x600ae000u
+#define AGC_CHECK_WORDS   ((ARC_5G_GAIN_MAX + 1u) * ARC_AGC_ENTRY_WORDS)
+static unsigned s_hw_checked, s_hw_match;
+static int s_hw_first_bad = -1;
+static portMUX_TYPE s_agc_window_lock = portMUX_INITIALIZER_UNLOCKED;
+
+static void read_agc_memory(uint32_t *words, unsigned n)
+{
+    for (unsigned first = 0; first < n; first += 64u) {
+        const unsigned count = n - first < 64u ? n - first : 64u;
+        taskENTER_CRITICAL(&s_agc_window_lock);
+        const uint32_t mem_conf = REG32(LPCON_MEM_CONF), test_conf = REG32(SYSCON_TEST_CONF);
+        const uint32_t clk_conf1 = REG32(SYSCON_CLK_CONF1), sel = REG32(LPCON_APB_MEM_SEL);
+        REG32(LPCON_MEM_CONF) = 0;
+        REG32(SYSCON_TEST_CONF) = 0;
+        REG32(SYSCON_CLK_CONF1) = UINT32_MAX;
+        REG32(LPCON_APB_MEM_SEL) = APB_SEL_AGC;
+        __asm__ __volatile__("fence iorw, iorw" ::: "memory");
+        for (unsigned k = 0; k < count; ++k) words[first + k] = REG32(APB_MEM_WINDOW + 4u * (first + k));
+        REG32(LPCON_APB_MEM_SEL) = sel;
+        REG32(LPCON_MEM_CONF) = mem_conf;
+        REG32(SYSCON_TEST_CONF) = test_conf;
+        REG32(SYSCON_CLK_CONF1) = clk_conf1;
+        __asm__ __volatile__("fence iorw, iorw" ::: "memory");
+        taskEXIT_CRITICAL(&s_agc_window_lock);
+    }
+}
+
+static void check_table_against_hw(void)
+{
+    static uint32_t words[AGC_CHECK_WORDS];
+    if (!s_table.band5) { s_hw_checked = 0; return; }   /* the AGC layout is only confirmed for 5 GHz */
+    read_agc_memory(words, AGC_CHECK_WORDS);
+    s_hw_checked = s_table.max_index + 1u;
+    s_hw_match = arc_gain_table_check_agc(&s_table, words, AGC_CHECK_WORDS, &s_hw_first_bad);
+    if (s_hw_match != s_hw_checked)
+        printf("GAIN_TABLE_HW MISMATCH rows=%u match=%u first_bad=G%d (the reconstructed gain table differs from "
+               "the PHY's AGC memory: check the esp-phy-lib version)\n", s_hw_checked, s_hw_match, s_hw_first_bad);
+}
+
+void rf_gain_table_hw(unsigned *checked, unsigned *match, int *first_bad)
+{
+    *checked = s_hw_checked;
+    *match = s_hw_match;
+    *first_bad = s_hw_first_bad;
+}
+
 static void capture_table(void)
 {
     arc_phy_capture_gain_table(&s_table);
+    check_table_against_hw();
     ++s_table_generation;
 }
 

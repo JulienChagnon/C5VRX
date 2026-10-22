@@ -878,6 +878,13 @@ void receiver_print(void)
     }
     printf("GAIN_TABLE measured_rows=%u g83_g72_db=%.2f (top rows from the receiver-noise map; the rest the model, joined)\n",
            s_gain_rows_measured, (s_gain.model_db_q8[s_gain.table.max_index] - s_gain.model_db_q8[72]) / 256.0);
+    {
+        unsigned checked, match;
+        int first_bad;
+        rf_gain_table_hw(&checked, &match, &first_bad);
+        printf("GAIN_TABLE_HW checked=%u match=%u first_bad=%d (reconstructed RF/BB/fine tuples against the PHY's AGC "
+               "memory at boot; checked=0: not checked)\n", checked, match, first_bad);
+    }
     printf("GAIN_REFUSED generation=%lu busy=%lu control=%lu inactive=%lu actuator_lock=%lu rf_set_gain=%lu (writes the core wanted but the PHY did not take, by reason)\n",
            (unsigned long)s_refuse[0], (unsigned long)s_refuse[1], (unsigned long)s_refuse[2], (unsigned long)s_refuse[3],
            (unsigned long)s_refuse[4], (unsigned long)s_refuse[5]);

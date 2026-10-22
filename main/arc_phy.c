@@ -128,3 +128,29 @@ uint8_t arc_gain_highest_rf_stage_start(const arc_gain_table_t *table)
         start += table->spans[i];
     return start <= table->max_index ? (uint8_t)start : table->max_index;
 }
+
+void arc_gain_entry_from_agc(const uint32_t w[ARC_AGC_ENTRY_WORDS], uint16_t *rf_code,
+                             uint8_t *bb_code, uint8_t *fine_code)
+{
+    *rf_code = (uint16_t)((w[2] << 5) | (w[1] >> 27));
+    *bb_code = (uint8_t)((w[1] >> 17) & 0x7fu);
+    *fine_code = (uint8_t)((w[1] >> 24) & 7u);
+}
+
+unsigned arc_gain_table_check_agc(const arc_gain_table_t *table, const uint32_t *words,
+                                  unsigned n_words, int *first_bad)
+{
+    unsigned match = 0u;
+    *first_bad = -1;
+    if (!table || !words) return 0u;
+    for (unsigned g = 0; g <= table->max_index; ++g) {
+        arc_gain_tuple_t t;
+        uint16_t rf;
+        uint8_t bb, fine;
+        const bool have = (g + 1u) * ARC_AGC_ENTRY_WORDS <= n_words && arc_gain_tuple_decode(table, (uint8_t)g, &t);
+        if (have) arc_gain_entry_from_agc(&words[g * ARC_AGC_ENTRY_WORDS], &rf, &bb, &fine);
+        if (have && rf == t.rf_code && bb == t.bb_code && fine == t.fine_code) { ++match; continue; }
+        if (*first_bad < 0) *first_bad = (int)g;
+    }
+    return match;
+}
