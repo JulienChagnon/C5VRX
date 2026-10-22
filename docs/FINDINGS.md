@@ -1474,3 +1474,36 @@ not a measured dBm or range gain. In an already calibrated context the active
 power path is unchanged. A VTX-on first boot without a stored noise map now
 keeps conservative defaults until a quiet/no-carrier measurement exists;
 that boot case and the number of suppressed decisions need board observation.
+
+
+## Output telemetry V1 for C5MAP evidence (2026-10-22)
+
+Issue #233 cannot be answered from the historical `VIDEO_Q` field alone. That
+field is evidence from the AFC video observer and remains useful, but it does
+not identify the verified program driving the output or distinguish native
+sync from repaired tips. V1 therefore appends a task-side output-observer
+rollup to each flight-log second: exact verified U85Q/U85Q-LP program family
+and output level, observer coverage, native H/V trust, native H lines,
+repaired/suppressed tips, the longest continuously observed native-H outage,
+and observer gaps. A fresh observed outage lasting 100 ms also records an
+event and requests a high-priority IQ snapshot.
+
+The real-time boundary is unchanged. Existing ISR/RMT counters are sampled by
+the 2-ms control task; no logging, allocation or new calculation was added to
+the line-rate path. Stale/missing observer data is recorded as `UNKNOWN` and
+breaks, rather than extends, an unlock interval. Old 34/38/42/50-byte records
+remain readable and decode the new fields as unknown.
+
+Evidence boundary: these are receiver output-observer and repair metrics, not
+a claim that any particular monitor or goggles stayed locked, and not a SINAD
+measurement. Host format/rollup/browser/Python tests validate semantics and
+compatibility. Board CPU margin, real RF correlation, monitor lock and a
+reference SINAD path remain required follow-up work before C5MAP can optimize
+on these observations.
+
+PR #241 review follow-up: a busy PHY skips observer servicing, so cached
+freshness cannot qualify that tick. Busy/fault ticks now explicitly mark the
+observation unavailable, break unlock continuity and clear the summary's
+current observer-validity flags while retaining cumulative-counter deltas.
+Host regressions cover cached locked/unlocked states and resumption without
+recounting counters. This does not change the output guard or ISR behavior.

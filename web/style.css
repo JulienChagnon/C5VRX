@@ -238,4 +238,5 @@ summary { cursor: pointer; color: #b0b7c1; min-height: 32px; }
 .flight-log .lg.dc::before { background: #e08a1e; }
 .flight-log .lg.temp::before { background: #9a6ad6; }
 .flight-log .lg.level::before { background: #c8463c; }
+.flight-log .lg.sync::before { background: #00a6a6; }
 .flight-log .lg.drop::before { background: rgba(220, 60, 60, .5); }

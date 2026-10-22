@@ -64,7 +64,12 @@ int main(void)
                        .dropout = 3, .gain_min = 70, .gain_mean = 75, .gain_max = 83, .clip_q = 9, .gain_writes = 255,
                        .overloads = 2, .dc_i = -20, .dc_q = 13, .off_i = -96, .off_q = 96, .servo_writes = 4,
                        .afc_offset_khz = -1250, .afc_residual_khz = 310, .afc_corrections = 1, .demod = 0x2d,
-                       .sphase = 4, .temp_c = -12, .flags = 0x0a05};
+                       .sphase = 4, .temp_c = -12, .flags = 0x0a05,
+                       .output_flags = FLOG_OUT_DEMOD_VERIFIED | FLOG_OUT_OBSERVER_FRESH | FLOG_OUT_H_TRUSTED,
+                       .demod_id = FLOG_DEMOD_U85Q_LP_1A09F5C092E8, .output_standard = 2, .output_level = 6,
+                       .output_samples = 500, .output_fresh_samples = 480, .native_h_lock_pct = 97,
+                       .native_v_lock_pct = 95, .native_h_lines = 15625, .repaired_tips = 12,
+                       .suppressed_tips = 3, .longest_h_unlock_ms = 106, .output_observer_gaps = 2};
     unsigned at = FLOG_BLOCK_HEAD;
     b[at++] = FLOG_T_SECOND; b[at++] = FLOG_SECOND_LEN;
     flog_pack_second(&s, b + at); at += FLOG_SECOND_LEN;
@@ -87,13 +92,24 @@ int main(void)
     flog_pack_second(&u, again);   /* compare the packed bytes, not struct padding */
     check("summary round trip, every field", unpacked && !memcmp(again, b + FLOG_BLOCK_HEAD + 2, FLOG_SECOND_LEN) &&
           u.t_s == 77u && u.vq_snr_x10 == -45 && u.dc_i == -20 && u.off_q == 96 && u.afc_offset_khz == -1250 &&
-          u.temp_c == -12 && u.flags == 0x0a05u);
+          u.temp_c == -12 && u.flags == 0x0a05u && u.demod_id == FLOG_DEMOD_U85Q_LP_1A09F5C092E8 &&
+          u.output_level == 6u && u.output_samples == 500u && u.output_fresh_samples == 480u &&
+          u.native_h_lock_pct == 97u && u.native_h_lines == 15625u && u.longest_h_unlock_ms == 106u);
     check("a short summary is refused", !flog_unpack_second(b + FLOG_BLOCK_HEAD + 2, FLOG_SECOND_LEN_V1 - 1u, &u));
     {   /* format-1 records (34 bytes) still read; the level is unknown */
         flog_second_t old;
         check("a 34-byte summary still reads, level unknown",
               flog_unpack_second(b + FLOG_BLOCK_HEAD + 2, FLOG_SECOND_LEN_V1, &old) &&
-              old.level_dbm_x10 == FLOG_LEVEL_UNKNOWN && old.level_flags == 0);
+              old.level_dbm_x10 == FLOG_LEVEL_UNKNOWN && old.level_flags == 0 &&
+              old.demod_id == FLOG_DEMOD_UNKNOWN && old.output_level == 0xffu &&
+              old.native_h_lock_pct == 0xffu && old.native_v_lock_pct == 0xffu);
+    }
+    {   /* the immediately previous 50-byte records remain valid too */
+        flog_second_t old;
+        check("a 50-byte summary keeps output telemetry unknown",
+              flog_unpack_second(b + FLOG_BLOCK_HEAD + 2, 50u, &old) &&
+              old.demod_id == FLOG_DEMOD_UNKNOWN && old.output_level == 0xffu &&
+              old.output_samples == 0u && old.native_h_lock_pct == 0xffu);
     }
 
     /* A record that would cross the CRC word ends the walk. */
@@ -105,10 +121,14 @@ int main(void)
 
     static uint8_t iq[FLOG_SNAP_BYTES];
     for (unsigned k = 0; k < sizeof(iq); ++k) iq[k] = (uint8_t)(k * 7u);
-    const flog_snap_t sn = {.trigger = FLOG_SNAP_DROPOUT, .gain = 83, .freq_mhz = 5865, .session = 5, .seq = 9, .t_ms = 1};
+    const flog_snap_t sn = {.trigger = FLOG_SNAP_DROPOUT, .gain = 83, .freq_mhz = 5865, .session = 5, .seq = 9, .t_ms = 1,
+                            .demod_id = FLOG_DEMOD_U85Q_1A09F5C092E8, .output_level = 4,
+                            .output_flags = FLOG_OUT_DEMOD_VERIFIED | FLOG_OUT_H_TRUSTED};
     uint8_t sh[FLOG_SNAP_HEAD];
     flog_snap_head(sh, &sn, iq);
     check("snapshot head and IQ verify", flog_snap_ok(sh, iq));
+    check("snapshot binds verified output identity", sh[38] == FLOG_DEMOD_U85Q_1A09F5C092E8 &&
+          sh[39] == 4u && sh[40] == (FLOG_OUT_DEMOD_VERIFIED | FLOG_OUT_H_TRUSTED));
     iq[4000] ^= 0x10;
     check("a changed IQ byte is caught", !flog_snap_ok(sh, iq));
 
@@ -129,7 +149,8 @@ int main(void)
         check("an edge snapshot ranks with a dropout, above a picture drop",
               flog_snap_priority(FLOG_SNAP_EDGE) == flog_snap_priority(FLOG_SNAP_DROPOUT) &&
               flog_snap_priority(FLOG_SNAP_EDGE) > flog_snap_priority(FLOG_SNAP_VQ_DROP) &&
-              flog_snap_priority(FLOG_SNAP_RECOVER) == flog_snap_priority(FLOG_SNAP_DROPOUT));
+              flog_snap_priority(FLOG_SNAP_RECOVER) == flog_snap_priority(FLOG_SNAP_DROPOUT) &&
+              flog_snap_priority(FLOG_SNAP_OUTPUT_UNLOCK) == flog_snap_priority(FLOG_SNAP_DROPOUT));
     }
     printf("%u/%u flight log checks passed\n", s_run - s_fail, s_run);
     return s_fail != 0;

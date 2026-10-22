@@ -28,6 +28,7 @@
 #include "hal/parlio_ll.h"
 #include "kp_tables.h"
 #include "snapshot.h"
+#include "output_telemetry.h"
 #include "control_window.h"
 #include "phase8_gain_lut.h"
 #include "esp_cpu.h"
@@ -879,6 +880,83 @@ typedef struct {
     uint32_t starts,stops,failures;
 } sync_live_owner_t;
 static sync_live_owner_t *s_live_owner;
+static output_telem_acc_t s_output_telem;
+static bool s_output_observation_available;
+
+void transport_flog_identity(uint8_t *demod, uint8_t *output_level, bool *flag_format)
+{
+    const bool verified = s_started && s_tx_enabled && s_bs_enabled && s_have_verified && s_lut_known &&
+                          !s_transport_fault;
+    if (demod) *demod = verified ? (s_verified_lp ? FLOG_DEMOD_U85Q_LP_1A09F5C092E8 :
+                                                    FLOG_DEMOD_U85Q_1A09F5C092E8) : FLOG_DEMOD_UNKNOWN;
+    if (output_level) *output_level = verified ? (uint8_t)s_verified_output : 0xffu;
+    if (flag_format) *flag_format = verified && s_verified_flag;
+}
+
+/* Existing ISR/RMT counters only: one bounded task-side rollup sample per
+ * 2-ms owner tick. Missing coverage terminates an unlock run as UNKNOWN. */
+static void transport_output_telem_sample(bool observation_available)
+{
+    s_output_observation_available = observation_available;
+    slo_status_t status;
+    sync_live_output_status(&status);
+    const output_telem_sample_t sample = {
+        .repaired = status.repaired, .suppressed = status.suppressed,
+        .camera_lines = status.camera_lines, .observer_gaps = status.observer_gaps,
+        .standard = status.standard, .active = status.active,
+        .observer_fresh = status.observer_fresh, .camera_present = status.camera_present,
+        .h_trusted = status.h_trusted, .v_trusted = status.v_trusted,
+    };
+    const uint32_t gaps_before = s_output_telem.observer_gaps;
+    const bool unlock = output_telem_add(&s_output_telem, &sample, (uint32_t)(esp_timer_get_time() / 1000),
+                                         observation_available);
+    const uint32_t new_gaps = s_output_telem.observer_gaps - gaps_before;
+    uint8_t demod, level;
+    transport_flog_identity(&demod, &level, NULL);
+    const uint8_t state = (uint8_t)((status.observer_fresh ? 1u : 0u) | (status.h_trusted ? 2u : 0u) |
+                                    (status.v_trusted ? 4u : 0u) | (status.camera_present ? 8u : 0u));
+    if (new_gaps) {
+        const uint8_t e[4] = {flog_sat8(new_gaps), demod, status.standard, state};
+        flightlog_event(FLOG_E_OUTPUT_GAP, e, sizeof(e));
+    }
+    if (unlock) {
+        const uint8_t e[4] = {demod, status.standard, state, level};
+        flightlog_event(FLOG_E_OUTPUT_UNLOCK, e, sizeof(e));
+        flightlog_snapshot_request(FLOG_SNAP_OUTPUT_UNLOCK);
+    }
+}
+
+void transport_flog_output(transport_flog_output_t *out)
+{
+    if (!out) return;
+    slo_status_t status;
+    sync_live_output_status(&status);
+    if (!s_output_observation_available) {
+        status.observer_fresh = status.h_trusted = status.v_trusted = status.camera_present = false;
+    }
+    output_telem_roll_t roll;
+    output_telem_roll(&s_output_telem, (uint32_t)(esp_timer_get_time() / 1000), &roll);
+    bool flag_format;
+    transport_flog_identity(&out->demod, &out->output_level, &flag_format);
+    out->flags = (uint8_t)((out->demod ? FLOG_OUT_DEMOD_VERIFIED : 0u) |
+                           (transport_sync_flywheel_enabled() ? FLOG_OUT_FLYWHEEL_REQUESTED : 0u) |
+                           (status.active ? FLOG_OUT_FLYWHEEL_ACTIVE : 0u) |
+                           (status.observer_fresh ? FLOG_OUT_OBSERVER_FRESH : 0u) |
+                           (status.h_trusted ? FLOG_OUT_H_TRUSTED : 0u) |
+                           (status.v_trusted ? FLOG_OUT_V_TRUSTED : 0u) |
+                           (status.camera_present ? FLOG_OUT_CAMERA_PRESENT : 0u) |
+                           (flag_format ? FLOG_OUT_FLAG_FORMAT : 0u));
+    out->standard = roll.standard ? roll.standard : status.standard;
+    out->samples = output_telem_sat16(roll.samples);
+    out->fresh_samples = output_telem_sat16(roll.fresh_samples);
+    out->h_lock_pct = output_telem_pct(roll.h_locked_samples, roll.fresh_samples);
+    out->v_lock_pct = output_telem_pct(roll.v_locked_samples, roll.fresh_samples);
+    out->native_h_lines = output_telem_sat16(roll.native_h_lines);
+    out->repaired_tips = output_telem_sat16(roll.repaired);
+    out->suppressed_tips = output_telem_sat16(roll.suppressed);
+    out->longest_h_unlock_ms = output_telem_sat16(roll.longest_unlock_ms);
+    out->observer_gaps = flog_sat8(roll.observer_gaps);
+}
 
 static bool IRAM_ATTR transport_sync_live_valid(uint32_t generation)
 {
@@ -1010,7 +1088,8 @@ void transport_sync_live_tick(void)
         } else if(!s_flywheel_boot) printf("SYNC_FLYWHEEL requested=0 boot=saved_off\n");
     }
     sync_live_owner_t *s=s_live_owner;
-    if(!s || s->fault || !phy_try_actuator(phy_generation()))return;
+    if(!s || s->fault){transport_output_telem_sample(false);return;}
+    if(!phy_try_actuator(phy_generation())){transport_output_telem_sample(false);return;}
     bool eligible=s->requested && !s_sync_live_hold && !calibration_in_startup() && !receiver_paused() &&
         !s_menu_active && !s_scan_active && s_started && s_have_verified && s_lut_known && !s_transport_fault;
     bool active=sync_output_live_active();
@@ -1066,6 +1145,7 @@ void transport_sync_live_tick(void)
     }
     sync_live_output_phase(0u);
     phy_end_actuator();
+    transport_output_telem_sample(true);
 }
 
 void transport_sync_live_print(void)

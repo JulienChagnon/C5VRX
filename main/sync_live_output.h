@@ -31,6 +31,7 @@ typedef struct {
      * spin, the spin before tips a native pulse then suppressed, clamps. */
     uint32_t isr_calls,max_isr_cycles;
     uint64_t isr_cycles,wait_cycles,suppressed_wait_cycles,hold_cycles;
+    uint8_t standard; /* Actual guard grid: 1 NTSC, 2 PAL. */
     bool observer_fresh;
     bool active,guard_yield,camera_present,h_trusted,v_trusted;
 } slo_status_t;

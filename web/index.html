@@ -335,7 +335,7 @@
 
           <div class="flight-log" id="flightLogPanel">
             <h2>Flight log</h2>
-            <p class="hint">The receiver records every session by itself: picture quality, gain, DC, temperature, events and raw IQ at the worst moments (about 7 hours, oldest overwritten first). Read it after a flight; the receiver keeps running while it is read.</p>
+            <p class="hint">The receiver records every session by itself: picture quality, verified output identity, native sync coverage, gain, DC, temperature, events and raw IQ at the worst moments (about 4 hours, oldest overwritten first). Read it after a flight; the receiver keeps running while it is read.</p>
             <div class="command-buttons">
               <button type="button" class="action primary" id="btnReadFlightLog" disabled>Read flight log</button>
               <button type="button" class="action" id="btnDownloadFlightLog" disabled>Download .c5log</button>
@@ -345,12 +345,12 @@
             <p id="flightLogStatus" class="hint" role="status"></p>
             <div class="flight-log-table-wrap">
               <table id="flightLogSessions" class="flight-log-table" hidden>
-                <thead><tr><th>Session</th><th>Length</th><th>Picture</th><th>SNR median / worst</th><th>Signal median / weakest with picture</th><th>Dropouts</th><th>Worst DC</th><th>Max temp</th><th>Deviation</th><th>Track / edge / recover</th><th>Main impairment</th><th>Reset</th><th>Firmware</th></tr></thead>
+                <thead><tr><th>Session</th><th>Length</th><th>Picture</th><th>SNR median / worst</th><th>Signal median / weakest with picture</th><th>Verified demod / level</th><th>Native H lock / observer coverage</th><th>Repairs / longest H unlock</th><th>Dropouts</th><th>Worst DC</th><th>Max temp</th><th>Deviation</th><th>Track / edge / recover</th><th>Main impairment</th><th>Reset</th><th>Firmware</th></tr></thead>
                 <tbody></tbody>
               </table>
             </div>
             <canvas id="flightLogChart" class="flight-log-chart" width="960" height="260" hidden aria-label="Flight log chart of the selected session"></canvas>
-            <p id="flightLogLegend" class="hint" hidden><span class="lg snr">picture SNR (dB)</span> <span class="lg gain">gain index / 4</span> <span class="lg dc">DC (cells x 5)</span> <span class="lg temp">temperature (°C / 4)</span> <span class="lg level">signal at the chip ((dBm + 100) / 2)</span> <span class="lg drop">dropout</span></p>
+            <p id="flightLogLegend" class="hint" hidden><span class="lg snr">picture SNR (dB)</span> <span class="lg gain">gain index / 4</span> <span class="lg dc">DC (cells x 5)</span> <span class="lg temp">temperature (°C / 4)</span> <span class="lg level">signal at the chip ((dBm + 100) / 2)</span> <span class="lg sync">native H lock (% / 4)</span> <span class="lg drop">dropout</span></p>
           </div>
 
           <div class="terminal-log">

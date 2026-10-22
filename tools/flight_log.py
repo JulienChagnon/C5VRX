@@ -30,14 +30,18 @@ CRC_AT = SECTOR - 4
 MAGIC_BLOCK, MAGIC_SNAP = 0x424C3543, 0x534C3543
 
 EVENTS = {1: 'channel', 2: 'profile', 3: 'kp', 4: 'cal_start', 5: 'cal_end', 6: 'dc_cal_needed', 7: 'gain_mode',
-          8: 'menu', 9: 'fault', 10: 'dropout', 11: 'recovered', 12: 'snapshot', 13: 'dropped', 14: 'attack'}
+          8: 'menu', 9: 'fault', 10: 'dropout', 11: 'recovered', 12: 'snapshot', 13: 'dropped', 14: 'attack',
+          15: 'output_gap', 16: 'output_unlock'}
 DROPOUT = ['CALIBRATION_OR_PHY', 'FAST_EVIDENCE_LOSS', 'AT_RF_FLOOR', 'DEMOD_CLIFF', 'UNKNOWN']
 SPHASE = ['unverified', 'settled', 'drifted', 'unsettled', 'noise_limited', 'probe_failed']
 PROFILES = ['DEFAULT', 'MATCHED', 'NARROW', 'WIDE']
 RX_STATES = ['', 'ACQUIRE', 'TRACK', 'EDGE', 'RECOVER', 'FAULT', 'OWNED']
 RX_REASONS = ['none', 'no_carrier', 'weak_signal', 'dc_clipping', 'overload', 'dc_residual', 'sync_loss_with_rf',
               'owned', 'fault', 'low_picture_snr']
-TRIGGERS = {1: 'dropout', 2: 'vq_drop', 3: 'first_carrier', 4: 'periodic', 5: 'overload', 6: 'edge', 7: 'recover'}
+TRIGGERS = {1: 'dropout', 2: 'vq_drop', 3: 'first_carrier', 4: 'periodic', 5: 'overload', 6: 'edge', 7: 'recover',
+            8: 'output_unlock'}
+OUTPUT_DEMODS = {1: 'U85Q 1a09f5c092e8', 2: 'U85Q-LP 1a09f5c092e8'}
+OUTPUT_STANDARDS = {1: 'NTSC', 2: 'PAL'}
 
 
 def crc32(data, crc=0):
@@ -153,12 +157,40 @@ def second(p):
     # Why the gain moved (42-byte records).
     d['writes_attack'], d['writes_release'], d['sentinel'], d['overloads_after_write'] = (p[38], p[39], p[40], p[41]) if len(p) >= 42 else (None, None, None, None)
     # C/N-AUTO (50-byte records): power, M2M4, envelope C/N, confidence, source, flags
+    d['cn_power_db'] = d['cn_m2m4_db'] = d['cn_env_db'] = None
+    d['cn_confidence'] = d['cn_source'] = d['cn_flags'] = None
     if len(p) >= 50:
         cp, cm, ce = struct.unpack_from('<hhh', p, 42)
         d['cn_power_db'] = None if cp <= -990 else cp / 10
         d['cn_m2m4_db'] = None if cm <= -990 else cm / 10
         d['cn_env_db'] = None if ce <= -990 else ce / 10
         d['cn_confidence'], d['cn_source'], d['cn_flags'] = p[48] & 3, p[48] >> 2, p[49]
+    # Verified output identity and native/assisted sync observer (69-byte records).
+    # Defaults are explicit UNKNOWN so old and new records can share one CSV.
+    d.update(output_demod=None, output_level=None, output_standard=None, output_verified=0,
+             flywheel_requested=0, flywheel_active=0, output_observer_fresh=0,
+             native_h_trusted=0, native_v_trusted=0, camera_present=0, output_flag_format=0,
+             output_samples=None, output_fresh_samples=None, output_coverage_pct=None,
+             native_h_lock_pct=None, native_v_lock_pct=None, native_h_lines=None,
+             repaired_tips=None, suppressed_tips=None, longest_h_unlock_ms=None,
+             output_observer_gaps=None)
+    if len(p) >= 69:
+        of = p[50]
+        d.update(output_verified=int(bool(of & 1)), flywheel_requested=int(bool(of & 2)),
+                 flywheel_active=int(bool(of & 4)), output_observer_fresh=int(bool(of & 8)),
+                 native_h_trusted=int(bool(of & 16)), native_v_trusted=int(bool(of & 32)),
+                 camera_present=int(bool(of & 64)), output_flag_format=int(bool(of & 128)))
+        d['output_demod'] = OUTPUT_DEMODS.get(p[51], f'unknown ({p[51]})') if d['output_verified'] else None
+        d['output_standard'] = OUTPUT_STANDARDS.get(p[52])
+        d['output_level'] = None if p[53] == 0xff else p[53]
+        d['output_samples'], d['output_fresh_samples'] = struct.unpack_from('<HH', p, 54)
+        d['output_coverage_pct'] = (round(100 * d['output_fresh_samples'] / d['output_samples'])
+                                    if d['output_samples'] else None)
+        d['native_h_lock_pct'] = None if p[58] == 0xff else p[58]
+        d['native_v_lock_pct'] = None if p[59] == 0xff else p[59]
+        (d['native_h_lines'], d['repaired_tips'], d['suppressed_tips'],
+         d['longest_h_unlock_ms']) = struct.unpack_from('<HHHH', p, 60)
+        d['output_observer_gaps'] = p[68]
     return d
 
 
@@ -226,7 +258,10 @@ def decode(image):
         snaps.append({'slot': k, 'ok': ok, 'trigger': TRIGGERS.get(h[5], str(h[5])), 'session': session, 'seq': seq,
                       't_ms': t_ms, 'freq_mhz': freq, 'gain': gain, 'lane': lane, 'filter_key': '%04x' % key,
                       'profile': PROFILES[profile & 3], 'kp': kp, 'lp': lp, 'offset_codes': [off_i, off_q],
-                      'dc_mcells': [dc_i, dc_q], 'iq': bytes(iq)})
+                      'dc_mcells': [dc_i, dc_q],
+                      'output_demod': OUTPUT_DEMODS.get(h[38], f'unknown ({h[38]})') if h[40] & 1 else None,
+                      'output_level': h[39] if h[40] & 1 and h[39] != 0xff else None,
+                      'output_flags': h[40], 'iq': bytes(iq)})
     return [sessions[k] for k in sorted(sessions)], sorted(snaps, key=lambda x: x['seq'])
 
 

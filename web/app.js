@@ -845,7 +845,10 @@ function renderFlightLog() {
     const minutes = sum.durationS >= 60 ? `${Math.floor(sum.durationS / 60)} min ${sum.durationS % 60} s` : `${sum.durationS} s`;
     const cells = [`#${sum.session}${sum.freq ? ` · ${sum.freq} MHz` : ''}`, minutes, `${sum.pictureS} s`,
       sum.snrMedian === null ? '—' : `${fmt(sum.snrMedian)} / ${fmt(sum.snrWorst)} dB`,
-      sum.levelMedian === null ? '—' : `${fmt(sum.levelMedian, 0)} / ${fmt(sum.levelWorstWithPicture, 0)} dBm`, String(sum.dropouts),
+      sum.levelMedian === null ? '—' : `${fmt(sum.levelMedian, 0)} / ${fmt(sum.levelWorstWithPicture, 0)} dBm`,
+      sum.outputDemod === null ? '—' : `${sum.outputDemod}${sum.outputLevel === null ? '' : ` · L${sum.outputLevel}`}`,
+      sum.nativeHLockMedian === null ? '—' : `${fmt(sum.nativeHLockMedian, 0)} / ${fmt(sum.outputCoverageMedian, 0)} %`,
+      sum.repairedTips === null ? '—' : `${sum.repairedTips} / ${sum.longestHUnlockMs} ms`, String(sum.dropouts),
       fmt(sum.dcWorst, 2, ' cells'), fmt(sum.tempMax, 0, ' °C'), fmt(sum.deviation, 2),
       `${sum.states.TRACK} / ${sum.states.EDGE} / ${sum.states.RECOVER} s`, sum.topReason || '—', sum.resetReason, sum.firmware];
     for (const text of cells) { const td = document.createElement('td'); td.textContent = text; row.append(td); }
@@ -898,7 +901,8 @@ function drawFlightChart(session) {
     ['#3aa76d', (s) => s.gain / 4],
     ['#e08a1e', (s) => s.dc * 5],
     ['#9a6ad6', (s) => (s.temp === null ? null : s.temp / 4)],
-    ['#c8463c', (s) => (s.level === null ? null : (s.level + 100) / 2)]
+    ['#c8463c', (s) => (s.level === null ? null : (s.level + 100) / 2)],
+    ['#00a6a6', (s) => (s.nativeHLockPct === null ? null : s.nativeHLockPct / 4)]
   ];
   for (const [stroke, value] of series) {
     ctx.strokeStyle = stroke;

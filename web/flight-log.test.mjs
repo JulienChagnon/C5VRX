@@ -6,13 +6,19 @@ import { FlightLogCapture, decodeImage, summarize, secondsCsv, crc32, SECTOR, PA
 
 const le = (n, bytes) => Array.from({ length: bytes }, (_, i) => (n >>> (8 * i)) & 0xff);
 
-function second(t, snr, gain, dcI, temp, dropout = 0, level = null) {
-  const p = new Uint8Array(level === null ? 34 : 38);
+function second(t, snr, gain, dcI, temp, dropout = 0, level = null, output = null) {
+  const p = new Uint8Array(output ? 69 : level === null ? 34 : 38);
   const d = new DataView(p.buffer);
   d.setUint32(0, t, true); d.setInt16(4, snr * 10, true); d.setUint16(6, 120, true); d.setInt16(8, 85, true);
   p[10] = 90; p[11] = dropout; p[12] = gain - 1; p[13] = gain; p[14] = gain + 1;
   d.setInt8(18, dcI / 0.05); d.setInt8(30, temp); p[28] = 1 | (3 << 2); p[29] = 1;
   if (level !== null) { d.setInt16(34, level * 10, true); d.setInt8(36, -95); p[37] = 1 | 2 | 4 | 8; }
+  if (output) {
+    p[50] = 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128; p[51] = 2; p[52] = 2; p[53] = 6;
+    d.setUint16(54, 500, true); d.setUint16(56, 480, true); p[58] = 97; p[59] = 95;
+    d.setUint16(60, 15625, true); d.setUint16(62, 12, true); d.setUint16(64, 3, true);
+    d.setUint16(66, 106, true); p[68] = 2;
+  }
   return p;
 }
 
@@ -28,13 +34,14 @@ function image({ closed = true } = {}) {
   session.set(le(5865, 2), 46);
   put(1, session);
   put(4, second(10, 12.5, 80, 0.4, 41));
-  put(4, second(11, 3.0, 83, 1.2, 42, 3, -88.5));
+  put(4, second(11, 3.0, 83, 1.2, 42, 3, -88.5, true));
   put(5, new Uint8Array([...le(11500, 4), 10, 2]));
   if (closed) block.set(le(crc32(block.subarray(0, SECTOR - 4)), 4), SECTOR - 4);
   img.set(block, SECTOR * 5);
   const head = new Uint8Array(SNAP_HEAD);
   const iq = new Uint8Array(SNAP_BYTES).fill(0x11);
   head.set([...le(0x534c3543, 4), 1, 1, ...le(SNAP_BYTES, 2), ...le(7, 4), ...le(3, 4), ...le(11400, 4), ...le(5865, 2), 83]);
+  head[38] = 2; head[39] = 6; head[40] = 1 | 16;
   head.set(le(crc32(iq, crc32(head.subarray(0, 60))), 4), 60);
   img.set(head, SNAP_FIRST * SECTOR);
   img.set(iq, SNAP_FIRST * SECTOR + SNAP_HEAD);
@@ -67,8 +74,20 @@ test('decodes sessions, seconds, events and snapshots', () => {
   assert.equal(s.seconds[0].level, null);         // a 34-byte record: no level
   assert.equal(s.seconds[1].level, -88.5);
   assert.equal(s.seconds[1].noise, -95);
+  assert.equal(s.seconds[0].outputDemod, null);  // an old record stays explicitly unknown
+  assert.equal(s.seconds[1].outputDemod, 'U85Q-LP 1a09f5c092e8');
+  assert.equal(s.seconds[1].outputCoveragePct, 96);
+  assert.equal(s.seconds[1].nativeHLockPct, 97);
+  assert.equal(s.seconds[1].repairedTips, 12);
+  assert.equal(s.seconds[1].longestHUnlockMs, 106);
   assert.equal(sum.levelWorstWithPicture, -88.5);
+  assert.equal(sum.outputDemod, 'U85Q-LP 1a09f5c092e8');
+  assert.equal(sum.nativeHLockMedian, 97);
+  assert.equal(sum.repairedTips, 12);
+  assert.equal(snapshots[0].outputDemod, 'U85Q-LP 1a09f5c092e8');
+  assert.equal(snapshots[0].outputLevel, 6);
   assert.match(secondsCsv(s), /^t,snr,lines/);
+  assert.match(secondsCsv(s), /nativeHLockPct/);
 });
 
 test('an open block (power pulled) still reads, flagged open', () => {

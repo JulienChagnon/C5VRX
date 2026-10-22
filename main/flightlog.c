@@ -177,12 +177,19 @@ static void snapshot(uint8_t trigger)
     int8_t temp;
     calibration_flog_live(dc, off, &writes, &sph, &temp);
     const rf_filter_t f = rf_filter();
+    uint8_t demod_id, output_level;
+    bool flag_format;
+    transport_flog_identity(&demod_id, &output_level, &flag_format);
     const flog_snap_t s = {
         .trigger = trigger, .gain = s_current_gain, .lane = (uint8_t)rf_lane(), .profile = (uint8_t)profile_active(),
         .kp = (uint8_t)transport_kp_level(), .lp = transport_lp() ? 1u : 0u, .freq_mhz = rf_frequency_mhz(),
         .filter_key = (uint16_t)((f.bw20 ? 0x8000u : 0u) | (((unsigned)(f.code + 1) & 0x7fu) << 8) | (f.skirt & 0xffu)),
         .session = s_session, .seq = s_snap_seq, .t_ms = (uint32_t)(esp_timer_get_time() / 1000),
         .off_i = (int16_t)off[0], .off_q = (int16_t)off[1], .dc_i_mcells = (int16_t)dc[0], .dc_q_mcells = (int16_t)dc[1],
+        .demod_id = demod_id, .output_level = output_level,
+        .output_flags = (uint8_t)((demod_id ? FLOG_OUT_DEMOD_VERIFIED : 0u) |
+                                  (transport_sync_flywheel_enabled() ? FLOG_OUT_FLYWHEEL_REQUESTED : 0u) |
+                                  (flag_format ? FLOG_OUT_FLAG_FORMAT : 0u)),
     };
     uint8_t head[FLOG_SNAP_HEAD];
     flog_snap_head(head, &s, raw);
@@ -322,6 +329,8 @@ void flightlog_second(const diag_record_t *r, uint8_t gain_min, uint8_t gain_max
     static uint32_t wa, wr, sf, oa;
     const rx_level_t lv = receiver_level();
     const cna_reading_t cn = receiver_cn_reading();
+    transport_flog_output_t output;
+    transport_flog_output(&output);
     flog_second_t s = {
         .t_s = r->t_s, .vq_snr_x10 = vq.known ? vq.snr_x10 : 0, .vq_lines_x100 = vq.known ? vq.lines_x100 : 0,
         .cn_x10 = r->cn_x10, .video_pct = r->video_pct, .dropout = dropout,
@@ -351,6 +360,12 @@ void flightlog_second(const diag_record_t *r, uint8_t gain_min, uint8_t gain_max
         .cn_env_x10 = (int16_t)(s_obs_env_ratio_x100 > 0 ? cn_estimate_env_x10(s_obs_env_ratio_x100, calibration_filter_class_mhz())
                                                            : -990),
         .cn_conf_src = (uint8_t)((cn.confidence & 3u) | (cn.source << 2)), .cn_flags = cn.flags,
+        .output_flags = output.flags, .demod_id = output.demod, .output_standard = output.standard,
+        .output_level = output.output_level, .output_samples = output.samples,
+        .output_fresh_samples = output.fresh_samples, .native_h_lock_pct = output.h_lock_pct,
+        .native_v_lock_pct = output.v_lock_pct, .native_h_lines = output.native_h_lines,
+        .repaired_tips = output.repaired_tips, .suppressed_tips = output.suppressed_tips,
+        .longest_h_unlock_ms = output.longest_h_unlock_ms, .output_observer_gaps = output.observer_gaps,
     };
     wa = s_gain.writes_severe; wr = s_gain.writes_moderate; sf = receiver_sentinel_forwarded(); oa = s_gain.overloads_after_write;
     gw = r->gain_writes; ov = r->overloads; sw = servo_writes; ac = afc_corr; have = true;

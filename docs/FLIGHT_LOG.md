@@ -80,9 +80,10 @@ What was received, so a log can be compared across VTXs and cameras.
 Written at the first carrier of a session, after every deviation measurement
 that changes the result, and on a channel change.
 
-## Per-second summary (34 bytes; 38 with the received level, 42 with the gain write reasons, 50 with C/N-AUTO)
+## Per-second summary (34/38/42/50 legacy bytes; 69 with output telemetry)
 
-One per second while the receiver runs; ~7 hours in the ring.
+One per second while the receiver runs; about 4 hours in the ring at the
+current 69-byte payload (less when rare events occupy blocks).
 
 | group | fields (unit) |
 | --- | --- |
@@ -95,11 +96,22 @@ One per second while the receiver runs; ~7 hours in the ring.
 | received level | carrier at the chip pin (0.1 dBm), the noise it is measured against (dBm), flags: valid, above the noise, exact (G54+), noise learned (`main/rx_level.h`) |
 | gain write reasons | writes down (attack), writes up (release), fast-path overloads forwarded (sentinel), overloads within 5 ms of a write |
 | C/N-AUTO | decision C/N plus power, M2M4 and envelope estimates (0.1 dB, -990 unknown), confidence and source (+32: a small carrier on a 4-bit-limited row, not used for decisions), flags (`main/cn_auto.h`); only noise-referenced power may drive AFC/profile/kp/LP |
+| verified output | exact running program family (`U85Q` or `U85Q-LP`, model/instruction hash `1a09f5c092e8`), applied output level, flag format, guard standard, requested/active flywheel; identity is unknown unless the live transport state is verified |
+| output observer | task-side samples and fresh samples, native H/V trust (% of fresh samples), native in-phase H lines, repaired and suppressed sync tips, longest continuously observed native-H unlock (ms), observer gaps |
 | environment | temperature (degC) |
 | flags | menu, scan, calibrating, paused, fault latched, flywheel active, status screen |
 
-Counters are per second (saturating), not per event. Readers take any record
-of 34 bytes or more. Older 34-byte records simply have no level.
+Counters are per second (saturating), not per event. The observer is sampled
+from existing cumulative RMT/ISR counters by the 2-ms control task; the new
+logging adds no line-rate or ISR work. Missing/stale observation is
+`UNKNOWN`: it lowers observer coverage and ends an unlock run, but is never
+counted as an unlocked picture. `VIDEO_Q` keeps its existing AFC-oriented
+line/evidence meaning; it is not renamed or reinterpreted as output lock.
+Neither metric proves lock in a particular monitor or goggles.
+
+Readers take any record of 34 bytes or more. Records shorter than 69 bytes
+have unknown output identity, coverage and lock; they are not filled with a
+false zero measurement.
 
 ## Events (rare, ~20-200 bytes)
 
@@ -110,6 +122,8 @@ uptime (ms) and type, then:
 - calibration start/end (manual or startup, what, result), `DC CAL NEEDED`
   (reason, filter), gain mode change, menu open/close;
 - fault or latch (DC restore, transport rollback, live off);
+- output-observer gap (count and current validity bits), and a native-H
+  unlock that remains continuously observed for at least 100 ms;
 - **dropout onset**: the existing 16-before/16-after trace at 50 ms
   (`diag_trace.h`), and its end with duration;
 - snapshot taken (index, trigger).
@@ -119,12 +133,13 @@ uptime (ms) and type, then:
 8128 bytes of contiguous IQ (the console `I` format, Ihigh_Qlow, 40 MS/s; 62
 bytes shorter than `I` so a slot is exactly two sectors)
 with a header: session, uptime, trigger, gain, frequency, filter key,
-profile, kp/LP, DC offsets of the row, sampling-phase position.
+profile, kp/LP, DC offsets of the row, sampling-phase position, and the
+verified output program/level/validity snapshot.
 
 When the record ring is full the oldest block is erased and reused: the most
-recent ~7 hours are always there. The snapshot ring keeps the moments that
+recent ~4 hours are always there at the current record size. The snapshot ring keeps the moments that
 went wrong longest: a new snapshot takes an empty slot, else the oldest slot
-of the lowest priority not above its own (dropout > picture drop > first
+of the lowest priority not above its own (dropout/output unlock > picture drop > first
 carrier > periodic); a periodic one never replaces a dropout and is skipped
 (`snapshots_skipped` in `Y`) when every slot is more important. A request is
 also dropped, and counted, when the heap has no block for the IQ copy plus
@@ -133,7 +148,7 @@ is busy (menu, pause, startup) or its gain is settling (`snapshots_refused`).
 
 Triggers, at most one per 10 s:
 
-- dropout onset;
+- dropout onset or a continuously observed native-H unlock of at least 100 ms;
 - `VIDEO_Q` more than 6 dB below its 30-second median;
 - the first carrier of a session (reference), and one every 10 minutes.
 
@@ -150,8 +165,8 @@ bit-exact U85Q chain afterwards, and a bad one becomes a CI regression case.
 ## Reading it
 
 - Web flasher, Terminal page, "Flight log": read it over USB (the receiver
-  keeps running), a table per session, a chart (picture SNR, gain, DC,
-  temperature, dropouts), download `.c5log` (the partition image) and CSV,
+  keeps running), a table per session, a chart (picture SNR, native H lock,
+  gain, DC, temperature, dropouts), download `.c5log` (the partition image) and CSV,
   erase.
 - Console `Y` status, `W` dump (`FLOG_BEGIN` / `FLOG_D <offset> <hex>` /
   `FLOG_END`), `X` twice within 3 s erases.

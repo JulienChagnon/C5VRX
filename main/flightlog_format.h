@@ -54,10 +54,21 @@ enum {
     FLOG_E_DC_CAL_NEEDED = 6, FLOG_E_GAIN_MODE = 7, FLOG_E_MENU = 8, FLOG_E_FAULT = 9,
     FLOG_E_DROPOUT = 10, FLOG_E_RECOVERED = 11, FLOG_E_SNAPSHOT = 12, FLOG_E_DROPPED = 13,
     FLOG_E_ATTACK = 14,   /* the window that made the gain step down (receiver.c) */
+    FLOG_E_OUTPUT_GAP = 15, FLOG_E_OUTPUT_UNLOCK = 16,
 };
 
 enum { FLOG_SNAP_DROPOUT = 1, FLOG_SNAP_VQ_DROP = 2, FLOG_SNAP_FIRST_CARRIER = 3, FLOG_SNAP_PERIODIC = 4, FLOG_SNAP_OVERLOAD = 5,
-       FLOG_SNAP_EDGE = 6, FLOG_SNAP_RECOVER = 7 };
+       FLOG_SNAP_EDGE = 6, FLOG_SNAP_RECOVER = 7, FLOG_SNAP_OUTPUT_UNLOCK = 8 };
+
+/* Verified program identity. The firmware/session SHA and kp level identify
+ * the exact generated LUT; these IDs bind the instruction/model family. */
+enum { FLOG_DEMOD_UNKNOWN = 0, FLOG_DEMOD_U85Q_1A09F5C092E8 = 1, FLOG_DEMOD_U85Q_LP_1A09F5C092E8 = 2 };
+enum {
+    FLOG_OUT_DEMOD_VERIFIED = 1u << 0, FLOG_OUT_FLYWHEEL_REQUESTED = 1u << 1,
+    FLOG_OUT_FLYWHEEL_ACTIVE = 1u << 2, FLOG_OUT_OBSERVER_FRESH = 1u << 3,
+    FLOG_OUT_H_TRUSTED = 1u << 4, FLOG_OUT_V_TRUSTED = 1u << 5,
+    FLOG_OUT_CAMERA_PRESENT = 1u << 6, FLOG_OUT_FLAG_FORMAT = 1u << 7,
+};
 
 /* Fixed little-endian helpers (no struct packing assumptions). */
 static inline void flog_put16(uint8_t *p, uint32_t v) { p[0] = (uint8_t)v; p[1] = (uint8_t)(v >> 8); }
@@ -158,9 +169,9 @@ static inline bool flog_block_closed(const uint8_t *block)
     return flog_get32(block + FLOG_BLOCK_CRC_AT) == flog_crc32(0, block, FLOG_BLOCK_CRC_AT);
 }
 
-/* Per-second summary payload (FLOG_T_SECOND), 34 bytes in format 1, 38
- * with the received level, 42 with the gain write reasons (readers take 34
- * and up). */
+/* Per-second summary payload (FLOG_T_SECOND), append-only in format 1: 34
+ * original bytes, 38 with received level, 42 gain reasons, 50 C/N-AUTO and
+ * 69 with verified demod/output-observer telemetry. Readers take 34 and up. */
 typedef struct {
     uint32_t t_s;
     int16_t vq_snr_x10;      /* VIDEO_Q, 0 = no line */
@@ -191,10 +202,20 @@ typedef struct {
     int16_t cn_power_x10, cn_m2m4_x10, cn_env_x10;   /* C/N-AUTO estimators (cn_auto.h), -990 unknown */
     uint8_t cn_conf_src;     /* confidence (2 bits) | source << 2 */
     uint8_t cn_flags;        /* CNA_F_* */
+    uint8_t output_flags;    /* FLOG_OUT_*: current provenance/validity snapshot */
+    uint8_t demod_id;        /* verified program/model enum above, else 0 */
+    uint8_t output_standard; /* actual guard grid: 0 unknown, 1 NTSC, 2 PAL */
+    uint8_t output_level;    /* verified output setting 0..9, 0xff unknown */
+    uint16_t output_samples, output_fresh_samples; /* task-side 2-ms observations */
+    uint8_t native_h_lock_pct, native_v_lock_pct;  /* of fresh samples; 0xff unknown */
+    uint16_t native_h_lines; /* in-phase observed camera H pulses */
+    uint16_t repaired_tips, suppressed_tips;       /* assisted vs native scheduled tips */
+    uint16_t longest_h_unlock_ms;                  /* only during fresh observation */
+    uint8_t output_observer_gaps;
 } flog_second_t;
 #define FLOG_LEVEL_UNKNOWN (-32768)
 
-#define FLOG_SECOND_LEN 50u
+#define FLOG_SECOND_LEN 69u
 #define FLOG_SECOND_LEN_V1 34u
 
 static inline uint8_t flog_sat8(uint32_t v) { return (uint8_t)(v > 255u ? 255u : v); }
@@ -221,6 +242,12 @@ static inline void flog_pack_second(const flog_second_t *s, uint8_t p[FLOG_SECON
     p[38] = s->writes_attack; p[39] = s->writes_release; p[40] = s->sentinel; p[41] = s->overloads_after_write;
     flog_put16(p + 42, (uint16_t)s->cn_power_x10); flog_put16(p + 44, (uint16_t)s->cn_m2m4_x10);
     flog_put16(p + 46, (uint16_t)s->cn_env_x10); p[48] = s->cn_conf_src; p[49] = s->cn_flags;
+    p[50] = s->output_flags; p[51] = s->demod_id; p[52] = s->output_standard; p[53] = s->output_level;
+    flog_put16(p + 54, s->output_samples); flog_put16(p + 56, s->output_fresh_samples);
+    p[58] = s->native_h_lock_pct; p[59] = s->native_v_lock_pct;
+    flog_put16(p + 60, s->native_h_lines); flog_put16(p + 62, s->repaired_tips);
+    flog_put16(p + 64, s->suppressed_tips); flog_put16(p + 66, s->longest_h_unlock_ms);
+    p[68] = s->output_observer_gaps;
 }
 
 static inline bool flog_unpack_second(const uint8_t *p, uint8_t len, flog_second_t *s)
@@ -252,6 +279,19 @@ static inline bool flog_unpack_second(const uint8_t *p, uint8_t len, flog_second
     s->cn_env_x10 = len >= 50u ? (int16_t)flog_get16(p + 46) : -990;
     s->cn_conf_src = len >= 50u ? p[48] : 0;
     s->cn_flags = len >= 50u ? p[49] : 0;
+    s->output_flags = len >= 69u ? p[50] : 0;
+    s->demod_id = len >= 69u ? p[51] : FLOG_DEMOD_UNKNOWN;
+    s->output_standard = len >= 69u ? p[52] : 0;
+    s->output_level = len >= 69u ? p[53] : 0xffu;
+    s->output_samples = len >= 69u ? (uint16_t)flog_get16(p + 54) : 0;
+    s->output_fresh_samples = len >= 69u ? (uint16_t)flog_get16(p + 56) : 0;
+    s->native_h_lock_pct = len >= 69u ? p[58] : 0xffu;
+    s->native_v_lock_pct = len >= 69u ? p[59] : 0xffu;
+    s->native_h_lines = len >= 69u ? (uint16_t)flog_get16(p + 60) : 0;
+    s->repaired_tips = len >= 69u ? (uint16_t)flog_get16(p + 62) : 0;
+    s->suppressed_tips = len >= 69u ? (uint16_t)flog_get16(p + 64) : 0;
+    s->longest_h_unlock_ms = len >= 69u ? (uint16_t)flog_get16(p + 66) : 0;
+    s->output_observer_gaps = len >= 69u ? p[68] : 0;
     return true;
 }
 
@@ -264,7 +304,8 @@ static inline unsigned flog_snap_priority(uint8_t trigger)
 {
     /* The range edge is where the ground truth is needed (C/N estimator,
      * sensitivity model): EDGE and RECOVER rank with dropouts. */
-    return trigger == FLOG_SNAP_DROPOUT || trigger == FLOG_SNAP_EDGE || trigger == FLOG_SNAP_RECOVER ? 4u :
+    return trigger == FLOG_SNAP_DROPOUT || trigger == FLOG_SNAP_EDGE || trigger == FLOG_SNAP_RECOVER ||
+           trigger == FLOG_SNAP_OUTPUT_UNLOCK ? 4u :
            trigger == FLOG_SNAP_VQ_DROP || trigger == FLOG_SNAP_OVERLOAD ? 3u :
            trigger == FLOG_SNAP_FIRST_CARRIER ? 2u : 1u;
 }
@@ -288,7 +329,7 @@ static inline int flog_snap_victim(const uint8_t *trigger, const uint32_t *seq, 
  * offsets (codes) and residual (mcells) of the row, CRC-32 over the head's
  * first 60 bytes and the IQ bytes. */
 typedef struct {
-    uint8_t trigger, gain, lane, profile, kp, lp;
+    uint8_t trigger, gain, lane, profile, kp, lp, demod_id, output_level, output_flags;
     uint16_t freq_mhz, filter_key;
     uint32_t session, seq, t_ms;
     int16_t off_i, off_q, dc_i_mcells, dc_q_mcells;
@@ -305,6 +346,7 @@ static inline void flog_snap_head(uint8_t h[FLOG_SNAP_HEAD], const flog_snap_t *
     flog_put16(h + 24, s->filter_key); h[26] = s->profile; h[27] = s->kp; h[28] = s->lp;
     flog_put16(h + 30, (uint16_t)s->off_i); flog_put16(h + 32, (uint16_t)s->off_q);
     flog_put16(h + 34, (uint16_t)s->dc_i_mcells); flog_put16(h + 36, (uint16_t)s->dc_q_mcells);
+    h[38] = s->demod_id; h[39] = s->output_level; h[40] = s->output_flags;
     flog_put32(h + 60, flog_crc32(flog_crc32(0, h, 60), iq, FLOG_SNAP_BYTES));
 }
 

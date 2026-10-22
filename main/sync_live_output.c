@@ -396,6 +396,7 @@ static bool output_begin(slg_standard_t fallback,
        !slc_next(&s->clock,&first))goto failed;
     s->tip=(slo_tip_t){first.start,(uint16_t)first.width,(uint8_t)first.kind,first.index,first.half};
     s->standard=seed.standard;
+    s->status.standard=(uint8_t)s->standard;
     /* Retain the task-owned planner for allocation-free timing updates.
      * ISR execution consumes only the exported incremental clock. */
     if((REG_READ(GPIO_ENABLE_REG)&SLO_MASK)!=SLO_MASK)goto failed;
@@ -627,6 +628,7 @@ void sync_live_output_guard_tick(void)
     slo_t *s=s_output;
     uint64_t now;
     if(!s || !s->flag || !sync_edge_clock_read(&now))return;
+    s->status.standard=(uint8_t)s->standard;
     if(s->observation_seen && !observer_current(s,now))observer_lost(s,now);
     s->status.observer_fresh=observer_current(s,now);
     s->status.sample_age_ticks=!s->observation_seen || now<s->observation_end ? UINT32_MAX :

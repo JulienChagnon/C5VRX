@@ -98,6 +98,18 @@ bool transport_sync_live_release(void);
  * builds its chain from another task. */
 void transport_sync_live_hold(bool on);
 void transport_sync_live_print(void);
+/* Flight-log V1 output telemetry. Demod is 0 unknown, 1 verified U85Q
+ * model 1a09f5c092e8, 2 the verified U85Q-LP variant of that model. Lock
+ * percentages are 0xff when the native observer had no fresh samples. */
+typedef struct {
+    uint8_t flags, demod, standard, output_level;
+    uint16_t samples, fresh_samples;
+    uint8_t h_lock_pct, v_lock_pct;
+    uint16_t native_h_lines, repaired_tips, suppressed_tips, longest_h_unlock_ms;
+    uint8_t observer_gaps;
+} transport_flog_output_t;
+void transport_flog_output(transport_flog_output_t *out);
+void transport_flog_identity(uint8_t *demod, uint8_t *output_level, bool *flag_format);
 void sync_dma_c2m(const void *addr, size_t size);
 void sync_dma_m2c(const void *addr, size_t size);
 int ring_node_index(uint32_t addr);

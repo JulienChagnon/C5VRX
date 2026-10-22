@@ -17,7 +17,8 @@ const MAGIC_BLOCK = 0x424c3543;
 const MAGIC_SNAP = 0x534c3543;
 
 export const EVENTS = { 1: 'channel', 2: 'profile', 3: 'kp', 4: 'cal_start', 5: 'cal_end', 6: 'dc_cal_needed',
-  7: 'gain_mode', 8: 'menu', 9: 'fault', 10: 'dropout', 11: 'recovered', 12: 'snapshot', 13: 'dropped', 14: 'attack' };
+  7: 'gain_mode', 8: 'menu', 9: 'fault', 10: 'dropout', 11: 'recovered', 12: 'snapshot', 13: 'dropped', 14: 'attack',
+  15: 'output_gap', 16: 'output_unlock' };
 export const DROPOUT = ['CALIBRATION_OR_PHY', 'FAST_EVIDENCE_LOSS', 'AT_RF_FLOOR', 'DEMOD_CLIFF', 'UNKNOWN'];
 export const SPHASE = ['unverified', 'settled', 'drifted', 'unsettled', 'noise_limited', 'probe_failed'];
 export const PROFILES = ['DEFAULT', 'MATCHED', 'NARROW', 'WIDE'];
@@ -25,7 +26,9 @@ export const RX_STATES = ['', 'ACQUIRE', 'TRACK', 'EDGE', 'RECOVER', 'FAULT', 'O
 export const RX_REASONS = ['none', 'no_carrier', 'weak_signal', 'dc_clipping', 'overload', 'dc_residual', 'sync_loss_with_rf', 'owned', 'fault', 'low_picture_snr'];
 export const RESET_REASONS = ['unknown', 'power-on', 'external', 'software', 'panic', 'interrupt watchdog',
   'task watchdog', 'watchdog', 'deep sleep', 'brownout', 'SDIO', 'USB', 'JTAG', 'eFuse', 'power glitch', 'CPU lockup'];
-const TRIGGERS = { 1: 'dropout', 2: 'picture drop', 3: 'first carrier', 4: 'periodic', 5: 'overload burst', 6: 'range edge', 7: 'recover' };
+const TRIGGERS = { 1: 'dropout', 2: 'picture drop', 3: 'first carrier', 4: 'periodic', 5: 'overload burst', 6: 'range edge', 7: 'recover', 8: 'output unlock' };
+const OUTPUT_DEMODS = { 1: 'U85Q 1a09f5c092e8', 2: 'U85Q-LP 1a09f5c092e8' };
+const OUTPUT_STANDARDS = { 1: 'NTSC', 2: 'PAL' };
 
 let crcTable;
 export function crc32(bytes, crc = 0) {
@@ -146,7 +149,14 @@ export function decodeSecond(p) {
     lp: (p[28] >> 5) & 1, sphase: SPHASE[p[29]] ?? 'unknown', temp: d.getInt8(30), flags: d.getUint16(31, true),
     rxState: RX_STATES[p[33] & 7] ?? '', rxReason: p[33] ? RX_REASONS[p[33] >> 3] ?? 'unknown' : '',
     // Received level at the chip pin (main/rx_level.h), 38-byte records only.
-    level: null, noise: null, levelExact: false
+    level: null, noise: null, levelExact: false,
+    // Output observer fields are null for pre-69-byte records: missing is UNKNOWN.
+    outputDemod: null, outputLevel: null, outputStandard: null, outputVerified: false,
+    flywheelRequested: false, flywheelActive: false, outputObserverFresh: false,
+    nativeHTrusted: false, nativeVTrusted: false, cameraPresent: false, outputFlagFormat: false,
+    outputSamples: null, outputFreshSamples: null, outputCoveragePct: null,
+    nativeHLockPct: null, nativeVLockPct: null, nativeHLines: null,
+    repairedTips: null, suppressedTips: null, longestHUnlockMs: null, outputObserverGaps: null
   };
   // Why the gain moved (42-byte records only).
   s.writesAttack = p.length >= 42 ? p[38] : null;
@@ -158,6 +168,30 @@ export function decodeSecond(p) {
   s.cnPower = p.length >= 50 ? cnv(42) : null;
   s.cnM2m4 = p.length >= 50 ? cnv(44) : null;
   s.cnConfidence = p.length >= 50 ? p[48] & 3 : null;
+  if (p.length >= 69) {
+    const of = p[50];
+    s.outputVerified = !!(of & 1);
+    s.flywheelRequested = !!(of & 2);
+    s.flywheelActive = !!(of & 4);
+    s.outputObserverFresh = !!(of & 8);
+    s.nativeHTrusted = !!(of & 16);
+    s.nativeVTrusted = !!(of & 32);
+    s.cameraPresent = !!(of & 64);
+    s.outputFlagFormat = !!(of & 128);
+    s.outputDemod = s.outputVerified ? OUTPUT_DEMODS[p[51]] ?? `unknown (${p[51]})` : null;
+    s.outputStandard = OUTPUT_STANDARDS[p[52]] ?? null;
+    s.outputLevel = p[53] === 0xff ? null : p[53];
+    s.outputSamples = d.getUint16(54, true);
+    s.outputFreshSamples = d.getUint16(56, true);
+    s.outputCoveragePct = s.outputSamples ? Math.round(s.outputFreshSamples * 100 / s.outputSamples) : null;
+    s.nativeHLockPct = p[58] === 0xff ? null : p[58];
+    s.nativeVLockPct = p[59] === 0xff ? null : p[59];
+    s.nativeHLines = d.getUint16(60, true);
+    s.repairedTips = d.getUint16(62, true);
+    s.suppressedTips = d.getUint16(64, true);
+    s.longestHUnlockMs = d.getUint16(66, true);
+    s.outputObserverGaps = p[68];
+  }
   if (p.length >= 38 && (p[37] & 1) && d.getInt16(34, true) !== -32768) {
     s.level = d.getInt16(34, true) / 10;
     s.noise = d.getInt8(36);
@@ -221,7 +255,9 @@ export function decodeImage(image) {
     const iq = image.subarray(at + SNAP_HEAD, at + SNAP_SECTORS * SECTOR);
     snapshots.push({ slot: k, ok: d.getUint32(60, true) === crc32(iq, crc32(h.subarray(0, 60))), trigger: TRIGGERS[h[5]] ?? String(h[5]),
       session: d.getUint32(8, true), seq: d.getUint32(12, true), tMs: d.getUint32(16, true), freq: d.getUint16(20, true),
-      gain: h[22], iq });
+      gain: h[22], outputDemod: h[40] & 1 ? OUTPUT_DEMODS[h[38]] ?? `unknown (${h[38]})` : null,
+      outputLevel: h[40] & 1 && h[39] !== 0xff ? h[39] : null,
+      outputFlags: h[40], iq });
   }
   snapshots.sort((a, b) => a.seq - b.seq);
   return { sessions: [...sessions.values()].sort((a, b) => a.session - b.session), snapshots };
@@ -251,6 +287,12 @@ export function summarize(session) {
     dcWorst: sec.length ? Math.max(...sec.map((s) => s.dc)) : null,
     tempMax: median(sec.map((s) => s.temp)) === null ? null : Math.max(...sec.filter((s) => s.temp !== null).map((s) => s.temp)),
     deviation: session.carriers.length ? session.carriers[session.carriers.length - 1].deviation : null,
+    outputDemod: [...sec].reverse().find((s) => s.outputDemod)?.outputDemod ?? null,
+    outputLevel: [...sec].reverse().find((s) => s.outputLevel !== null)?.outputLevel ?? null,
+    nativeHLockMedian: median(sec.map((s) => s.nativeHLockPct)),
+    outputCoverageMedian: median(sec.map((s) => s.outputCoveragePct)),
+    repairedTips: sec.some((s) => s.repairedTips !== null) ? sec.reduce((n, s) => n + (s.repairedTips ?? 0), 0) : null,
+    longestHUnlockMs: sec.some((s) => s.longestHUnlockMs !== null) ? Math.max(...sec.map((s) => s.longestHUnlockMs ?? 0)) : null,
     states: Object.fromEntries(['TRACK', 'EDGE', 'RECOVER', 'ACQUIRE'].map((st) => [st, sec.filter((s) => s.rxState === st).length])),
     topReason: (() => { const c = {}; for (const s of sec) if (s.rxReason && s.rxReason !== 'none' && s.rxReason !== 'owned') c[s.rxReason] = (c[s.rxReason] ?? 0) + 1; return Object.entries(c).sort((a, b) => b[1] - a[1])[0]?.[0] ?? ''; })()
   };
@@ -259,7 +301,11 @@ export function summarize(session) {
 export function secondsCsv(session) {
   const keys = ['t', 'snr', 'lines', 'cn', 'video', 'dropoutCategory', 'gainMin', 'gain', 'gainMax', 'clip', 'gainWrites',
     'overloads', 'dcI', 'dcQ', 'offI', 'offQ', 'servo', 'afcOffset', 'afcResidual', 'afcSteps', 'profile', 'kp', 'lp',
-    'sphase', 'temp', 'flags', 'rxState', 'rxReason', 'level', 'noise', 'levelExact', 'writesAttack', 'writesRelease', 'sentinel', 'overloadsAfterWrite', 'cnPower', 'cnM2m4', 'cnConfidence'];
+    'sphase', 'temp', 'flags', 'rxState', 'rxReason', 'level', 'noise', 'levelExact', 'writesAttack', 'writesRelease', 'sentinel', 'overloadsAfterWrite', 'cnPower', 'cnM2m4', 'cnConfidence',
+    'outputDemod', 'outputLevel', 'outputStandard', 'outputVerified', 'flywheelRequested', 'flywheelActive',
+    'outputObserverFresh', 'nativeHTrusted', 'nativeVTrusted', 'cameraPresent', 'outputFlagFormat',
+    'outputSamples', 'outputFreshSamples', 'outputCoveragePct', 'nativeHLockPct', 'nativeVLockPct',
+    'nativeHLines', 'repairedTips', 'suppressedTips', 'longestHUnlockMs', 'outputObserverGaps'];
   const rows = session.seconds.map((s) => keys.map((k) => (s[k] === null || s[k] === undefined ? '' : typeof s[k] === 'number' ? +s[k].toFixed(3) : s[k])).join(','));
   return [keys.join(','), ...rows].join('\n') + '\n';
 }
