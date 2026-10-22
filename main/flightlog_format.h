@@ -310,6 +310,14 @@ static inline unsigned flog_snap_priority(uint8_t trigger)
            trigger == FLOG_SNAP_FIRST_CARRIER ? 2u : 1u;
 }
 
+/* The request still waiting for the snapshot gap when another arrives
+ * (0 = none): a more important one replaces it, otherwise the first one
+ * stays, so a dropout is not lost behind a pending periodic snapshot. */
+static inline uint8_t flog_snap_request_merge(uint8_t pending, uint8_t trigger)
+{
+    return !pending || flog_snap_priority(trigger) > flog_snap_priority(pending) ? trigger : pending;
+}
+
 static inline int flog_snap_victim(const uint8_t *trigger, const uint32_t *seq, const bool *used, unsigned slots,
                                    uint8_t new_trigger)
 {

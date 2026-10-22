@@ -48,7 +48,11 @@ static unsigned s_queue_len;
 static uint32_t s_dropped, s_dropped_logged, s_blocks_written, s_snapshots, s_flash_errors;
 static portMUX_TYPE s_qlock = portMUX_INITIALIZER_UNLOCKED;
 static SemaphoreHandle_t s_flash_lock;
-static volatile uint8_t s_snap_request;
+/* Pending snapshot trigger, written by several tasks: the merge and the
+ * logger's take-and-clear both run under s_snap_lock, so a more important
+ * request is never overwritten or cleared unseen. */
+static portMUX_TYPE s_snap_lock = portMUX_INITIALIZER_UNLOCKED;
+static uint8_t s_snap_request;
 static volatile bool s_dumping;
 bool flightlog_dumping(void) { return s_dumping; }
 static int64_t s_snap_last_us = -FLOG_SNAP_GAP_US;
@@ -212,7 +216,10 @@ static void snapshot(uint8_t trigger)
 
 void flightlog_snapshot_request(uint8_t trigger)
 {
-    if (s_ready && !s_snap_request) s_snap_request = trigger;
+    if (!s_ready) return;
+    taskENTER_CRITICAL(&s_snap_lock);
+    s_snap_request = flog_snap_request_merge(s_snap_request, trigger);
+    taskEXIT_CRITICAL(&s_snap_lock);
 }
 
 static void logger_task(void *arg)
@@ -226,11 +233,11 @@ static void logger_task(void *arg)
         if (!last_periodic) last_periodic = now;
         else if (now - last_periodic >= 600000000LL) { flightlog_snapshot_request(FLOG_SNAP_PERIODIC); last_periodic = now; }
         if (xSemaphoreTake(s_flash_lock, 0) != pdTRUE) continue;      /* a dump owns the flash */
-        if (s_snap_request && now - s_snap_last_us >= FLOG_SNAP_GAP_US) {
-            const uint8_t t = s_snap_request;
-            s_snap_request = 0;
-            snapshot(t);
-        }
+        uint8_t t = 0;
+        taskENTER_CRITICAL(&s_snap_lock);
+        if (s_snap_request && now - s_snap_last_us >= FLOG_SNAP_GAP_US) { t = s_snap_request; s_snap_request = 0; }
+        taskEXIT_CRITICAL(&s_snap_lock);
+        if (t) snapshot(t);   /* outside the lock: it erases and writes flash */
         if (now - last_flush >= FLOG_FLUSH_US || s_queue_len > FLOG_QUEUE / 2u) {
             flush();
             last_flush = now;

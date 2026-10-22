@@ -152,6 +152,25 @@ int main(void)
               flog_snap_priority(FLOG_SNAP_RECOVER) == flog_snap_priority(FLOG_SNAP_DROPOUT) &&
               flog_snap_priority(FLOG_SNAP_OUTPUT_UNLOCK) == flog_snap_priority(FLOG_SNAP_DROPOUT));
     }
+
+    /* A request waiting for the snapshot gap: a more important one replaces it. */
+    check("no pending request: the new one waits", flog_snap_request_merge(0, FLOG_SNAP_PERIODIC) == FLOG_SNAP_PERIODIC);
+    check("a dropout replaces a pending periodic request",
+          flog_snap_request_merge(FLOG_SNAP_PERIODIC, FLOG_SNAP_DROPOUT) == FLOG_SNAP_DROPOUT);
+    check("a dropout replaces a pending picture drop",
+          flog_snap_request_merge(FLOG_SNAP_VQ_DROP, FLOG_SNAP_DROPOUT) == FLOG_SNAP_DROPOUT);
+    check("a periodic request does not replace a pending dropout",
+          flog_snap_request_merge(FLOG_SNAP_DROPOUT, FLOG_SNAP_PERIODIC) == FLOG_SNAP_DROPOUT);
+    check("equal priority: the first request stays",
+          flog_snap_request_merge(FLOG_SNAP_DROPOUT, FLOG_SNAP_EDGE) == FLOG_SNAP_DROPOUT);
+    {
+        /* Snapshot at t=0, picture drop at t=3, dropout at t=5: the dropout is taken at t=10. */
+        uint8_t pending = 0;
+        pending = flog_snap_request_merge(pending, FLOG_SNAP_VQ_DROP);
+        pending = flog_snap_request_merge(pending, FLOG_SNAP_DROPOUT);
+        pending = flog_snap_request_merge(pending, FLOG_SNAP_PERIODIC);
+        check("picture drop, dropout, periodic while waiting: the dropout is taken", pending == FLOG_SNAP_DROPOUT);
+    }
     printf("%u/%u flight log checks passed\n", s_run - s_fail, s_run);
     return s_fail != 0;
 }

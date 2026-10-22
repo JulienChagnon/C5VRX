@@ -146,7 +146,8 @@ also dropped, and counted, when the heap has no block for the IQ copy plus
 8 KiB left free for the menu (`snapshots_no_memory`), or when the receiver
 is busy (menu, pause, startup) or its gain is settling (`snapshots_refused`).
 
-Triggers, at most one per 10 s:
+Triggers, at most one per 10 s. A request that arrives inside the gap waits;
+a more important one replaces it, at equal priority the first one stays:
 
 - dropout onset or a continuously observed native-H unlock of at least 100 ms;
 - `VIDEO_Q` more than 6 dB below its 30-second median;
