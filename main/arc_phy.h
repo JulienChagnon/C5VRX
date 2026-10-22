@@ -45,3 +45,17 @@ void arc_gain_table_from_bytes(arc_gain_table_t *table,
 bool arc_gain_tuple_decode(const arc_gain_table_t *table, uint8_t gain_index,
                            arc_gain_tuple_t *tuple);
 uint8_t arc_gain_highest_rf_stage_start(const arc_gain_table_t *table);
+
+/* The installed table as the PHY's AGC memory holds it (modem memory window
+ * at 0x600ae000, as vendor apb_get_mem() in librftest.a maps it; board
+ * 2026-10-21: all 84 rows equal the reconstruction above). One entry is four
+ * words: RF code = w2 << 5 | w1 >> 27, fine = (w1 >> 24) & 7,
+ * BB = (w1 >> 17) & 0x7f. The other bits are constant per RF stage and not
+ * decoded. */
+#define ARC_AGC_ENTRY_WORDS 4u
+void arc_gain_entry_from_agc(const uint32_t w[ARC_AGC_ENTRY_WORDS], uint16_t *rf_code,
+                             uint8_t *bb_code, uint8_t *fine_code);
+/* Rows 0..max_index whose tuple equals the AGC entry; *first_bad is the first
+ * row that differs (or is missing from words), -1 when none. */
+unsigned arc_gain_table_check_agc(const arc_gain_table_t *table, const uint32_t *words,
+                                  unsigned n_words, int *first_bad);

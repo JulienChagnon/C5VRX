@@ -21,6 +21,9 @@ void rf_force_gain(uint8_t gain);           /* caller owns the receiver */
 /* Called after every gain write and PHY restore (DC hold re-assert). */
 void rf_set_post_gain_hook(void (*hook)(uint8_t gain));
 const arc_gain_table_t *rf_gain_table(void);
+/* Rows checked against the PHY's AGC memory at the last table capture, how many
+ * matched, and the first differing row (-1 none); checked = 0: not checked. */
+void rf_gain_table_hw(unsigned *checked, unsigned *match, int *first_bad);
 uint32_t rf_table_generation(void);
 
 /* Analog receive filter. code PHY_FILTER_CALIBRATED = the chip's own
