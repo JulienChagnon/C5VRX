@@ -42,8 +42,24 @@ tmp_dir="$(mktemp -d)"
 trap 'rm -rf "${tmp_dir}"' EXIT
 
 echo "Fetching GitHub releases for Pages firmware mirror..."
-gh api --paginate --slurp "repos/${REPO}/releases?per_page=100" \
-  | jq 'add // []' > "${tmp_dir}/all-releases.json"
+# Slurp the page arrays with jq, rather than relying on gh's output wrapping.
+# A successful HTTP response can still be empty; never deploy that over a
+# working firmware mirror. Retry the listing before failing the deployment.
+for attempt in 1 2 3; do
+  gh api --paginate "repos/${REPO}/releases?per_page=100" \
+    | jq -s 'add // []' > "${tmp_dir}/all-releases.json"
+  if jq -e 'type == "array" and any(.[]; .draft == false and
+      (.tag_name | test("^c5vrx5-v5[.][0-9]+[.][0-9]+$")))' \
+      "${tmp_dir}/all-releases.json" > /dev/null; then
+    break
+  fi
+  if [[ "${attempt}" == 3 ]]; then
+    echo "Error: release listing contains no published C5VRX-5 main build; refusing an empty firmware deployment" >&2
+    exit 1
+  fi
+  echo "Warning: no C5VRX-5 main build in release listing; retrying (${attempt}/3)" >&2
+  sleep 2
+done
 
 # Keep a bounded history of legacy C5VRX-3 releases plus the C5VRX-5 channel
 # (versioned main builds and unmerged PR builds). Legacy archive, C5VRX-3 PR
@@ -90,6 +106,20 @@ jq '
       })
   ]
 ' "${tmp_dir}/selected-releases.json" > "${OUT_DIR}/firmware/releases.json"
+
+# Downloads may fail after a valid listing (rate limits, deleted PRs, etc.).
+# Keep skipping unavailable PR/history builds, but require the newest main
+# release so an outage cannot silently deploy an empty or stale flasher.
+latest_tag="$(jq -r '[.[] | select(.draft == false and
+  (.tag_name | test("^c5vrx5-v5[.][0-9]+[.][0-9]+$")))]
+  | sort_by(.published_at) | last | .tag_name' "${tmp_dir}/all-releases.json")"
+if ! jq -e --arg tag "${latest_tag}" 'any(.[]; .tag_name == $tag)' \
+    "${OUT_DIR}/firmware/releases.json" > /dev/null \
+    || [[ ! -s "${OUT_DIR}/firmware/${latest_tag}/c5vrx5.bin" ]] \
+    || [[ ! -s "${OUT_DIR}/firmware/${latest_tag}/c5vrx5_merged.bin" ]]; then
+  echo "Error: newest C5VRX-5 release ${latest_tag} was not mirrored completely; refusing deployment" >&2
+  exit 1
+fi
 
 echo "Pages site prepared at ${OUT_DIR}"
 du -sh "${OUT_DIR}"
