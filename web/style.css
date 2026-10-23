@@ -184,7 +184,13 @@ summary { cursor: pointer; color: #b0b7c1; min-height: 32px; }
 .amazon-button:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: #fff; text-decoration: none; }
 .affiliate-note { margin: 8px 0 0; color: var(--muted); font-size: .75rem; }
 .hardware-photo { position: relative; flex: 0 0 52px; height: 70px; overflow: hidden; }
-.hardware-photo img { position: absolute; width: 142px; max-width: none; height: auto; left: -43px; top: -18px; mix-blend-mode: screen; }
+.hardware-photo img { position: absolute; width: 142px; max-width: none; height: auto; left: -43px; top: -18px; }
+.hardware-extras { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+.hardware-extra { display: flex; align-items: center; gap: 14px; min-width: 0; padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); }
+.hardware-extra:hover { background: var(--panel-2); border-color: var(--line-strong); text-decoration: none; }
+.hardware-extra img { flex: 0 0 52px; width: 52px; height: 64px; object-fit: contain; }
+.hardware-extra strong { display: block; color: var(--text); font-size: 13px; font-weight: 600; }
+.hardware-extra-link { display: block; margin-top: 4px; color: var(--accent-soft); font-size: 12px; }
 
 @media (max-width: 800px) {
   .workspace { display: block; }
@@ -221,6 +227,7 @@ summary { cursor: pointer; color: #b0b7c1; min-height: 32px; }
   .command-row { padding: 12px 12px 0; }
   .log-hint { padding: 0 12px 12px; }
   .hardware-purchase { padding: 12px 14px; gap: 14px; }
+  .hardware-extras { grid-template-columns: 1fr; }
 }
 
 /* Flight log (terminal view) */
