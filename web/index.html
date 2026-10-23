@@ -3,28 +3,93 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>C5VRX | ESP32-C5 Analog FPV Receiver &amp; Web Flasher</title>
-<meta name="description" content="C5VRX is an open-source 5.8 GHz analog FPV receiver for the Seeed XIAO ESP32-C5. Flash firmware in your browser and control the receiver over USB.">
+<title>C5VRX | Open-Source ESP32-C5 Analog FPV Receiver</title>
+<meta name="description" content="Build a DIY 5.8 GHz analog FPV receiver with the ESP32-C5. Explore the hardware, flash C5VRX firmware over USB and control your receiver in the browser.">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="author" content="Twotoz and the C5VRX contributors">
 <meta name="theme-color" content="#111315">
 <link rel="canonical" href="https://c5vrx.com/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="C5VRX">
-<meta property="og:title" content="C5VRX | ESP32-C5 Analog FPV Receiver &amp; Web Flasher">
-<meta property="og:description" content="C5VRX is an open-source 5.8 GHz analog FPV receiver for the Seeed XIAO ESP32-C5. Flash firmware in your browser and control the receiver over USB.">
+<meta property="og:title" content="C5VRX | Open-Source ESP32-C5 Analog FPV Receiver">
+<meta property="og:description" content="Build a DIY 5.8 GHz analog FPV receiver with the ESP32-C5. Explore the hardware, flash C5VRX firmware over USB and control your receiver in the browser.">
 <meta property="og:url" content="https://c5vrx.com/">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="C5VRX | ESP32-C5 Analog FPV Receiver &amp; Web Flasher">
-<meta name="twitter:description" content="C5VRX is an open-source 5.8 GHz analog FPV receiver for the Seeed XIAO ESP32-C5. Flash firmware in your browser and control the receiver over USB.">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://c5vrx.com/assets/c5vrx-receiver.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="800">
+<meta property="og:image:alt" content="C5VRX receiver with a XIAO ESP32-C5 beside a small FPV drone">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://c5vrx.com/assets/c5vrx-receiver.jpg">
+<meta name="twitter:image:alt" content="C5VRX receiver with a XIAO ESP32-C5 beside a small FPV drone">
+<meta name="twitter:title" content="C5VRX | Open-Source ESP32-C5 Analog FPV Receiver">
+<meta name="twitter:description" content="Build a DIY 5.8 GHz analog FPV receiver with the ESP32-C5. Explore the hardware, flash C5VRX firmware over USB and control your receiver in the browser.">
 <link rel="icon" type="image/png" sizes="192x192" href="assets/favicon.png?v=20261011-white">
 <link rel="apple-touch-icon" href="assets/favicon.png?v=20261011-white">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "WebSite",
-  "name": "C5VRX",
-  "url": "https://c5vrx.com/",
-  "description": "C5VRX is an open-source 5.8 GHz analog FPV receiver for the Seeed XIAO ESP32-C5. Flash firmware in your browser and control the receiver over USB.",
-  "inLanguage": "en"
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://c5vrx.com/#website",
+      "name": "C5VRX",
+      "alternateName": "C5VRX ESP32-C5 FPV receiver",
+      "url": "https://c5vrx.com/",
+      "inLanguage": "en"
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://c5vrx.com/#webpage",
+      "url": "https://c5vrx.com/",
+      "name": "C5VRX | Open-Source ESP32-C5 Analog FPV Receiver",
+      "description": "Build a DIY 5.8 GHz analog FPV receiver with the ESP32-C5. Explore the hardware, flash C5VRX firmware over USB and control your receiver in the browser.",
+      "inLanguage": "en",
+      "isPartOf": {
+        "@id": "https://c5vrx.com/#website"
+      },
+      "mainEntity": {
+        "@id": "https://c5vrx.com/#firmware"
+      },
+      "primaryImageOfPage": {
+        "@id": "https://c5vrx.com/#receiver-photo"
+      }
+    },
+    {
+      "@type": "SoftwareSourceCode",
+      "@id": "https://c5vrx.com/#firmware",
+      "name": "C5VRX firmware",
+      "description": "Open-source firmware for an experimental ESP32-C5 5.8 GHz analog FPV receiver with passive DAC composite video output.",
+      "url": "https://github.com/Twotoz/C5VRX",
+      "codeRepository": "https://github.com/Twotoz/C5VRX",
+      "programmingLanguage": "C",
+      "runtimePlatform": "ESP32-C5",
+      "license": "https://github.com/Twotoz/C5VRX/blob/main/LICENSE",
+      "isAccessibleForFree": true,
+      "author": [
+        {
+          "@type": "Person",
+          "name": "Twotoz",
+          "url": "https://github.com/Twotoz"
+        },
+        {
+          "@type": "Organization",
+          "name": "C5VRX contributors",
+          "url": "https://github.com/Twotoz/C5VRX/graphs/contributors"
+        }
+      ]
+    },
+    {
+      "@type": "ImageObject",
+      "@id": "https://c5vrx.com/#receiver-photo",
+      "contentUrl": "https://c5vrx.com/assets/c5vrx-receiver.jpg",
+      "url": "https://c5vrx.com/assets/c5vrx-receiver.jpg",
+      "width": 1200,
+      "height": 800,
+      "caption": "C5VRX receiver with a XIAO ESP32-C5 beside a small FPV drone"
+    }
+  ]
 }
 </script>
 <link rel="stylesheet" href="style.css">
@@ -33,7 +98,7 @@
 <a class="skip-link" href="#main">Skip to tools</a>
 <header>
   <div class="header-inner">
-    <a href="https://twotoz.github.io/C5VRX/" aria-label="C5VRX home"><img class="logo" src="assets/c5vrx-logo.jpg" alt="C5VRX" width="145" height="46"></a>
+    <a href="https://c5vrx.com/" aria-label="C5VRX home"><img class="logo" src="assets/c5vrx-logo.jpg" alt="C5VRX" width="145" height="46"></a>
     <nav class="links" aria-label="Project links">
       <a href="https://discord.gg/3YNgJRHmzD" target="_blank" rel="noopener noreferrer">Discord</a>
       <a href="https://github.com/Twotoz/C5VRX" target="_blank" rel="noopener noreferrer">GitHub</a>
@@ -52,6 +117,8 @@
         <a href="https://github.com/Twotoz/C5VRX/blob/main/README.md#serial-console-usb-115200" target="_blank" rel="noopener noreferrer">Receiver controls</a>
         <a href="https://github.com/Twotoz/C5VRX/blob/main/docs/FINDINGS.md" target="_blank" rel="noopener noreferrer">Receiver findings</a>
         <a href="https://github.com/Twotoz/C5VRX/blob/main/docs/FIELD_TEST.md" target="_blank" rel="noopener noreferrer">Range &amp; field tests</a>
+        <a href="#about">About C5VRX</a>
+        <a href="#faq">Frequently asked questions</a>
         <a href="#safety">Safety &amp; warranty</a>
         <a href="https://github.com/Twotoz/C5VRX/tree/main/docs" target="_blank" rel="noopener noreferrer">All documentation</a>
       </nav>
@@ -60,7 +127,16 @@
 
   <div class="content-column">
     <main id="main">
-      <h1>Web flasher</h1>
+      <div class="project-intro">
+        <h1>C5VRX: ESP32-C5 analog FPV receiver</h1>
+        <p>An open-source DIY 5.8 GHz video receiver built around the ESP32-C5 and a passive resistor DAC. Explore the hardware, flash firmware over USB and use the browser receiver controls.</p>
+        <nav class="project-shortcuts" aria-label="Explore C5VRX">
+          <a href="#tools">Web flasher</a>
+          <a href="#about">How it works</a>
+          <a href="#hardware">Build components</a>
+          <a href="#faq">FAQ</a>
+        </nav>
+      </div>
       <section class="safety-notice" id="safety" aria-labelledby="safetyTitle">
         <h2 id="safetyTitle">Experimental receiver — safety &amp; warranty</h2>
         <p><strong>Video or sync can disappear without warning. Loss of FPV video can lead to a crash, property damage or serious injury.</strong> Do not rely on C5VRX as your only means of maintaining safe aircraft control.</p>
@@ -78,6 +154,7 @@
           <p>See the <a href="https://github.com/Twotoz/C5VRX/blob/main/README.md" target="_blank" rel="noopener noreferrer">README</a> and the evidence documented for your exact build.</p>
         </details>
       </section>
+      <h2 id="tools" class="section-title">Web flasher &amp; receiver controls</h2>
       <div id="unsupportedWarning" class="warning" role="status" hidden>USB needs a desktop browser with Web Serial, such as Chrome or Edge. You can still browse the firmware builds here.</div>
 
       <nav class="view-tabs" aria-label="Device tools">
@@ -380,6 +457,25 @@
         <p class="hint">Connecting the terminal releases the flasher and the other way round; they never share the port. The menu updates by itself while the receiver is connected.</p>
       </section>
 
+      <section class="project-info" id="about" aria-labelledby="aboutTitle">
+        <h2 id="aboutTitle">What is C5VRX?</h2>
+        <div class="project-overview">
+          <div>
+            <p>C5VRX is an open-source analog FPV receiver project by Twotoz and the C5VRX contributors. It uses the ESP32-C5’s radio to receive a 5.8 GHz analog FM video signal from an FPV video transmitter.</p>
+            <p>Hardware demodulation and a passive 6-bit resistor DAC are designed to provide composite PAL/NTSC video for analog goggles or monitors. Camera and display compatibility depend on the hardware and firmware build; <a href="#safety">ground-test your exact setup</a>.</p>
+          </div>
+          <figure>
+            <img src="assets/c5vrx-receiver.jpg" alt="C5VRX receiver with a XIAO ESP32-C5 beside a small FPV drone" width="1200" height="800" loading="lazy" decoding="async">
+            <figcaption>A C5VRX receiver built around the XIAO ESP32-C5.</figcaption>
+          </figure>
+        </div>
+        <h3>Build and flash an ESP32-C5 FPV receiver</h3>
+        <p>The documented XIAO build uses a Seeed Studio XIAO ESP32-C5 and a passive resistor DAC. Follow the <a href="https://github.com/Twotoz/C5VRX/blob/main/README.md#hardware" target="_blank" rel="noopener noreferrer">hardware and DAC wiring guide</a>, then install a firmware build with the <a href="#tools">USB web flasher</a>. The browser tools support firmware installation, receiver settings and reading recorded flight logs.</p>
+        <h3>Open-source firmware and receiver research</h3>
+        <p>The <a href="https://github.com/Twotoz/C5VRX" target="_blank" rel="noopener noreferrer">C5VRX GitHub repository</a> includes GPL-3.0-only firmware, schematics, host tests and documented experiments. Read the <a href="https://github.com/Twotoz/C5VRX/blob/main/docs/FINDINGS.md" target="_blank" rel="noopener noreferrer">receiver findings</a> for the evidence and limits of each change, or join the project’s Discord from the link above to share builds and test results.</p>
+      </section>
+
+      <h2 id="hardware" class="section-title hardware-heading">Hardware for a DIY C5VRX receiver</h2>
       <aside class="hardware-purchase" aria-label="Get the hardware">
         <div class="hardware-photo"><img src="assets/xiao-esp32c5.png" alt="Seeed Studio XIAO ESP32-C5 board" width="320" height="240" loading="lazy"></div>
         <div class="hardware-copy">
@@ -404,6 +500,25 @@
         </article>
       </div>
       <p class="affiliate-note" id="affiliateDisclosure">Affiliate links. As an Amazon Associate, I earn from qualifying purchases. All affiliate earnings go back into C5VRX development.</p>
+      <section class="project-faq" id="faq" aria-labelledby="faqTitle">
+        <h2 id="faqTitle">Frequently asked questions</h2>
+        <details>
+          <summary>What hardware do I need for C5VRX?</summary>
+          <p>The documented basic build uses a Seeed Studio XIAO ESP32-C5, the resistor DAC, an antenna and a composite-video connection. Use the <a href="https://github.com/Twotoz/C5VRX/blob/main/README.md#hardware" target="_blank" rel="noopener noreferrer">hardware guide</a> for the exact pin mapping and resistor values.</p>
+        </details>
+        <details>
+          <summary>Does C5VRX receive analog PAL and NTSC FPV video?</summary>
+          <p>C5VRX is designed for 5.8 GHz analog FM FPV video and composite PAL/NTSC output. Check the documented camera, goggles and monitor tests for your exact firmware build; compatibility is experimental.</p>
+        </details>
+        <details>
+          <summary>Can I flash ESP32-C5 firmware from my browser?</summary>
+          <p>Yes. Connect the receiver with a USB data cable and use a desktop browser with Web Serial, such as Chrome or Edge. The <a href="#tools">web flasher</a> offers published firmware builds and local binary files. The <a href="https://github.com/Twotoz/C5VRX/blob/main/README.md#flashing" target="_blank" rel="noopener noreferrer">flashing guide</a> also documents the command-line workflow.</p>
+        </details>
+        <details>
+          <summary>Is C5VRX qualified for flight?</summary>
+          <p>C5VRX is experimental. Passing tests or installing a versioned release does not establish flight safety or guarantee range. Read the <a href="#safety">safety and warranty disclaimer</a>, complete calibration and ground-test every firmware and hardware/settings combination.</p>
+        </details>
+      </section>
     </main>
     <footer>C5VRX by Twotoz and the C5VRX contributors · <a href="https://github.com/Twotoz/C5VRX/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">GPL-3.0-only</a> · <a href="#safety">Safety &amp; warranty</a></footer>
   </div>
