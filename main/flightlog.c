@@ -11,9 +11,12 @@
 #include "flightlog_format.h"
 #include "receiver.h"
 #include "cn_estimate.h"
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "driver/usb_serial_jtag.h"
+#include "driver/usb_serial_jtag_vfs.h"
 #include "esp_chip_info.h"
 #include "esp_heap_caps.h"
 #include "esp_mac.h"
@@ -441,21 +444,72 @@ static unsigned used_blocks(void)
     return used;
 }
 
+/* The dump goes through the USB driver's ring buffer. The everyday console
+ * path (main.c) feeds the 64-byte FIFO a byte at a time and drops bytes when
+ * the host is slow for 50 ms. Board 2026-10-23, receiver live, same log: that
+ * path took 39 s at 66 KiB/s, lost 10 of 4945 lines and 24 records; the
+ * driver took 6.5-8.9 s at 290-400 KiB/s with none lost. The driver exists
+ * only while W runs, so a board without a host never waits on USB. Its ring
+ * is small because the heap is: the largest free block was 9.7 KiB live (an
+ * 8 KiB ring was no faster); without room the dump uses the byte path. */
+#define FLOG_DUMP_TX_BYTES 4096u
+#define FLOG_DUMP_WAIT_MS  1000u
+static bool s_dump_usb, s_dump_failed;
+
+static void dump_usb_open(void)
+{
+    usb_serial_jtag_driver_config_t cfg = { .tx_buffer_size = FLOG_DUMP_TX_BYTES, .rx_buffer_size = 256 };
+    s_dump_failed = false;
+    s_dump_usb = !usb_serial_jtag_is_driver_installed() &&
+                 heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT) >= FLOG_DUMP_TX_BYTES + 1024u &&
+                 usb_serial_jtag_driver_install(&cfg) == ESP_OK;
+    if (s_dump_usb) usb_serial_jtag_vfs_use_driver();   /* other tasks' prints go through the ring too */
+}
+
+static void dump_usb_close(void)
+{
+    if (!s_dump_usb) return;
+    (void)usb_serial_jtag_wait_tx_done(pdMS_TO_TICKS(FLOG_DUMP_WAIT_MS));
+    usb_serial_jtag_vfs_use_nonblocking();
+    (void)usb_serial_jtag_driver_uninstall();
+    s_dump_usb = false;
+}
+
+/* One whole line; a host that stops reading ends the dump. */
+static void dump_line(const char *fmt, ...)
+{
+    if (s_dump_failed) return;
+    char line[600];
+    va_list ap;
+    va_start(ap, fmt);
+    int n = vsnprintf(line, sizeof(line) - 1u, fmt, ap);
+    va_end(ap);
+    if (n <= 0 || (size_t)n >= sizeof(line) - 1u) return;
+    if (!s_dump_usb) { fputs(line, stdout); vTaskDelay(1); return; }
+    /* The console's own path writes CR LF; the driver sends bytes as given. */
+    if (line[n - 1] == '\n') { line[n - 1] = '\r'; line[n++] = '\n'; }
+    if (usb_serial_jtag_write_bytes(line, (size_t)n, pdMS_TO_TICKS(FLOG_DUMP_WAIT_MS)) != n) s_dump_failed = true;
+    /* The driver owns the RX FIFO now: keep the download key working. */
+    uint8_t c;
+    while (usb_serial_jtag_read_bytes(&c, 1, 0) == 1)
+        if (c == '`') { dump_usb_close(); rf_reboot_to_download(); }
+}
+
 static void dump_range(size_t offset, size_t len)
 {
     static const char hex[] = "0123456789abcdef";
     uint8_t chunk[256];
     char line[513];
-    for (size_t k = 0; k < len; k += sizeof(chunk)) {
+    for (size_t k = 0; k < len && !s_dump_failed; k += sizeof(chunk)) {
         const size_t n = len - k < sizeof(chunk) ? len - k : sizeof(chunk);
-        if (esp_partition_read(s_part, offset + k, chunk, n) != ESP_OK) { printf("FLOG_ERR read=%u\n", (unsigned)(offset + k)); return; }
+        if (esp_partition_read(s_part, offset + k, chunk, n) != ESP_OK) { dump_line("FLOG_ERR read=%u\n", (unsigned)(offset + k)); return; }
         for (size_t j = 0; j < n; ++j) { line[2 * j] = hex[chunk[j] >> 4]; line[2 * j + 1] = hex[chunk[j] & 15]; }
         line[2 * n] = 0;
         /* Every line carries its CRC: other tasks print too, and a reader
          * re-requests a dump for any line that did not arrive intact. */
-        printf("FLOG_D %u %s %08lx\n", (unsigned)(offset + k), line, (unsigned long)flog_crc32(0, chunk, n));
-        vTaskDelay(1);
+        dump_line("FLOG_D %u %s %08lx\n", (unsigned)(offset + k), line, (unsigned long)flog_crc32(0, chunk, n));
     }
+    vTaskDelay(1);
 }
 
 static void dump(void)
@@ -463,6 +517,8 @@ static void dump(void)
     xSemaphoreTake(s_flash_lock, portMAX_DELAY);
     s_dumping = true;
     flush();
+    const int64_t t0 = esp_timer_get_time();
+    dump_usb_open();
     unsigned blocks = 0, snaps = 0;
     for (unsigned k = 0; k < FLOG_RECORD_BLOCKS; ++k) {
         uint8_t b[FLOG_BLOCK_HEAD];
@@ -472,8 +528,8 @@ static void dump(void)
         uint8_t h[4];
         if (esp_partition_read(s_part, snap_offset(k), h, sizeof(h)) == ESP_OK && flog_get32(h) == FLOG_MAGIC_SNAP) ++snaps;
     }
-    printf("FLOG_BEGIN format=%u bytes=%u blocks=%u snapshots=%u session=%lu fw=%s\n", FLOG_FORMAT,
-           (unsigned)FLOG_PARTITION_BYTES, blocks, snaps, (unsigned long)s_session, firmware_id());
+    dump_line("FLOG_BEGIN format=%u bytes=%u blocks=%u snapshots=%u session=%lu fw=%s\n", FLOG_FORMAT,
+              (unsigned)FLOG_PARTITION_BYTES, blocks, snaps, (unsigned long)s_session, firmware_id());
     dump_range(0, 32);
     for (unsigned k = 0; k < FLOG_RECORD_BLOCKS; ++k) {
         uint8_t b[FLOG_BLOCK_HEAD];
@@ -485,7 +541,9 @@ static void dump(void)
         if (esp_partition_read(s_part, snap_offset(k), h, sizeof(h)) == ESP_OK && flog_get32(h) == FLOG_MAGIC_SNAP)
             dump_range(snap_offset(k), FLOG_SNAP_SECTORS * FLOG_SECTOR);
     }
-    printf("FLOG_END blocks=%u snapshots=%u\n", blocks, snaps);
+    dump_line("FLOG_END blocks=%u snapshots=%u ms=%lu usb=%s\n", blocks, snaps,
+              (unsigned long)((esp_timer_get_time() - t0) / 1000), s_dump_usb ? "driver" : "fifo");
+    dump_usb_close();
     s_dumping = false;
     xSemaphoreGive(s_flash_lock);
 }
