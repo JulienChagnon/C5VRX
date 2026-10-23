@@ -290,16 +290,19 @@ int main(void)
         const cna_reading_t power = {.x10=env_x10, .confidence=CNA_CONF_OK, .source=CNA_SRC_POWER};
         const cna_reading_t distorted = {.x10=env_x10, .confidence=CNA_CONF_LOW,
                                          .source=CNA_SRC_POWER | CNA_SRC_DISTORTED};
-        printf("     amplitude plateaus: ratio %d -> envelope %.1f dB, normal-profile LP=%u\n",
-               ratio_x100, env_x10 / 10.0,
-               (unsigned)kp_ladder_want_lp_cn(KP_CLASS_NORMAL, env_x10, false, false, false));
-        check("amplitude fading alone can cross the normal-profile LP threshold",
-              env_x10 > 0 && env_x10 < kp_lp_enter12_x10[KP_CLASS_NORMAL] &&
-              kp_ladder_want_lp_cn(KP_CLASS_NORMAL, env_x10, false, false, false));
+        printf("     amplitude plateaus: ratio %d -> envelope %.1f dB\n",
+               ratio_x100, env_x10 / 10.0);
+        check("amplitude fading alone can imitate a weak positive C/N", env_x10 > 0 && env_x10 < 60);
         check("an envelope-only C/N never drives RF decisions", cna_control_x10(&envelope) == CNA_UNKNOWN_X10);
         check("an unreferenced M2M4 C/N never drives RF decisions", cna_control_x10(&m2m4) == CNA_UNKNOWN_X10);
         check("a noise-referenced power C/N remains available to decisions", cna_control_x10(&power) == env_x10);
         check("a quantisation-distorted power C/N remains unknown", cna_control_x10(&distorted) == CNA_UNKNOWN_X10);
+        kp_ladder_t ladder;
+        kp_ladder_reset(&ladder);
+        ladder.level = 1;
+        for (int64_t now = 0; now < 10000000; now += 50000)
+            (void)kp_ladder_update_evidence(&ladder, cna_control_x10(&envelope), true, 100, now);
+        check("amplitude-only C/N cannot move the active kp ladder", ladder.level == 1);
     }
 
     {   /* a weak carrier learned again and again cannot pull an anchored row */
