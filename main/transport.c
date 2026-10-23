@@ -62,7 +62,7 @@ BITSCRAMBLER_PROGRAM(s_u85q_64, "u85q_64");
 /* PR #250 P64 champion: 64 states / 16 tokens. Keep this identity with
  * the verified program and LUT through menu, OUTPUT and rollback. */
 /* U85Q remains the reference at boot. The first board comparison had no
- * VTX; P64-R1 needs explicit live-signal qualification, not noise viewing. */
+ * VTX; U80P64-R1 needs explicit live-signal qualification, not noise viewing. */
 static bool s_demod_p64 = false, s_verified_p64 = false;
 static bool s_started;   /* live TX running (cleared while menu/status/recovery owns TX) */
 static bool s_prog_lp;   /* U85Q-LP instructions loaded */

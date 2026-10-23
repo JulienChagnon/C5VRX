@@ -92,7 +92,7 @@ static void help(void)
     printf("C5VRX-5 keys: T status, D range/health report, M gain map (for a preset), R per-second FIELD_DIAG lines on/off,\n"
            "  K kp ladder OFF -> AUTO kp -> AUTO kp+LP (brief restarts), k/j kp calmer/faster, P U85Q/U85Q-LP\n"
            "    (k/j/P save AUTO OFF; fresh settings default to AUTO kp+LP),\n"
-           "  m U85Q (boot default) / P64-R1 bench (experimental; brief restart; session only),\n"
+           "  m U85Q (boot default) / U80P64-R1 bench (experimental; brief restart; session only),\n"
            "    K/k/j/P control U85Q only; P64 uses one fixed table with no LP ladder,\n"
            "  g OUTPUT 0.5x..5.0x in 0.5x steps (saved after application; restored at boot),\n"
            "  G RX gain AUTO (KEEL-1) -> MAX -> fixed G78..G24 (until the next boot; every boot starts AUTO),\n"

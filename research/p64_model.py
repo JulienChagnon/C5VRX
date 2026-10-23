@@ -1,8 +1,8 @@
-"""C5VRX by Twotoz/contributors: reproduce the PR #250 P64 and P64-R1 tables.
+"""C5VRX by Twotoz/contributors: reproduce the PR #250 P64 and U80P64-R1 tables.
 
 Adapted from research/p64_optimizer.py at 9e4a616; optimization and benchmark
 scores are simulation evidence. 7.2 degrees is the video-state grid spacing.
-P64-R1 uses all 16 phase tokens, permits sync-to-porch escape, and emits the
+U80P64-R1 uses all 16 phase tokens, permits sync-to-porch escape, and emits the
 committed phase advance instead of a clamp on an uncommitted prediction.
 """
 import json
@@ -160,4 +160,4 @@ def checked_in_table():
 
 if __name__ == '__main__':
     assert np.array_equal(repaired_table(), checked_in_table()), 'P64 header differs from repair parameters'
-    print('PASS: P64-R1 header reproduces all 1024 words from repair parameters')
+    print('PASS: U80P64-R1 header reproduces all 1024 words from repair parameters')

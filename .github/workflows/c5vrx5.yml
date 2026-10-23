@@ -137,7 +137,7 @@ jobs:
           /tmp/iqf-test-env/bin/python research/u85q_lp.py check
       - name: Kp ladder tables (generator reproduces the U85Q LUTs; kp_tables.h current)
         run: /tmp/iqf-test-env/bin/python research/kp_morph.py check
-      - name: P64-R1 transfer and assembled datapath
+      - name: U80P64-R1 transfer and assembled datapath
         run: |
           /tmp/iqf-test-env/bin/python test/test_p64.py
           /tmp/iqf-test-env/bin/python research/p64_validation.py --check

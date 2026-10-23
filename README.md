@@ -27,7 +27,7 @@ Analog 5.8 GHz FPV receiver on one Seeed Studio XIAO ESP32-C5 with a passive
 6-bit resistor DAC: live FM video in, composite PAL/NTSC out for goggles.
 
 C5VRX-5 on this branch boots **U85Q** on top of the digital RX mode-0
-changes in PR #248. **P64-R1**, a repair of the model from PR #250, is an experimental bench
+changes in PR #248. **U80P64-R1**, a repair of the model from PR #250, is an experimental bench
 selection via console `m`. The first reported comparison had the VTX off,
 so it was not a picture-quality test. A separate host check found a porch
 tone incorrectly trapped at a sync level. R1 fixes that transfer defect;

@@ -1,11 +1,11 @@
-/* C5VRX by Twotoz/contributors: P64-R1 model repair from PR #250.
+/* C5VRX by Twotoz/contributors: U80P64-R1 model repair from PR #250.
  * 14 coarse / 50 fine phase states (7.2-degree video-state grid), 16 tokens.
  * Frequency follows committed phase advance; no forced sync DAC clamp.
  * Host-checked; no live-carrier hardware acceptance yet. docs/P64.md.
  */
 #pragma once
 #include <stdint.h>
-#define P64_MODEL_ID "P64-R1"
+#define P64_MODEL_ID "U80P64-R1"
 #define P64_TABLE_ENTRIES 1024
 #define P64_TABLE_SHA256 "8027b82680c202738038435ce68eefb0145f58a112da773aefadefca0792482c"
 static const uint16_t p64_table[1024] = {

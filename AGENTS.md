@@ -696,11 +696,11 @@ requirements by themselves**.
 - This branch boots U85Q on top of #248. The P64 model imported from
   PR #250 (video-state grid 7.2 degrees) is bench-only via `m`. The apparent
   board comparison on 2026-10-23 had the VTX off and was not a picture A/B.
-  A separate clean-tone host test found sync-corridor latching; P64-R1 repairs
+  A separate clean-tone host test found sync-corridor latching; U80P64-R1 repairs
   the model and has functional host gates, but no live-carrier acceptance. Never restore
   P64 as default from host-only scores. The VTX stays off until the operator
   explicitly confirms it is on; use short announced measurement windows.
-  P64-R1 uses its own program and fixed LUT: never apply U85Q kp/LP tables or instructions
+  U80P64-R1 uses its own program and fixed LUT: never apply U85Q kp/LP tables or instructions
   to it, including comparator-format changes, OUTPUT or rollback. The normal
   raw-ring/DAC cadence and bounded restart ownership remain unchanged.
   `docs/P64.md` records the source, host evidence and required board checks.

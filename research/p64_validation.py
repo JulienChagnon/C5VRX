@@ -1,4 +1,4 @@
-"""C5VRX/Twotoz: P64-R1/PR250/U85Q validation; host evidence only.
+"""C5VRX/Twotoz: U80P64-R1/PR250/U85Q validation; host evidence only.
 
 Uses the PR250 fast scorer (research/p5t_eval.py) and existing physical-ADC
 model. No attached hardware or VTX is used. Run with --check in CI.

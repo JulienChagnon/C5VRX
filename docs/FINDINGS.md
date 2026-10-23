@@ -10,7 +10,7 @@ Measured range is not established.
 ## P64 demodulator on mode 0 (PR #250 model, 2026-10-23)
 
 This branch repairs the P64 model from PR #250 on top of the digital-filter
-work in #248. Boot selects U85Q; `m` opts into P64-R1 for a bench session.
+work in #248. Boot selects U85Q; `m` opts into U80P64-R1 for a bench session.
 The 7.2-degree number describes the 50-video-state grid, not measured phase
 precision. The full table and assembled output are host-checked; combined
 firmware timing and range remain unproven. The initial board comparison on

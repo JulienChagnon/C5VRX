@@ -105,7 +105,7 @@ def main():
     expected = reference(raw, table)[:len(got)]
     assert np.array_equal(got & 63, expected), "assembled P64 differs from pair/state reference"
     assert np.array_equal(got[::2] & 63, got[1::2] & 63), "DAC20 must duplicate at TX40"
-    print(f"PASS: P64-R1 transfer (588 tones, max error {worst_error:.3f} code); sync-to-porch escape; original regression rejected; full loader image; assembled DAC20/TX40")
+    print(f"PASS: U80P64-R1 transfer (588 tones, max error {worst_error:.3f} code); sync-to-porch escape; original regression rejected; full loader image; assembled DAC20/TX40")
 
 
 if __name__ == "__main__":
