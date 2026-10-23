@@ -129,7 +129,7 @@
     <main id="main">
       <div class="project-intro">
         <h1>C5VRX: ESP32-C5 analog FPV receiver</h1>
-        <p>An open-source DIY 5.8 GHz video receiver built around the ESP32-C5 and a passive resistor DAC. Explore the hardware, flash firmware over USB and use the browser receiver controls.</p>
+        <p>Build your own 5.8 GHz analog FPV receiver with an ESP32-C5. Six resistors connected to its GPIO pins make the AV video output. Build it on perfboard, flash the firmware over USB and connect your goggles or monitor.</p>
         <nav class="project-shortcuts" aria-label="Explore C5VRX">
           <a href="#tools">Web flasher</a>
           <a href="#about">How it works</a>
@@ -461,8 +461,8 @@
         <h2 id="aboutTitle">What is C5VRX?</h2>
         <div class="project-overview">
           <div>
-            <p>C5VRX is an open-source analog FPV receiver project by Twotoz and the C5VRX contributors. It uses the ESP32-C5’s radio to receive a 5.8 GHz analog FM video signal from an FPV video transmitter.</p>
-            <p>Hardware demodulation and a passive 6-bit resistor DAC are designed to provide composite PAL/NTSC video for analog goggles or monitors. Camera and display compatibility depend on the hardware and firmware build; <a href="#safety">ground-test your exact setup</a>.</p>
+            <p>C5VRX turns an ESP32-C5 into a 5.8 GHz analog FPV video receiver. It is an open-source project by Twotoz and the C5VRX contributors.</p>
+            <p>The basic idea is simple: solder one resistor to each of six GPIO pins, then join the other ends together. That connection is your AV video output for analog goggles or a monitor. Follow the wiring guide below and <a href="#safety">ground-test your setup</a>.</p>
           </div>
           <figure>
             <img src="assets/c5vrx-receiver.jpg" alt="C5VRX receiver with a XIAO ESP32-C5 beside a small FPV drone" width="1200" height="800" loading="lazy" decoding="async">
@@ -470,7 +470,7 @@
           </figure>
         </div>
         <h3>Build and flash an ESP32-C5 FPV receiver</h3>
-        <p>The documented XIAO build uses a Seeed Studio XIAO ESP32-C5 and a passive resistor DAC. Follow the <a href="https://github.com/Twotoz/C5VRX/blob/main/README.md#hardware" target="_blank" rel="noopener noreferrer">hardware and DAC wiring guide</a>, then install a firmware build with the <a href="#tools">USB web flasher</a>. The browser tools support firmware installation, receiver settings and reading recorded flight logs.</p>
+        <p><strong>Perfboard is the easiest way to build it for now, until a C5VRX DIY kit is available.</strong> Start with a Seeed Studio XIAO ESP32-C5 and the six GPIO resistors. Add a 200 Ω resistor from the joined output to GND, and connect your goggles’ or monitor’s video input and ground. The <a href="https://github.com/Twotoz/C5VRX/blob/main/README.md#hardware" target="_blank" rel="noopener noreferrer">wiring guide</a> shows exactly which pins and resistor values to use. Then install the firmware with the <a href="#tools">USB web flasher</a>.</p>
         <h3>Open-source firmware and receiver research</h3>
         <p>The <a href="https://github.com/Twotoz/C5VRX" target="_blank" rel="noopener noreferrer">C5VRX GitHub repository</a> includes GPL-3.0-only firmware, schematics, host tests and documented experiments. Read the <a href="https://github.com/Twotoz/C5VRX/blob/main/docs/FINDINGS.md" target="_blank" rel="noopener noreferrer">receiver findings</a> for the evidence and limits of each change, or join the project’s Discord from the link above to share builds and test results.</p>
       </section>
@@ -504,7 +504,7 @@
         <h2 id="faqTitle">Frequently asked questions</h2>
         <details>
           <summary>What hardware do I need for C5VRX?</summary>
-          <p>The documented basic build uses a Seeed Studio XIAO ESP32-C5, the resistor DAC, an antenna and a composite-video connection. Use the <a href="https://github.com/Twotoz/C5VRX/blob/main/README.md#hardware" target="_blank" rel="noopener noreferrer">hardware guide</a> for the exact pin mapping and resistor values.</p>
+          <p>A Seeed Studio XIAO ESP32-C5, six resistors for the GPIO pins, one 200 Ω resistor to GND, an antenna and a connection to your goggles’ or monitor’s AV input. Perfboard makes assembly easier while we wait for a C5VRX DIY kit. Follow the <a href="https://github.com/Twotoz/C5VRX/blob/main/README.md#hardware" target="_blank" rel="noopener noreferrer">wiring guide</a> for the pins, resistor values and connections.</p>
         </details>
         <details>
           <summary>Does C5VRX receive analog PAL and NTSC FPV video?</summary>
