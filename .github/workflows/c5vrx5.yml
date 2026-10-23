@@ -137,6 +137,8 @@ jobs:
           /tmp/iqf-test-env/bin/python research/u85q_lp.py check
       - name: Kp ladder tables (generator reproduces the U85Q LUTs; kp_tables.h current)
         run: /tmp/iqf-test-env/bin/python research/kp_morph.py check
+      - name: P64 champion and assembled datapath
+        run: /tmp/iqf-test-env/bin/python test/test_p64.py
       - name: Kp ladder at the range edge (control-loop window gate and switch confirmation)
         run: /tmp/iqf-test-env/bin/python research/ladder_gate.py check research/data/ladder_gate_rates.json
       - name: OUTPUT research invariants (DAC-only changes and bounded policy)

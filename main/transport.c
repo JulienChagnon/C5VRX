@@ -1,6 +1,6 @@
 /* C5VRX-5 by Twotoz and the C5VRX contributors: realtime transport.
  * MODEM_DIAG -> PARLIO RX 40 MS/s -> 32 KiB cyclic ring -> TX BitScrambler
- * (U85Q) -> PARLIO TX 40 MHz -> 6-bit resistor DAC. Both GDMA rings run
+ * (P64, or U85Q fallback) -> PARLIO TX 40 MHz -> 6-bit resistor DAC. Both GDMA rings run
  * with interrupts off and cleared suc_eof (espressif/esp-idf#19091), so no
  * DMA boundary is a stream boundary; the CPU never paces samples. */
 #include "receiver.h"
@@ -27,6 +27,7 @@
 #include "sync_flag.h"
 #include "hal/parlio_ll.h"
 #include "kp_tables.h"
+#include "p64_tables.h"
 #include "snapshot.h"
 #include "output_telemetry.h"
 #include "control_window.h"
@@ -57,12 +58,19 @@ BITSCRAMBLER_PROGRAM(s_u85q, "u85q");
  * instruction rewrite left the board video black while USB kept running. */
 BITSCRAMBLER_PROGRAM(s_u85q_lp, "u85q_lp");
 BITSCRAMBLER_PROGRAM(s_u85q_lp_flag, "u85q_lp_flag");
+BITSCRAMBLER_PROGRAM(s_u85q_64, "u85q_64");
+/* PR #250 P64 champion: 64 states / 16 tokens. Keep this identity with
+ * the verified program and LUT through menu, OUTPUT and rollback. */
+static bool s_demod_p64 = true, s_verified_p64 = true;
 static bool s_started;   /* live TX running (cleared while menu/status/recovery owns TX) */
 static bool s_prog_lp;   /* U85Q-LP instructions loaded */
-static const void *tracker_program(bool lp) { return lp ? s_u85q_lp : s_u85q; }
+static const void *tracker_program(bool lp)
+{ return s_demod_p64 ? s_u85q_64 : lp ? s_u85q_lp : s_u85q; }
 static bool s_flag_format,s_verified_flag;
 static const void *tracker_format_program(bool lp,bool flag)
-{ return flag && lp?s_u85q_lp_flag:tracker_program(lp); }
+{ return !s_demod_p64 && flag && lp?s_u85q_lp_flag:tracker_program(lp); }
+static const uint16_t *tracker_lut(int level)
+{ return s_demod_p64 ? p64_table : kp_tables[level]; }
 
 /* 6-bit resistor DAC, LSB first (XIAO D4..D9; 8.2k/3.9k/2k/1k/470R/240R
  * plus 200R). Do not change the tested pin order. */
@@ -253,6 +261,7 @@ static kp_switch_guard_t s_switch_guard;
 
 bool transport_kp_set(int level)
 {
+    if (s_demod_p64) return false;  /* P64 is one fixed table, no kp ladder. */
     if (s_transport_fault || !s_lut_known || level < 0 || level >= KP_LEVELS) return false;
     s_kp_target = (uint8_t)level;
     return true;
@@ -261,7 +270,7 @@ bool transport_kp_set(int level)
 /* Verified level, -1 while a different target is pending or unknown. */
 int transport_kp_level(void)
 {
-    if (!s_lut_known || s_transport_fault) return -1;
+    if (s_demod_p64 || !s_lut_known || s_transport_fault) return -1;
     return s_verified_level;
 }
 
@@ -302,6 +311,7 @@ static void stage_hooks(void) { tr_hook_now = stage_now; tr_hook_note = stage_no
 unsigned transport_kp_tick(void)
 {
     stage_hooks();
+    if (s_demod_p64) return 0;
     if (!s_lut_known || !s_started || s_menu_active || transport_kp_level() == s_kp_target) return 0;
     uint32_t before = s_kp_writes;
     (void)switch_live(s_kp_target, s_prog_lp);
@@ -329,6 +339,7 @@ static bool program_words(const uint8_t *bin, const uint8_t **inst)
  * manual k and mode changes cannot bypass it or alternate two timers. */
 static bool switch_live(int level, bool lp)
 {
+    if (s_demod_p64) return false;
     if (!s_lut_known || !s_started || s_menu_active) return false;
     if (level >= KP_LEVELS || level < -1) return false;
     const uint16_t *lut = level < 0 ? s_lut_live : kp_tables[level];
@@ -364,7 +375,18 @@ static bool switch_live(int level, bool lp)
     return ok;
 }
 
-bool transport_apply_auto(int level, bool lp) { stage_hooks(); return switch_live(level, lp); }
+bool transport_apply_auto(int level, bool lp)
+{
+    /* Profile changes still apply their analog filter; P64 has no kp/LP
+     * target to rewrite. Do not feed U85Q tables to its six-bit state. */
+    if (s_demod_p64) {
+        if (s_transport_fault || !s_lut_known || lp || level < 0 || level >= KP_LEVELS) return false;
+        s_kp_target = (uint8_t)level;  /* profile's U85Q fallback, no P64 rewrite */
+        return true;
+    }
+    stage_hooks();
+    return switch_live(level, lp);
+}
 
 uint32_t transport_switch_wait_ms(void)
 {
@@ -375,6 +397,7 @@ uint32_t transport_switch_wait_ms(void)
 
 bool transport_set_lp(bool lp)
 {
+    if (s_demod_p64) return false;
     if (lp == s_prog_lp) return true;
     /* Menu selection does not touch live RAM; applied at menu exit. */
     if (s_menu_active) { s_prog_lp = lp; return true; }
@@ -383,7 +406,28 @@ bool transport_set_lp(bool lp)
 
 bool transport_lp(void) { return s_prog_lp; }
 
-const char *transport_program_name(void) { return s_prog_lp ? "U85Q-LP" : "U85Q"; }
+const char *transport_program_name(void)
+{ return s_demod_p64 ? "P64" : s_prog_lp ? "U85Q-LP" : "U85Q"; }
+bool transport_p64(void) { return s_demod_p64; }
+
+bool transport_set_p64(bool enabled)
+{
+    if (s_transport_fault) return false;
+    if (enabled == s_demod_p64) return true;
+    if (s_menu_active || !s_started) {
+        s_demod_p64 = enabled;
+        s_prog_lp = false;
+        return true;
+    }
+    if (!s_lut_known || !kp_switch_ready(&s_switch_guard, esp_timer_get_time())) return false;
+    const bool previous = s_demod_p64, previous_lp = s_prog_lp;
+    s_demod_p64 = enabled;
+    s_prog_lp = false;
+    const bool ok = resume_live(tracker_lut(s_kp_target));
+    if (!ok) { s_demod_p64 = previous; s_prog_lp = previous_lp; }
+    kp_switch_mark(&s_switch_guard, esp_timer_get_time());
+    return ok;
+}
 bool transport_faulted(void) { return s_transport_fault; }
 uint32_t transport_restart_errors(void) { return s_restart_errors; }
 unsigned transport_output(void) { return s_output; }
@@ -401,7 +445,7 @@ bool transport_set_output(unsigned level)
     if (s_menu_active || !s_started) { s_output = level; return true; }
     if (!kp_switch_ready(&s_switch_guard, esp_timer_get_time())) return false;
     s_output = level;
-    bool ok = resume_live(s_lut_known ? kp_tables[s_verified_level] : NULL);
+    bool ok = resume_live(s_lut_known ? tracker_lut(s_verified_level) : NULL);
     kp_switch_mark(&s_switch_guard, esp_timer_get_time());
     return ok;
 }
@@ -520,6 +564,7 @@ static bool restart_stage(void *ctx, tr_stage_t stage, bool rollback)
 {
     restart_t *r = ctx;
     if (stage == TR_BS_ENABLE && rollback) {
+        s_demod_p64 = s_verified_p64;
         s_prog_lp = s_verified_lp;
         s_output = s_verified_output;
         r->lp = s_verified_lp;
@@ -752,14 +797,14 @@ void transport_stop_chain(void)
 static bool resume_live(const uint16_t *restore_lut)
 {
     if (s_transport_fault) return false;
-    restart_t r = {.program=tracker_format_program(s_prog_lp,s_flag_format), .level=0,
+    restart_t r = {.program=tracker_format_program(s_prog_lp,s_flag_format), .level=s_kp_target,
         .lp=s_prog_lp,.flag=s_flag_format,.output=s_output};
     const uint8_t *program_inst;
     if (!program_words(r.program, &program_inst)) return false;
     memcpy(s_program_work.prefix, r.program, sizeof(s_program_work.prefix));
-    if (!restore_lut) restore_lut = kp_tables[s_kp_target];
+    if (!restore_lut) restore_lut = tracker_lut(s_kp_target);
     if(restore_lut==s_lut_live && s_flag_format!=s_verified_flag)
-        restore_lut=kp_tables[s_verified_level];
+        restore_lut=tracker_lut(s_verified_level);
     if (restore_lut == s_lut_live) {
         memcpy(s_lut_work, s_lut_live, sizeof(s_lut_work));
         r.level = s_verified_level;
@@ -797,6 +842,7 @@ static bool resume_live(const uint16_t *restore_lut)
     memcpy(s_lut_live, s_lut_work, sizeof(s_lut_live));
     const bool output_changed = s_have_verified && s_verified_output != r.output;
     s_verified_lp = r.lp;
+    s_verified_p64 = s_demod_p64;
     s_verified_flag=r.flag;
     s_verified_level = r.level;
     s_verified_output = r.output;
@@ -818,7 +864,7 @@ static bool transport_flag_format(bool flag)
     if(!transport_sync_live_cancel())return false;
     if(flag && !flag_pin_acquire())return false;
     s_flag_format=flag;
-    bool ok=resume_live(kp_tables[s_verified_level]);
+    bool ok=resume_live(tracker_lut(s_verified_level));
     if(!s_transport_fault && !s_verified_flag) {
         if(!flag_pin_restored()){s_transport_fault=true;s_lut_known=false;return false;}
         s_flag_pin->active=false;s_flag_pin=NULL;
@@ -1454,6 +1500,7 @@ metrics_t measure_window(const uint8_t *s, size_t n)
  * measurement. Video may show the other kp level for ~1 ms. */
 void transport_live_lut_test(void)
 {
+    if (s_demod_p64) { printf("LIVE_LUT refused: P64 fixed table; select U85Q with m\n"); return; }
     if (!s_lut_known || !s_started || s_menu_active || s_transport_fault || s_verified_level < 0) {
         printf("LIVE_LUT skip (not running, menu, fault or level unknown)\n");
         return;

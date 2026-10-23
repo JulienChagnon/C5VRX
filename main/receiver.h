@@ -61,8 +61,8 @@ void transport_stop_tx(void);
 void transport_resume_live(void);
 bool transport_resume_raster(int level, bool lp); /* confirmed ladder target at raster exit */
 void transport_start_chain(dma_descriptor_t *first);
-/* One tracker topology (U85Q / U85Q-LP); a profile only picks the filter
- * and the kp level the pipeline starts from (kp_tables.h). */
+/* P64 is fixed-table; U85Q / U85Q-LP retains the kp ladder. A profile
+ * picks the analog filter and the U85Q fallback's starting kp level. */
 bool transport_set_base_level(int level);     /* not live: start level, LP off */
 uint32_t transport_switch_wait_ms(void);
 bool transport_kp_set(int level);          /* verified kp ladder level (kp_tables.h) */
@@ -72,6 +72,8 @@ unsigned transport_kp_tick(void);
 bool transport_set_lp(bool lp);            /* U85Q <-> LP via a brief pipeline restart */
 bool transport_lp(void);
 const char *transport_program_name(void);
+bool transport_set_p64(bool enabled);       /* guarded restart; session only */
+bool transport_p64(void);
 bool transport_faulted(void);
 uint32_t transport_restart_errors(void);
 unsigned transport_output(void);

@@ -7,6 +7,15 @@ scripts and data live in that branch under `v4/docs/PICTURE_CLIFF_STUDY.md`,
 Synthetic results are host simulations; board results are labelled as such.
 Measured range is not established.
 
+## P64 demodulator on mode 0 (PR #250 model, 2026-10-23)
+
+This branch uses the P64 champion from PR #250 on top of the digital-filter
+work in #248. Boot selects P64; `m` switches to/from U85Q for the session.
+The 7.2-degree number describes the 50-video-state grid, not measured phase
+precision. The full table and assembled output are host-checked; combined
+firmware picture quality, physical timing and range remain untested.
+See [P64 integration, source provenance and board checks](P64.md).
+
 ## Digital RX filter mode 0 (PR #244 follow-up, 2026-10-23)
 
 Source: [Twotoz's bench report on PR #244](https://github.com/Twotoz/C5VRX/pull/244#issuecomment-6345839653),

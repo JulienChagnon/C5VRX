@@ -92,6 +92,8 @@ static void help(void)
     printf("C5VRX-5 keys: T status, D range/health report, M gain map (for a preset), R per-second FIELD_DIAG lines on/off,\n"
            "  K kp ladder OFF -> AUTO kp -> AUTO kp+LP (brief restarts), k/j kp calmer/faster, P U85Q/U85Q-LP\n"
            "    (k/j/P save AUTO OFF; fresh settings default to AUTO kp+LP),\n"
+           "  m P64 (7.2-degree video-state grid, boot default) / U85Q (brief restart; session only),\n"
+           "    K/k/j/P control U85Q only; P64 uses one fixed table with no LP ladder,\n"
            "  g OUTPUT 0.5x..5.0x in 0.5x steps (saved after application; restored at boot),\n"
            "  G RX gain AUTO (KEEL-1) -> MAX -> fixed G78..G24 (until the next boot; every boot starts AUTO),\n"
            "  A live VTX profile switch on/off (continuous matching every 30 s; off = report only),\n"
@@ -150,7 +152,7 @@ static void console_task(void *arg)
             case 'N': self_noise_request(); break;
             case 'Y': case 'W': case 'X': flightlog_console((char)c); break;
             case 'h': case '?': help(); break;
-            case 'o': case 'e': case 'v': case 'n': case 'x': case 'c': case 'b': case 's': case 'K': case 'k': case 'j': case 'P': case 'g': case 'A': case 'U': case 'G': case 'Q': case 'Z': case 'H': case 'O': {
+            case 'o': case 'e': case 'v': case 'n': case 'x': case 'c': case 'b': case 's': case 'm': case 'K': case 'k': case 'j': case 'P': case 'g': case 'A': case 'U': case 'G': case 'Q': case 'Z': case 'H': case 'O': {
                 int command = c;
                 if (s_commands) (void)xQueueSend(s_commands, &command, 0);
                 break;

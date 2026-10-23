@@ -333,6 +333,7 @@ static void command(int c, unsigned *menu_idle)
         printf("LP policy %s (saved)\n", s_lp_by_cn ? "RESCUE by C/N benefit (default)" : "GAIN (G70 on, G65 off; earlier rule)");
         break;
     case 'K':
+        if (transport_p64()) { printf("KP refused: P64 has a fixed table (m selects U85Q)\n"); break; }
         s_kp_auto = (uint8_t)((s_kp_auto + 1u) % 3u);
         save_auto_mode();
         kp_ladder_reset(&s_kp);
@@ -343,6 +344,7 @@ static void command(int c, unsigned *menu_idle)
                s_kp_auto == 1 ? "AUTO kp (brief restarts; bench test)" : "OFF");
         break;
     case 'P': {
+        if (transport_p64()) { printf("LP refused: P64 has a fixed table (m selects U85Q)\n"); break; }
         manual_auto_off();
         const bool lp = !transport_lp();
         const bool menu = s_menu_active;
@@ -364,6 +366,7 @@ static void command(int c, unsigned *menu_idle)
         break;
     }
     case 'k': case 'j': {
+        if (transport_p64()) { printf("KP refused: P64 has a fixed table (m selects U85Q)\n"); break; }
         manual_auto_off();
         int next = (transport_kp_target() + (c == 'k' ? 1 : KP_LADDER_LEVELS - 1)) % KP_LADDER_LEVELS;
         printf("KP manual level=%d %s\n", next, transport_kp_set(next) ? "queued (brief pipeline restart)" :
@@ -378,6 +381,12 @@ static void command(int c, unsigned *menu_idle)
                transport_output() == 9 ? " (low swing: halves noise & clipping; requires sensitive sync)" :
                (transport_output() ? " WARNING: may clip wide VTX; verify sync/white into 75 ohm" : ""));
         if (s_menu_active) menu_render();
+        break;
+    }
+    case 'm': {
+        const bool ok = transport_set_p64(!transport_p64());
+        printf("DEMOD %s result=%s (session only; boot default P64)\n",
+               transport_program_name(), ok ? "applied" : "refused: cooldown or recovery failure");
         break;
     }
     default: break;

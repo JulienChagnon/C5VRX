@@ -693,6 +693,13 @@ requirements by themselves**.
 
 ## Current realtime invariants (C5VRX-5)
 
+- This branch boots the P64 model imported from PR #250 (video-state grid
+  7.2 degrees) on top of #248. `m` selects U85Q for the session. P64 uses
+  its own program and fixed LUT: never apply U85Q kp/LP tables or instructions
+  to it, including comparator-format changes, OUTPUT or rollback. The normal
+  raw-ring/DAC cadence and bounded restart ownership remain unchanged.
+  `docs/P64.md` records the source, host evidence and required board checks.
+
 - Digital RX filter mode 0 is reapplied after every vendor restore on the
   pinned PHY (PR #244 bench follow-up). Preserve the vendor ADC-rate choice;
   other mode values and ADC-rate overrides are lab research. Readback and
