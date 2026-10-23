@@ -23,24 +23,16 @@
 
 ---
 
-Analog 5.8 GHz FPV receiver on one Seeed Studio XIAO ESP32-C5 with a passive
-6-bit resistor DAC: live FM video in, composite PAL/NTSC out for goggles.
+C5VRX-5 receives analog 5.8 GHz FPV video using the ESP32-C5's own radio
+and outputs composite PAL/NTSC through a passive 6-bit resistor DAC.
+It includes automatic gain control, startup calibration, a sync flywheel,
+an on-screen menu and browser-based flashing and controls.
 
-C5VRX-5 on this branch uses **U80P64-R1 only**, on top of the digital RX
-mode-0 changes in PR #248. U85Q, LP, automatic/manual kp changes and demod
-switching are retired from the firmware. The operator selected this single-model
-configuration on 2026-10-23; it is not a claim of completed range qualification.
-The unchanged R1 table has one positive VTX-on NTSC observation; PAL,
-weak-signal and the final cleanup still need board validation. Its 7.2-degree
-video-state grid is not input phase accuracy. See
-[P64 source, integration and board checks](docs/P64.md).
-Its receive-chain evidence is recorded in
-[docs/FINDINGS.md](docs/FINDINGS.md); the U85Q study it is built on, with
-scoring corrections and failed experiments, is preserved in
-[docs/pr190-key-findings.md](docs/pr190-key-findings.md) and
-[docs/recent-pr-receiver-findings.md](docs/recent-pr-receiver-findings.md). The [IQLaneFusion research](docs/IQLANE_FUSION.md)
-is host-only (its read-only firmware shadow `J` was removed 2026-10-12);
-it is not a demonstrated video or range improvement.
+This branch builds and boots **U80P64-R1 only**. U85Q, kp/LP switching and
+`m/K/k/j/P/O/H` controls are retired; see [P64 integration and evidence](docs/P64.md).
+The fixed R1 table has one positive NTSC observation; PAL, weak-signal/range
+and the final cleanup still need hardware validation. This default is an
+operator choice, not a hardware qualification claim.
 
 ## Experimental firmware — flight safety warning
 
@@ -80,63 +72,9 @@ and liability provisions in sections 15–17, to the extent permitted by
 applicable law. This warning does not replace those terms or limit rights
 that cannot legally be excluded.
 
-## What it does
-
-- **U80P64-R1 demodulator** in the TX BitScrambler: a fixed 64-state /
-  16-token model, with 50 video states and 14 sync states. The same program
-  and LUT run on every profile; no automatic demodulator/kp/LP switching.
-- **Fixed ultrafine IQ** (ADC bits 9,6,5,4) at 40 MS/s, no CPU in the sample
-  path.
-- **Direct Gain V6**: V5 gain control plus carrier memory across brief fades
-  and same-context resets, with a learned, persisted gain map. GAIN selects
-  saved AUTO (default), MAX or a fixed gain.
-- **Narrow analog filter**, measured once per board at startup: the lowest
-  noise bandwidth that still passes 12 MHz (plus a 10 MHz class for
-  low-deviation VTXs and a 16 MHz class for wide ones; simulation-based,
-  board test pending).
-- **Calibration only at startup**: anything that interrupts the picture
-  runs once after power-on (only what is missing) or from the menu item
-  CALIBRATE, never during flight. The goggles show what it does and how long.
-- **VTX-matched profile** (narrow for low-deviation VTXs, wide 16 MHz for
-  wide ones) **only from a fresh measurement**: every boot starts
-  with the default profile; the narrow profile is chosen only when this
-  boot measured the VTX in the startup phase. **Continuous VTX matching**
-  then measures the deviation passively every 30 s on live video (burst-
-  confirmed sync, C/N >= 8 dB, no clipping, held gain; no AFC lock needed,
-  a carrier offset does not change the sync-to-porch span). Each
-  result is logged (`PROFILE live`), shown in `T` with agree/mismatch
-  streaks. With the **live
-  switch** on (default, console `A`, NVS `prof_live`) a reliable result
-  changes the profile in flight: wider (narrow -> DEFAULT -> WIDE) after one
-  result, narrower only after two agreeing results and with the AFC locked
-  (a narrow filter needs a centred carrier), each through a filter
-  relock plus the verified tracker restart (a few ms, shared 5 s cooldown;
-  board test pending). `A` off = report only: the result waits as pending
-  for the next boot or CALIBRATE.
-- **Field diagnostics** (serial `D`, `R`): what is really active, and why
-  each dropout happened as far as the receiver can tell
-  ([docs/FIELD_TEST.md](docs/FIELD_TEST.md)).
-- **DC correction for every gain row, also with the VTX on**: missing rows
-  are measured once at startup on a quiet channel, so far-out (high gain)
-  reception has no uncorrected DC.
-- **Automatic receive-chain care**: per-gain DC correction, verified live
-  DC trials, passive sampling-phase monitoring and AFC carrier centring.
-- **Sync flywheel**: saved ON/OFF, default ON (a saved OFF is kept).
-  Camera/monitor acceptance remains experimental; compare OFF on the ground.
-- **Simple menu**: band, channel, scan, video standard, calibrate, output
-  level, gain, flywheel, exit.
-
 ## Video
 
-Side-by-side flight range test comparing C5VRX-5 with C5VRX-4 by Louis Hitchcock:
-
-<p align="center">
-  <a href="https://www.youtube.com/watch?v=Gp3xmLrn_34">
-    <img src="https://img.youtube.com/vi/Gp3xmLrn_34/maxresdefault.jpg" alt="C5VRX-5 Vs C5VRX-4 Range Test" width="700" />
-  </a>
-  <br>
-  <a href="https://www.youtube.com/watch?v=Gp3xmLrn_34"><strong>Watch: C5VRX-5 Vs C5VRX-4 Range Test on YouTube</strong></a>
-</p>
+[Watch the C5VRX-5 vs C5VRX-4 flight range test by Louis Hitchcock](https://www.youtube.com/watch?v=Gp3xmLrn_34).
 
 ## Hardware
 
@@ -187,205 +125,94 @@ GND ---------------+------> GND (goggle / monitor AV-in ground)
   a swapped, open or wrong resistor. See
   [Building and testing the resistor DAC](docs/hardware/dac-build-and-test.md).
 
+## Flashing
+
+- **Browser:** open the [web flasher](https://twotoz.github.io/C5VRX/) in
+  desktop Chrome or Edge, choose **C5VRX-5** and a build, then flash.
+  Use **Full firmware** when switching from another generation.
+  Unmerged PR builds are marked as development builds.
+- **From source:** use ESP-IDF **6.0.2** and run `idf.py build flash` in
+  the repository root. Filter and DC correction require its exact libphy;
+  other PHY versions disable them and produce a build warning.
+- **Local File** flashes your own `.bin`; **Legacy builds** contains archived
+  C5VRX-3 firmware.
+
 ## First boot
 
-1. Flash (below) and power the receiver, best with the **VTX off**, for a
-   few minutes (at most eight): the goggles show CALIBRATING with the
-   progress. A firmware with a new calibration generation discards the
-   calibration of an earlier firmware and calibrates fully once. With a
-   VTX on it calibrates the filter on a quiet channel and comes back.
-   Results are stored; later boots skip what is already measured. The
-   first DC measurement is the template for every channel: switching
-   channels needs no new DC search, also with the VTX on. When a boot finds
-   the own channel quiet (VTX off), it measures that channel and replaces
-   the template rows with its own; tables are kept for six channels.
-2. Switch the VTX on. Without a stored channel the receiver starts on
-   A1 (5865 MHz); use the menu or scan to find yours.
+1. Power the receiver with the **VTX off** and let calibration finish.
+   The goggles show progress; the first run can take up to eight minutes.
+   Results are stored, so later boots skip completed measurements.
+   A firmware update may require a fresh calibration.
+2. Turn on the VTX and select its channel or use SCAN. Without a stored
+   channel, the receiver starts on A1 (5865 MHz).
 
 ## Controls (BOOT button)
 
-| live video | in the menu |
-| --- | --- |
-| short press: next channel in the band | short press: next item |
-| hold 0.6 s: open the menu | hold 0.6 s: do the item |
+| Action | Live video | Menu |
+| --- | --- | --- |
+| Short press | Next channel | Next item |
+| Hold 0.6 s | Open menu | Select item |
 
-Menu items: **BAND** (next band), **CHANNEL** (next channel), **SCAN**
-(all 48 channels, picks the strongest centred analog video), **VIDEO**
-(AUTO / NTSC / PAL for the menu picture; AUTO follows the camera),
-**CALIBRATE** (on the ground: measure again), **OUTPUT** (0.5-5.0x DAC
-level, saved), **GAIN** (AUTO / MAX / fixed G78..G24, saved), **FLYWHEEL**
-(ON/OFF, saved, default ON), **DAC TEST** (bench only: test pattern; hold
-for the multimeter steps, see the [DAC guide](docs/hardware/dac-build-and-test.md)),
-**EXIT**.
-The menu closes by itself after 30 s without a press (5 min on DAC TEST). It releases the
-flywheel before allocating its DMA chain and retries a smaller progressive
-raster if the interlaced chain does not fit. Menu entry/exit includes a
-150-ms relock gap; verify the picture on the connected monitor.
-
-## Flashing
-
-Read the [flight safety warning](#experimental-firmware--flight-safety-warning)
-before selecting or flashing a build. Ground-test the exact build before use.
-
-- **Web flasher**: [twotoz.github.io/C5VRX](https://twotoz.github.io/C5VRX/),
-  tab **C5VRX-5**, *Full firmware* when coming from another generation.
-- **ESP-IDF 6.0.2**: `idf.py build flash` in the repository root. The filter and DC
-  correction need the exact libphy of IDF 6.0.2 (checked at build time);
-  with another PHY they are disabled and the build warns.
-- A running receiver enters USB download mode from the console key `` ` ``
-  (`tools/enter_download.py`), so no BOOT button is needed for flashing.
+The menu provides **BAND**, **CHANNEL**, **SCAN**, **VIDEO** (AUTO/NTSC/PAL),
+**CALIBRATE**, **OUTPUT** (0.5-5.0x), **GAIN** (AUTO/MAX/fixed),
+**FLYWHEEL**, **DAC TEST** and **EXIT**. It closes after 30 seconds of
+inactivity, or five minutes in DAC TEST. Menu transitions can interrupt video.
+GAIN starts in AUTO on every boot. FLYWHEEL defaults ON and remembers a saved OFF.
 
 ## Serial console (USB, 115200)
 
-`T` status, `D` range/health report, `R` per-second FIELD_DIAG lines on/off
-(`tools/field_diag_compare.py`), `I` IQ snapshot
-(`tools/capture_iq_snapshot.py`), `o` menu, `c` next channel, `b` next band,
-`n`/`x` menu next/select, `s` scan, `F` calibrate again (as the menu item),
-`M` GAINMAP lines (for a gain-map preset), `L` bench-only IQ lane comparison (video stops ~3 s),
-`Z` DAC self-test (pattern, then the multimeter steps; `tools/dac_check.py`),
-`` ` `` download mode, `h` help.
+Use the web flasher's **Terminal** tab for receiver controls and logs,
+or a serial terminal at 115200 baud. Keys are case-sensitive and sent
+without Enter; `h` lists the commands supported by your firmware.
 
-`v` cycles the video standard AUTO / NTSC / PAL using the same action as
-the on-screen VIDEO item. `e` closes the on-screen menu without opening it
-when already closed. Both are direct controls for the web receiver menu.
+| Key | Action |
+| --- | --- |
+| `T` / `h` | Status / help |
+| `b` / `c` / `s` | Next band / next channel / scan |
+| `o` / `n` / `x` / `e` | Open menu / next item / select / exit |
+| `v` / `g` / `G` / `U` | Video standard / output level / gain / flywheel |
+| `F` / `Z` | Recalibrate / DAC self-test (ground only) |
+| `D` / `R` | Health report / per-second field diagnostics |
+| `I` / `M` / `L` | IQ snapshot / gain map / bench IQ lane test |
+| `A` | Live analog filter/profile switching on/off (saved) |
+| `` ` `` | USB download mode |
 
-U80P64-R1 is the only demodulator, including after reboot. The retired
-`m`, `K`, `k`, `j`, `P`, `O` and `H` controls are removed. Saved `kp_auto`
-and `lp_cn` keys are ignored; OUTPUT and flywheel preferences still restore.
-Profiles select only the analog filter (DEFAULT, NARROW or WIDE); the two
-old narrow kp profiles are consolidated. Historical numeric log IDs stay
-reserved so existing flight logs can still be decoded.
+P64 always uses the same fixed program and LUT. Profiles select only the
+analog filter (DEFAULT, NARROW or WIDE); old `kp_auto` and `lp_cn` settings
+are ignored. `A` toggles experimental live profile switching (default on).
+Live OUTPUT, comparator-format and profile changes share a five-second
+cooldown and verified halted restart/rollback. Higher OUTPUT levels can clip.
+GAIN always starts AUTO at boot; OUTPUT and FLYWHEEL preferences are saved.
+Check `T` after changing settings. Retired models remain research only.
 
-OUTPUT, comparator-format and live profile changes share a **five-second
-minimum interval** and a bounded halted restart with instruction/LUT readback.
-A failed change rolls back to the last verified P64 output/format; failed
-recovery latches live OFF while USB remains available. `T` reports
-`lut_verify_fail`, `prog_verify_fail`, recovery counters, per-stage timing and
-`switch_wait_ms`. The owned DMA ring and 20-ms readiness bound are retained.
-Retired programs and policies live under `research/legacy_demod/` and are
-excluded from the firmware build.
+The browser terminal and flasher use the port one at a time. **Download log**
+saves the displayed output; only the latest 120,000 characters are retained.
 
-`g` and menu **OUTPUT** cycle 0.5x..5.0x in 0.5x steps. A successful,
-verified application is saved and restored at boot; the default without a
-valid setting is 1.0x. Higher levels may help weak sync but can clip a wide
-VTX; check both sync and white with the actual 75-ohm load.
-Only DAC bits 0..5 are transformed, preserving all phase/token bits across
-OUTPUT/format changes, menu return and rollback. The menu raster retains
-its own levels. `T` reports the setting, clipped **LUT entries** (not an
-observed waveform clip rate), recovery errors and a latched failure.
+## Documentation and development
 
-`G` and menu **GAIN** cycle AUTO (Direct Gain V6), MAX, then fixed
-G78 / G72 / G66 / G60 / G54 / G48 / G42 / G36 / G30 / G24. The choice is
-saved and restored at boot; AUTO is the default. V6 keeps the last healthy
-gain through same-context tracking resets, holds brief fades for 10 ms and
-then climbs gradually. This is host-tested behavior; extra range is unmeasured.
+- [DAC build and self-test guide](docs/hardware/dac-build-and-test.md)
+- [Receiver findings and hardware evidence](docs/FINDINGS.md)
+- [Field-test protocol](docs/FIELD_TEST.md)
+- [Current receiver changes and validation](docs/PR212.md)
+- [U85Q research](docs/pr190-key-findings.md) and [research index](research/README.md)
+- [Contributing](CONTRIBUTING.md)
 
-`U` and menu **FLYWHEEL** toggle the saved sync flywheel. Without a valid
-saved setting it is ON; a saved ON or OFF restores at boot. Check ON/OFF, menu
-return and the actual camera/monitor picture on the ground. Pulse counters
-do not prove monitor lock. Switch it OFF for a baseline RF comparison.
+`main/` contains C5VRX-5 firmware, `web/` the GitHub Pages flasher,
+`test/` host tests, `docs/` guides and findings, `research/` experiments,
+and `tools/` console and CI helpers. `legacy/` preserves C5VRX-1 through
+C5VRX-4 as reference; they are not built.
 
-A failed restart cleans up before one attempt at the last verified program
-and LUT, including its OUTPUT setting. Failed rollback latches live OFF;
-the USB status/download tasks remain available. AUTO stops after a restart
-failure and reconciles to the verified configuration instead of chasing the
-failed target. This recovery coordinator is fault-injection tested on the
-host; actual SDK/peripheral error behaviour and picture acceptance still
-need hardware qualification.
-
-Automatic OUTPUT is **research only**: `research/output_level.py` compares
-manual scaling with an ideal sync/white-referenced gain and pedestal.
-Its reference levels are ideal source measurements, not a proven live
-estimator. See `research/data/output_level.json` and the evidence notes in
-`docs/FINDINGS.md`. It does not establish HDZero compatibility or range gain.
-The follow-up passive `research/output_probe_study.py` uses the production
-AFC/Direct Gain helpers; its conservative white reserve and wide-VTX
-confidence remain unqualified. Multi-Rescue comparisons against MATCHED
-are in `research/rescue_study.py` and `research/data/rescue_study.json`.
-The earlier acceptance list remains in `docs/PR196_TASK_PLAN.md`;
-[PR #212](docs/PR212.md) records the current receiver changes and merge checks.
-
-## Web flasher
-
-[twotoz.github.io/C5VRX](https://twotoz.github.io/C5VRX/) (Chrome, Edge or
-another browser with Web Serial) has three tabs:
-
-- **C5VRX-5**: the newest versioned build first, then unmerged PR builds
-  (marked, with a confirmation before flashing).
-- **Local File**: flash a `.bin` you built yourself.
-- **Legacy builds**: archived C5VRX-3 releases, no longer developed.
-
-Firmware is mirrored into the GitHub Pages site and downloaded same-origin.
-
-The **Terminal** view has a visual receiver menu for BAND, CHANNEL, SCAN,
-VIDEO, CALIBRATE, OUTPUT, GAIN, FLYWHEEL and EXIT. GAIN/FLYWHEEL actions
-require firmware advertising `G`/`U` in its help. Their readouts show reported
-mode and requested/active flywheel state separately. Selecting a browser menu
-page only changes the view; its action button sends the command.
-It identifies C5VRX-5 from firmware help/status and displays the last reported
-band, channel, frequency, signal, video standard, output level, screen-menu
-state, scan result and calibration state. It updates by itself: the firmware
-sends a short `STATUS` line every 2 s (`control_print_beat`), which the menu
-reads and keeps out of the log. Firmware without that beat gets a `T` request
-after a command, when a scan or calibration finishes and every 10 s while
-idle. The firmware lists also refresh by themselves (every minute and when
-the page is shown again), keeping the selected build. VIDEO/EXIT direct actions require
-firmware advertising `v`/`e` in its help; older C5VRX-5 builds can still use
-the on-screen menu controls. Legacy builds do not enable the C5VRX-5 action
-menu. `#terminal` opens the Terminal view directly.
-
-While a status screen owns the picture (first-boot calibration, CALIBRATE,
-lane test) the firmware ignores menu keys; it now answers each with
-`COMMAND <key> refused=busy` and reports `busy=` in `CONTROL` and the `HB`
-heartbeat, and the web menu greys out those buttons until it ends.
-
-Diagnostics and bench controls are collapsed by default. Commands send one
-case-sensitive byte without Enter. Commands are sent at once without a
-browser popup; what an action changes is shown as the button's tooltip.
-Connecting the
-terminal releases the flasher, and connecting the flasher releases the terminal;
-they never open a port together. **Download log** saves the displayed text,
-including FIELD_DIAG and raw IQ captures. The display retains the latest
-120,000 characters; download before reconnecting or clearing.
-
-## Releases and CI
-
-`.github/workflows/c5vrx5.yml` runs the host tests and research checks,
-builds the firmware and publishes it: `c5vrx5-v5.0.N` for every firmware
-change on `main` (immutable), and a mutable `c5vrx5-pr-N` prerelease per
-same-repository pull request, removed when the PR closes. Unchanged firmware
-inputs (`tools/firmware_input_hash.py`) keep the existing release, so a
-documentation or website change does not mint firmware. A successful build
-refreshes the Pages mirror (`deploy-web.yml`, always from trusted `main`).
-
-Before merging a firmware PR, require green firmware and web checks on its
-final head. Flash the matching artifact (verify its COMMIT and checksum),
-then check boot, menu entry/exit, saved settings and flywheel ON/OFF on the
-board. The PR channel is an unmerged build; successful host tests do not
-establish display lock or RF range. [PR #212 validation](docs/PR212.md)
-tracks the cleanup and remaining board check. After merge, verify the main
-release and Pages mirror contain the resulting firmware.
-
-## Repository layout
-
-```text
-main/        C5VRX-5 firmware (U80P64-R1, Direct Gain V6, calibration, menu, console)
-test/        host tests (CI)
-research/    simulations, generators and data behind the design choices
-docs/        findings, field-test protocol, task plan, DAC schematic
-tools/       console/log tools and the CI/Pages helpers
-web/         web flasher (GitHub Pages)
-legacy/      archived generations, never built:
-             c5vrx1, c5vrx2, c5vrx3 (former root firmware), c5vrx4
-             (former experiments/c5vrx-4), legacy-issues
-```
-
-The archived generations stay as reference: their findings explain why
-C5VRX-5 looks the way it does (see `AGENTS.md` for the research ledger).
+CI runs host/research checks and builds firmware with ESP-IDF 6.0.2.
+Firmware changes publish versioned `c5vrx5-v5.0.N` releases or unmerged
+`c5vrx5-pr-N` builds. Website-only changes do not create firmware releases.
+Pages deploys the website from `main` with a same-origin firmware mirror.
+Firmware PRs need passing checks and board tests on the matching artifact;
+host tests alone do not establish picture compatibility or RF range.
 
 ## Community
 
-Questions, build photos, feedback, or development discussion? **[Join the C5VRX Discord](https://discord.gg/3YNgJRHmzD)**.
+Share build photos, questions and feedback on the
+[C5VRX Discord](https://discord.gg/3YNgJRHmzD).
 
 ## Credits and license
 
@@ -406,4 +233,15 @@ commercial use, including selling receivers with this firmware, provided
 the source (with your changes) is passed on under the same license.
 
 The C5VRX name and logos have separate terms; see [assets/BRANDING.md](assets/BRANDING.md).
+
+## Build components
+
+| Product | Photo | Link |
+| --- | --- | --- |
+| Seeed Studio XIAO ESP32-C5 | <img src="web/assets/xiao-esp32c5.png" alt="Seeed Studio XIAO ESP32-C5 board" width="96" height="72"> | [View on Amazon](https://link.amazon/B012HPjJm) |
+| Perfboard | <img src="web/assets/perfboard.png" alt="Green perfboard" width="42" height="61"> | [View on Amazon](https://link.amazon/B0i2qqMeq) |
+| Resistor kit | <img src="web/assets/resistor-kit.png" alt="Resistor assortment in a storage case" width="72" height="72"> | [View on Amazon](https://link.amazon/B06XSBkln) |
+
+Affiliate links. As an Amazon Associate, I earn from qualifying purchases.
+All affiliate earnings go back into C5VRX development.
 
