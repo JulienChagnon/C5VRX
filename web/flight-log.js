@@ -27,7 +27,7 @@ export const RX_REASONS = ['none', 'no_carrier', 'weak_signal', 'dc_clipping', '
 export const RESET_REASONS = ['unknown', 'power-on', 'external', 'software', 'panic', 'interrupt watchdog',
   'task watchdog', 'watchdog', 'deep sleep', 'brownout', 'SDIO', 'USB', 'JTAG', 'eFuse', 'power glitch', 'CPU lockup'];
 const TRIGGERS = { 1: 'dropout', 2: 'picture drop', 3: 'first carrier', 4: 'periodic', 5: 'overload burst', 6: 'range edge', 7: 'recover', 8: 'output unlock' };
-const OUTPUT_DEMODS = { 1: 'U85Q 1a09f5c092e8', 2: 'U85Q-LP 1a09f5c092e8' };
+const OUTPUT_DEMODS = { 1: 'U85Q 1a09f5c092e8', 2: 'U85Q-LP 1a09f5c092e8', 3: 'U80P64-R1' };
 const OUTPUT_STANDARDS = { 1: 'NTSC', 2: 'PAL' };
 
 let crcTable;

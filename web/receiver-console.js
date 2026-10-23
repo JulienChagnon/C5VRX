@@ -5,10 +5,11 @@
 export const BAND_NAMES = {
   R: 'RACEBAND R', A: 'BOSCAM A', B: 'BOSCAM B', E: 'BOSCAM E', F: 'FATSHARK F', L: 'LOWBAND L'
 };
-export const KP_MODES = ['OFF', 'AUTO kp', 'AUTO kp+LP'];
+// Index 2 remains readable for devices running older firmware.
+export const KP_MODES = ['OFF', 'AUTO kp', 'AUTO kp+LP (legacy firmware)'];
 // Keys the firmware routes through control.c command(): ignored while a
 // calibration/lane-test status screen owns the picture.
-export const MENU_COMMAND_KEYS = new Set(['o', 'e', 'v', 'n', 'x', 'c', 'b', 's', 'K', 'k', 'j', 'P', 'g', 'A', 'U', 'G', 'Q', 'Z', 'H', 'O']);
+export const MENU_COMMAND_KEYS = new Set(['o', 'e', 'v', 'n', 'x', 'c', 'b', 's', 'g', 'A', 'U', 'G', 'Q', 'Z']);
 
 const FIELDS = /(?:^|\s)(\w+)=([^\s]+)/g;
 const fields = (line, target = {}) => {
@@ -28,6 +29,7 @@ export class ReceiverConsole {
     this.flywheelControl = false;
     this.dacTest = false;
     this.control = {};
+    this.demod = null;
     this.dac = {};
     this.output = {};
     this.gain = {};
@@ -64,6 +66,7 @@ export class ReceiverConsole {
       if (version[2]) {
         // Saved settings are restored by firmware; wait for fresh reports.
         this.control = {};
+        this.demod = null;
         this.output = {};
         this.gain = {};
         this.flywheel = {};
@@ -71,6 +74,8 @@ export class ReceiverConsole {
         this.dac = {};
         this.scan = { active: false, candidates: 0, result: '', channel: '' };
         this.refused = '';
+        const readyDemod = line.match(/ready: [^,]+, ([^,(]+)/);
+        if (readyDemod) this.control.demod = readyDemod[1].trim();
         events.add('ready');
       }
     }
@@ -81,7 +86,15 @@ export class ReceiverConsole {
     if (/^\s+U sync flywheel ON\/OFF /.test(line)) this.flywheelControl = true;
     if (/^\s+Z DAC self-test /.test(line)) this.dacTest = true;
 
-    if (line.startsWith('STATUS ')) {
+    if (line.startsWith('C5VRX5 version=')) {
+      const identity = fields(line);
+      if (identity.demod) this.control.demod = identity.demod;
+    }
+    if (line.startsWith('DEMOD ')) {
+      const identity = fields(line);
+      this.demod = identity;
+      if (identity.selected) this.control.demod = identity.selected;
+    } else if (line.startsWith('STATUS ')) {
       // Status beat (control.c control_print_beat, every 2 s).
       const beat = fields(line);
       if (beat.output) this.output.level = beat.output;
@@ -210,6 +223,8 @@ export class ReceiverConsole {
       flywheel: this.flywheel.requested === undefined ? null : this.flywheel.requested === '1',
       flywheelActive: this.flywheel.active === undefined ? null : this.flywheel.active === '1',
       kpMode: Number.isInteger(kp) ? KP_MODES[kp] || '' : '',
+      demod: this.demod ? (this.demod.verified && this.demod.verified !== 'unknown'
+        ? this.demod.verified : `${this.demod.selected || c.demod || 'UNKNOWN'} (unverified)`) : c.demod || '',
       profile: c.mode || this.profile.active || '',
       liveProfile: this.profile.live,
       dacStep: this.dac.step || '',
@@ -226,6 +241,7 @@ export class ReceiverConsole {
     if (key === 'G') return this.current && this.gainControl;
     if (key === 'U') return this.current && this.flywheelControl;
     if (key === 'Z') return this.current && this.dacTest;
+    if (['m', 'K', 'k', 'j', 'P', 'O', 'H'].includes(key)) return false;
     return ['T', 'h', '?'].includes(key) || (this.current && (!['v', 'e'].includes(key) || this.directMenu));
   }
 }

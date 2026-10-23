@@ -52,6 +52,7 @@
         <a href="https://github.com/Twotoz/C5VRX/blob/main/README.md#serial-console-usb-115200" target="_blank" rel="noopener noreferrer">Receiver controls</a>
         <a href="https://github.com/Twotoz/C5VRX/blob/main/docs/FINDINGS.md" target="_blank" rel="noopener noreferrer">Receiver findings</a>
         <a href="https://github.com/Twotoz/C5VRX/blob/main/docs/FIELD_TEST.md" target="_blank" rel="noopener noreferrer">Range &amp; field tests</a>
+        <a href="#safety">Safety &amp; warranty</a>
         <a href="https://github.com/Twotoz/C5VRX/tree/main/docs" target="_blank" rel="noopener noreferrer">All documentation</a>
       </nav>
     </details>
@@ -60,6 +61,23 @@
   <div class="content-column">
     <main id="main">
       <h1>Web flasher</h1>
+      <section class="safety-notice" id="safety" aria-labelledby="safetyTitle">
+        <h2 id="safetyTitle">Experimental receiver — safety &amp; warranty</h2>
+        <p><strong>Video or sync can disappear without warning. Loss of FPV video can lead to a crash, property damage or serious injury.</strong> Do not rely on C5VRX as your only means of maintaining safe aircraft control.</p>
+        <details>
+          <summary>Read the flight safety and warranty disclaimer</summary>
+          <ul>
+            <li><strong>Ground-test every firmware, hardware and settings combination.</strong> Remove propellers for bench tests. Check startup, calibration, weak-signal behaviour, video-loss recovery and your actual camera/goggles. Complete calibration before takeoff.</li>
+            <li><strong>Keep disruptive controls on the ground.</strong> Calibration, scanning, channel changes, menu entry/exit, DAC tests and diagnostics can interrupt or replace live video. Do not flash firmware or run bench tests during flight.</li>
+            <li><strong>Automatic changes are experimental too.</strong> Live filter/profile switching can restart the receive chain and interrupt video. Console <kbd>A</kbd> selects report-only mode when switching is disabled; confirm the state with <kbd>T</kbd>. Live OUTPUT, format and profile changes restart the pipeline. These settings do not establish flight safety.</li>
+            <li>If you proceed to flight testing, use a controlled area clear of people, traffic and property, keep the aircraft close, and have a safe way to recover control if video disappears. Follow applicable local rules, including visual line-of-sight and observer requirements.</li>
+            <li><strong>A versioned release, “Latest” label or passing CI is not flight qualification.</strong> Unmerged PR builds are development builds. Check the exact build’s documented hardware and flight-test evidence; an earlier test does not validate later changes.</li>
+            <li>Report unexpected video loss with the firmware version/commit, hardware, settings, reproduction steps and available logs/DVR footage. Preserve evidence after an incident and investigate on the ground before flying again.</li>
+          </ul>
+          <p><strong>No warranty:</strong> the firmware is provided under <a href="https://github.com/Twotoz/C5VRX/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">GPL-3.0-only</a>, including its warranty and liability provisions in sections 15–17, to the extent permitted by applicable law. This warning does not replace those terms or limit rights that cannot legally be excluded.</p>
+          <p>See the <a href="https://github.com/Twotoz/C5VRX/blob/main/README.md" target="_blank" rel="noopener noreferrer">README</a> and the evidence documented for your exact build.</p>
+        </details>
+      </section>
       <div id="unsupportedWarning" class="warning" role="status" hidden>USB needs a desktop browser with Web Serial, such as Chrome or Edge. You can still browse the firmware builds here.</div>
 
       <nav class="view-tabs" aria-label="Device tools">
@@ -80,7 +98,7 @@
           <div id="paneAlpha" class="tab-pane active">
             <div id="alphaBuildWarning" class="warning-box">
               <strong>C5VRX-5 firmware</strong>
-              <span>The untrained U85Q demodulator, fixed ultrafine IQ, KEEL-1 gain control (peak AGC on 3 dB home rows) and an analog filter that calibrates itself on the first boot (VTX off is best). Choose the latest build or an unmerged PR build. Use Full firmware when switching from another generation.</span>
+              <span>Hardware FM demodulation, fixed ultrafine IQ, KEEL-1 gain control and startup filter calibration (VTX off is best). Features depend on the selected build: U80P64-R1 is available in PR #251; older builds use U85Q. The Terminal reports the connected receiver’s actual demodulator. Use Full firmware when switching generations.</span>
             </div>
             <div class="field">
               <label for="selectAlphaBuild">Build</label>
@@ -268,8 +286,8 @@
                 <div role="tabpanel" id="pane-gain" aria-labelledby="menu-gain" hidden>
                   <h2>RX GAIN</h2>
                   <dl class="readouts"><div><dt>Mode</dt><dd data-value="gainMode">—</dd></div><div><dt>Active gain</dt><dd data-value="gain">—</dd></div></dl>
-                  <p class="hint">AUTO uses KEEL-1: a peak AGC on a few home rows 3 dB apart, so the gain holds still instead of hopping. Cycle AUTO → MAX → fixed G78..G24. The choice is saved and restored at boot; AUTO is the default. Requires firmware advertising G in its help.</p>
-                  <button type="button" class="command-button" data-command="G" data-hint="Cycle AUTO / MAX / fixed receive gain. The choice is saved for reboot." disabled>Change gain mode <kbd>G</kbd></button>
+                  <p class="hint">AUTO uses KEEL-1: a peak AGC on a few home rows 3 dB apart, so the gain holds still instead of hopping. Cycle AUTO → MAX → fixed G78..G24. The choice lasts for this session; every boot starts AUTO. Requires firmware advertising G in its help.</p>
+                  <button type="button" class="command-button" data-command="G" data-hint="Cycle AUTO / MAX / fixed receive gain for this session. Every boot starts AUTO." disabled>Change gain mode <kbd>G</kbd></button>
                 </div>
                 <div role="tabpanel" id="pane-flywheel" aria-labelledby="menu-flywheel" hidden>
                   <h2>SYNC FLYWHEEL</h2>
@@ -316,17 +334,13 @@
             <details class="shortcut-details">
               <summary>Advanced / bench</summary>
               <dl class="readouts compact">
-                <div><dt>Automatic rescue</dt><dd data-value="kpMode">—</dd></div>
+                <div><dt>Demodulator</dt><dd data-value="demod">—</dd></div>
                 <div><dt>Live VTX matching</dt><dd data-value="liveProfile">—</dd></div>
                 <div><dt>Profile</dt><dd data-value="profile">—</dd></div>
               </dl>
-              <p class="hint">Test on the ground. Manual tracker changes save automatic rescue OFF. Live changes share a five-second firmware cooldown.</p>
+              <p class="hint">Test on the ground. U80P64-R1 uses one fixed demodulator table; live VTX matching changes the analog filter, not kp or LP. Live OUTPUT, format and profile changes share a five-second firmware cooldown.</p>
               <div class="command-buttons">
-                <button type="button" class="command-button" data-command="K" data-hint="Cycle OFF / AUTO kp / AUTO kp+LP? The setting is saved; a change can briefly interrupt video." disabled>Cycle automatic rescue <kbd>K</kbd></button>
                 <button type="button" class="command-button" data-command="A" data-hint="Toggle automatic live VTX profile switching? This setting is saved; profile changes can briefly interrupt video." disabled>Toggle live VTX matching <kbd>A</kbd></button>
-                <button type="button" class="command-button" data-command="k" data-hint="Step the tracker calmer? This saves automatic rescue OFF, including after reboot." disabled>Tracker calmer <kbd>k</kbd></button>
-                <button type="button" class="command-button" data-command="j" data-hint="Step the tracker faster? This saves automatic rescue OFF, including after reboot." disabled>Tracker faster <kbd>j</kbd></button>
-                <button type="button" class="command-button" data-command="P" data-hint="Toggle U85Q / U85Q-LP? This saves automatic rescue OFF, including after reboot." disabled>Toggle low-pass <kbd>P</kbd></button>
                 <button type="button" class="command-button" data-command="L" data-hint="Run the bench-only IQ lane comparison? Live video stops for about three seconds." disabled>Compare IQ lanes <kbd>L</kbd></button>
                 <button type="button" class="command-button" data-command="`" data-hint="Reboot into USB download mode for flashing? Video stops and the terminal disconnects." disabled>USB download mode <kbd>`</kbd></button>
               </div>
@@ -374,22 +388,28 @@
         <div class="hardware-photo"><img src="assets/xiao-esp32c5.png" alt="Seeed Studio XIAO ESP32-C5 board" width="320" height="240" loading="lazy"></div>
         <div class="hardware-copy">
           <p class="hardware-title">Buy your XIAO ESP32-C5 here</p>
-          <a class="amazon-button" href="https://link.amazon/B012HPjJm" target="_blank" rel="sponsored noopener noreferrer" aria-describedby="affiliateDisclosure">Buy on Amazon</a>
-          <p class="affiliate-note" id="affiliateDisclosure">Affiliate link. As an Amazon Associate, I earn from qualifying purchases. All affiliate earnings go back into C5VRX development.</p>
+          <a class="amazon-button" href="https://link.amazon/B012HPjJm" target="_blank" rel="sponsored noopener noreferrer" aria-describedby="affiliateDisclosure" aria-label="Buy XIAO ESP32-C5 on Amazon">Buy on Amazon</a>
         </div>
       </aside>
       <div class="hardware-extras" role="group" aria-label="Build components">
-        <a class="hardware-extra" href="https://link.amazon/B0i2qqMeq" target="_blank" rel="sponsored noopener noreferrer" aria-describedby="affiliateDisclosure">
+        <article class="hardware-extra">
           <img src="assets/perfboard.png" alt="Green perfboard" width="125" height="182" loading="lazy">
-          <span><strong>Perfboard</strong><span class="hardware-extra-link">View on Amazon <span aria-hidden="true">↗</span></span></span>
-        </a>
-        <a class="hardware-extra" href="https://link.amazon/B06XSBkln" target="_blank" rel="sponsored noopener noreferrer" aria-describedby="affiliateDisclosure">
+          <div class="hardware-copy">
+            <p class="hardware-title">Perfboard</p>
+            <a class="amazon-button" href="https://link.amazon/B0i2qqMeq" target="_blank" rel="sponsored noopener noreferrer" aria-describedby="affiliateDisclosure" aria-label="Buy perfboard on Amazon">Buy on Amazon</a>
+          </div>
+        </article>
+        <article class="hardware-extra">
           <img src="assets/resistor-kit.png" alt="Resistor assortment in a storage case" width="500" height="500" loading="lazy">
-          <span><strong>Resistor kit</strong><span class="hardware-extra-link">View on Amazon <span aria-hidden="true">↗</span></span></span>
-        </a>
+          <div class="hardware-copy">
+            <p class="hardware-title">Resistor kit</p>
+            <a class="amazon-button" href="https://link.amazon/B06XSBkln" target="_blank" rel="sponsored noopener noreferrer" aria-describedby="affiliateDisclosure" aria-label="Buy resistor kit on Amazon">Buy on Amazon</a>
+          </div>
+        </article>
       </div>
+      <p class="affiliate-note" id="affiliateDisclosure">Affiliate links. As an Amazon Associate, I earn from qualifying purchases. All affiliate earnings go back into C5VRX development.</p>
     </main>
-    <footer>C5VRX by Twotoz and the C5VRX contributors · GPL-3.0</footer>
+    <footer>C5VRX by Twotoz and the C5VRX contributors · <a href="https://github.com/Twotoz/C5VRX/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">GPL-3.0-only</a> · <a href="#safety">Safety &amp; warranty</a></footer>
   </div>
 </div>
 <script type="module" src="app.js"></script>

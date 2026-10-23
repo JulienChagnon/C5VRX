@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { ReceiverConsole } from './receiver-console.js';
+import { MENU_COMMAND_KEYS, ReceiverConsole } from './receiver-console.js';
 
 test('fw= names the exact build: PR channels share one version string', () => {
   const state = new ReceiverConsole();
@@ -35,7 +35,8 @@ test('unknown/legacy firmware cannot enable current receiver actions', () => {
   assert.equal(state.supports('T'), true);
   assert.deepEqual(state.control, {});
   state.push('C5VRX-5 keys: T status\n');
-  assert.equal(state.supports('K'), true);
+  assert.equal(state.supports('K'), false);
+  assert.equal(state.supports('g'), true);
 });
 
 test('reconnect discards firmware capabilities and previous settings', () => {
@@ -79,7 +80,7 @@ test('command acknowledgements update the menu before the next status report', (
   assert.equal(view.kpMode, 'AUTO kp');
   assert.equal(view.liveProfile, false);
   state.push('KP ladder AUTO kp + LP (program changes briefly restart video; bench test)\n');
-  assert.equal(state.view().kpMode, 'AUTO kp+LP');
+  assert.equal(state.view().kpMode, 'AUTO kp+LP (legacy firmware)');
 });
 
 test('heartbeat tracks the screen menu and reports the end of a calibration', () => {
@@ -136,11 +137,13 @@ test('the busy field wins over the startup flag; old firmware falls back to it',
   assert.equal(older.receiverBusy(), true);
 });
 
-test('busy-gated keys are exactly the keys the console routes to command()', async () => {
+test('busy-gated supported keys match console routing across firmware generations', async () => {
   const { MENU_COMMAND_KEYS } = await import('./receiver-console.js');
   const consoleSource = fs.readFileSync(new URL('../main/console.c', import.meta.url), 'utf8');
   const routed = consoleSource.match(/case 'o':[^\n]*/)[0];
   const keys = new Set([...routed.matchAll(/case '([^'])'/g)].map(m => m[1]));
+  // Older firmware still routes retired demod controls; the website never exposes them.
+  for (const key of ['m', 'K', 'k', 'j', 'P', 'O', 'H']) keys.delete(key);
   assert.deepEqual([...MENU_COMMAND_KEYS].sort(), [...keys].sort());
 });
 
@@ -230,3 +233,27 @@ test('the firmware help line enables the DAC self-test key', () => {
   state.push(`${help[1].replace(/\n$/, '')}\n`);
   assert.equal(state.supports('Z'), true);
 });
+
+ test('P64 status reports the sole model and retired commands stay unavailable', () => {
+ const state = new ReceiverConsole();
+ state.push('C5VRX5 version=v5.0.9 demod=U80P64-R1\nSTATUS channel=A1 freq=5865 demod=U80P64-R1 mode=DEFAULT output=2.0x\n');
+ assert.equal(state.view().demod, 'U80P64-R1');
+ for (const key of ['m','K','k','j','P','O','H']) {
+   assert.equal(state.supports(key), false);
+   assert.equal(MENU_COMMAND_KEYS.has(key), false);
+ }
+});
+
+ test('demod identity follows boot/status and preserves an unverified report', () => {
+ const state = new ReceiverConsole();
+ state.push("C5VRX5 v5.0.1 ready: A1 5865 MHz, U80P64-R1, ultrafine IQ\n");
+ assert.equal(state.view().demod, 'U80P64-R1');
+ state.push('DEMOD selected=U80P64-R1 verified=unknown\nSTATUS demod=U80P64-R1\n');
+ assert.equal(state.view().demod, 'U80P64-R1 (unverified)');
+ state.push('DEMOD selected=U80P64-R1 verified=U80P64-R1\n');
+ assert.equal(state.view().demod, 'U80P64-R1');
+ state.push("C5VRX5 v5.0.2 ready: A1 5865 MHz, U85Q ('h' for keys)\n");
+ assert.equal(state.view().demod, 'U85Q');
+ state.reset();
+ assert.equal(state.view().demod, '');
+ });
