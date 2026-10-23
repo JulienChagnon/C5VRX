@@ -170,11 +170,12 @@ bit-exact U85Q chain afterwards, and a bad one becomes a CI regression case.
   gain, DC, temperature, dropouts), download `.c5log` (the partition image) and CSV,
   erase.
 - Console `Y` status, `W` dump (`FLOG_BEGIN` / `FLOG_D <offset> <hex>` /
-  `FLOG_END ... ms=<dump time> usb=driver|fifo`), `X` twice within 3 s erases.
-  The dump goes through the USB driver's 4 KiB ring buffer while it runs (a
-  full log in 6.5-9 s with the receiver live, board 2026-10-23); without heap
-  for it (`usb=fifo`) it falls back to the console's byte path, which takes
-  about 40 s live and can lose lines.
+  `FLOG_END ... ms=<dump time> usb=driver|fifo heap=<largest free block>`),
+  `X` twice within 3 s erases. The dump goes through the USB driver's 4 KiB
+  ring buffer while it runs: a full log in 6.5-9 s with the receiver live or
+  starting (board 2026-10-23). With the on-screen menu open there is no heap
+  for it (`usb=fifo heap=1664`) and it uses the console's byte path, 10-13 s
+  there. That path took about 40 s with the receiver live and lost lines.
 - `tools/flight_log.py dump COM10 f.c5log` and `decode f.c5log dir`: CSV per
   session, JSON with boot, calibration, carrier and events, and the snapshots
   as `.bin` + `.json` for `research/sensitivity_model.py`.

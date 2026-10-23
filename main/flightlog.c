@@ -450,8 +450,10 @@ static unsigned used_blocks(void)
  * path took 39 s at 66 KiB/s, lost 10 of 4945 lines and 24 records; the
  * driver took 6.5-8.9 s at 290-400 KiB/s with none lost. The driver exists
  * only while W runs, so a board without a host never waits on USB. Its ring
- * is small because the heap is: the largest free block was 9.7 KiB live (an
- * 8 KiB ring was no faster); without room the dump uses the byte path. */
+ * is small because the heap is: the largest free block was 9.7 KiB live and
+ * from 1 s after boot (an 8 KiB ring was no faster). The on-screen menu's
+ * display leaves 1.6 KiB: the dump then uses the byte path, 10-13 s there
+ * because the menu pauses the live work. FLOG_END reports heap= for this. */
 #define FLOG_DUMP_TX_BYTES 4096u
 #define FLOG_DUMP_WAIT_MS  1000u
 static bool s_dump_usb, s_dump_failed;
@@ -518,6 +520,7 @@ static void dump(void)
     s_dumping = true;
     flush();
     const int64_t t0 = esp_timer_get_time();
+    const unsigned heap = (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
     dump_usb_open();
     unsigned blocks = 0, snaps = 0;
     for (unsigned k = 0; k < FLOG_RECORD_BLOCKS; ++k) {
@@ -541,8 +544,8 @@ static void dump(void)
         if (esp_partition_read(s_part, snap_offset(k), h, sizeof(h)) == ESP_OK && flog_get32(h) == FLOG_MAGIC_SNAP)
             dump_range(snap_offset(k), FLOG_SNAP_SECTORS * FLOG_SECTOR);
     }
-    dump_line("FLOG_END blocks=%u snapshots=%u ms=%lu usb=%s\n", blocks, snaps,
-              (unsigned long)((esp_timer_get_time() - t0) / 1000), s_dump_usb ? "driver" : "fifo");
+    dump_line("FLOG_END blocks=%u snapshots=%u ms=%lu usb=%s heap=%u\n", blocks, snaps,
+              (unsigned long)((esp_timer_get_time() - t0) / 1000), s_dump_usb ? "driver" : "fifo", heap);
     dump_usb_close();
     s_dumping = false;
     xSemaphoreGive(s_flash_lock);
