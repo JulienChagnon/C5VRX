@@ -5,11 +5,6 @@
 
 #define KP_SWITCH_GAP_US 5000000LL
 #define KP_SWITCH_CONFIRM_US 2000000LL
-/* Entering LP (the rescue) is confirmed and applied fast: the ladder already
- * held the wish for KP_LP_ENTER_HOLD_US, and a restart costs ~4.4 ms
- * (prog_restart_us on the board). Leaving LP and kp steps keep 2 s / 5 s. */
-#define KP_SWITCH_RESCUE_CONFIRM_US 200000LL
-#define KP_SWITCH_RESCUE_GAP_US     500000LL
 /* kp_switch_confirm_toward(): an unusable window holds the candidate; only
  * a gap without usable windows longer than this drops it. One unusable
  * window used to clear 2 s of agreement, so 10-20 % unusable windows at the
@@ -21,7 +16,6 @@ typedef struct {
     bool switched, candidate;
     int64_t last_switch_us, candidate_since_us;
     int level;
-    bool lp;
     int8_t side;            /* kp_switch_confirm_toward: target side of the running level */
     uint32_t context;
     int64_t last_valid_us;  /* kp_switch_confirm_toward: last usable window */
@@ -33,14 +27,13 @@ typedef struct {
  * 2026-10-20, A1: 13 restarts in 2 minutes, kp 3 -> 2 -> 1 -> 2 every ~5 s
  * at the range edge while the walking C/N swung by +-5 dB; the operator saw
  * desyncs on an otherwise good picture). One kp level (0.05) is worth a
- * fraction of a dB: a program change (LP, the edge's +1.6 dB) always
- * switches, two levels or more too, a single level only
+ * fraction of a dB: two levels or more switch, a single level only
  * KP_ONE_LEVEL_GAP_US after the last kp restart. */
 #define KP_ONE_LEVEL_GAP_US 30000000LL
-static inline bool kp_switch_worth(int level, bool lp, int applied_level, bool applied_lp, int64_t last_kp_us,
+static inline bool kp_switch_worth(int level, int applied_level, int64_t last_kp_us,
                                    int64_t now)
 {
-    if (lp != applied_lp || applied_level < 0) return true;
+    if (applied_level < 0) return true;
     const int d = level > applied_level ? level - applied_level : applied_level - level;
     if (d >= 2) return true;
     return d == 1 && (!last_kp_us || now - last_kp_us >= KP_ONE_LEVEL_GAP_US);
@@ -51,12 +44,6 @@ static inline bool kp_switch_ready(const kp_switch_guard_t *g, int64_t now)
     return !g->switched || now - g->last_switch_us >= KP_SWITCH_GAP_US;
 }
 
-/* Into LP: only the short rescue gap. */
-static inline bool kp_switch_ready_rescue(const kp_switch_guard_t *g, int64_t now)
-{
-    return !g->switched || now - g->last_switch_us >= KP_SWITCH_RESCUE_GAP_US;
-}
-
 static inline void kp_switch_mark(kp_switch_guard_t *g, int64_t now)
 {
     g->switched = true;
@@ -65,14 +52,13 @@ static inline void kp_switch_mark(kp_switch_guard_t *g, int64_t now)
 
 /* Require an unchanged kp/program pair and context with usable evidence.
  * Invalid windows break confirmation; they never count as stable evidence. */
-static inline bool kp_switch_confirm(kp_switch_guard_t *g, int level, bool lp,
+static inline bool kp_switch_confirm(kp_switch_guard_t *g, int level,
                                      uint32_t context, bool valid, int64_t now)
 {
     if (!valid) { g->candidate = false; return false; }
-    if (!g->candidate || g->level != level || g->lp != lp || g->context != context) {
+    if (!g->candidate || g->level != level || g->context != context) {
         g->candidate = true;
         g->level = level;
-        g->lp = lp;
         g->context = context;
         g->candidate_since_us = now;
         return false;
@@ -81,7 +67,7 @@ static inline bool kp_switch_confirm(kp_switch_guard_t *g, int level, bool lp,
 }
 
 /* Directional confirmation for the automatic ladder (control.c). The
- * candidate is the wanted program plus the side of the running kp level the
+ * candidate is the side of the running kp level the
  * target lies on, not the exact level: the ladder moves one level every
  * 0.2-1 s while the C/N drifts, and an exact-level candidate restarted on
  * every step, so a fading range-edge carrier rarely got the program and kp
@@ -91,26 +77,23 @@ static inline bool kp_switch_confirm(kp_switch_guard_t *g, int level, bool lp,
  * window neither agrees nor disagrees: it holds the candidate up to
  * KP_SWITCH_STALE_US. The caller applies the latest target once this
  * returns true. */
-static inline bool kp_switch_confirm_toward(kp_switch_guard_t *g, int level, bool lp, int applied_level,
-                                            bool applied_lp, uint32_t context, bool valid, int64_t now)
+static inline bool kp_switch_confirm_toward(kp_switch_guard_t *g, int level, int applied_level, uint32_t context, bool valid, int64_t now)
 {
-    const int side = lp != applied_lp ? 2 : (level > applied_level) - (level < applied_level);
+    const int side = (level > applied_level) - (level < applied_level);
     /* Also when no window was offered at all (failed copies, scan). */
     if (g->candidate && now - g->last_valid_us > KP_SWITCH_STALE_US) { g->candidate = false; ++g->resets; }
     if (!valid) return false;
     g->last_valid_us = now;
     if (side == 0) { g->candidate = false; return false; }   /* reached or back: not a reset */
-    if (!g->candidate || g->side != side || g->lp != lp || g->context != context) {
+    if (!g->candidate || g->side != side || g->context != context) {
         if (g->candidate) ++g->resets;
         g->candidate = true;
         g->side = (int8_t)side;
         g->level = level;
-        g->lp = lp;
         g->context = context;
         g->candidate_since_us = now;
         return false;
     }
     g->level = level;
-    const bool rescue = side == 2 && lp;
-    return now - g->candidate_since_us >= (rescue ? KP_SWITCH_RESCUE_CONFIRM_US : KP_SWITCH_CONFIRM_US);
+    return now - g->candidate_since_us >= KP_SWITCH_CONFIRM_US;
 }

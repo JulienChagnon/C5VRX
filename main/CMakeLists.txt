@@ -12,8 +12,6 @@ idf_component_register(
              esp_driver_tsens esp_driver_gptimer esp_driver_rmt esp_timer esp_mm hal heap esp_hw_support esp_app_format esp_partition)
 
 target_bitscrambler_add_src("u85q.bsasm")
-target_bitscrambler_add_src("u85q_lp.bsasm")
-target_bitscrambler_add_src("u85q_lp_flag.bsasm")
 target_bitscrambler_add_src("u85q_64.bsasm")
 
 # The sync observer/output and the AFC decoder (which shares the CPU with the

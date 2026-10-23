@@ -40,7 +40,7 @@ RX_REASONS = ['none', 'no_carrier', 'weak_signal', 'dc_clipping', 'overload', 'd
               'owned', 'fault', 'low_picture_snr']
 TRIGGERS = {1: 'dropout', 2: 'vq_drop', 3: 'first_carrier', 4: 'periodic', 5: 'overload', 6: 'edge', 7: 'recover',
             8: 'output_unlock'}
-OUTPUT_DEMODS = {1: 'U85Q 1a09f5c092e8', 2: 'U85Q-LP 1a09f5c092e8'}
+OUTPUT_DEMODS = {1: 'U85Q 1a09f5c092e8', 2: 'U85Q-LP 1a09f5c092e8', 3: 'U80P64-R1'}
 OUTPUT_STANDARDS = {1: 'NTSC', 2: 'PAL'}
 
 

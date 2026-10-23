@@ -127,9 +127,10 @@ def check():
         ok &= same
         print(f'{name}: {"bit-exact" if same else "MISMATCH"} vs data/tracker_luts.json')
     for kp, f in ((0.85, 'u85q'), (0.6, 'u85q_kp060'), (0.5, 'u85q_kp050')):
-        same = np.array_equal(build_lut(kp), sim.u85q_lut(HERE.parent / 'main' / f'{f}.bsasm'))
+        path = HERE.parent / 'main/u85q.bsasm' if kp == .85 else HERE / 'legacy_demod' / f'{f}.bsasm'
+        same = np.array_equal(build_lut(kp), sim.u85q_lut(path))
         ok &= same
-        print(f'kp {kp}: {"bit-exact" if same else "MISMATCH"} vs main/{f}.bsasm')
+        print(f'kp {kp}: {"bit-exact" if same else "MISMATCH"} vs {path.relative_to(HERE.parent)}')
     base = build_lut(KP_LADDER[0])
     for kp in KP_LADDER[1:]:
         lut = build_lut(kp)

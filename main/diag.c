@@ -140,7 +140,7 @@ static void snapshot(diag_record_t *r, uint8_t gain, uint32_t faults)
     /* The ladder at the edge (research README section 18): kp and program
      * per second, so a field log shows whether they follow the C/N. */
     r->kp_level = (int8_t)transport_kp_level();
-    r->lp = transport_lp();
+    r->lp = false;
     r->gain_writes = s_gain.writes;
     r->fade_holds = s_gain.fade_holds;
     r->overloads = s_gain.overloads;

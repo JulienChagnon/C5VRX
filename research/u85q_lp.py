@@ -45,7 +45,7 @@ from numba import njit
 
 HERE = Path(__file__).resolve().parent
 MAIN = HERE.parent / 'main'
-OUT = MAIN / 'u85q_lp.bsasm'
+OUT = HERE / 'legacy_demod/u85q_lp.bsasm'
 RAW_BITS = '4 5 6 7 0 1 2 3 15 11'.split()     # U85Q PAIR4411 address bits
 
 

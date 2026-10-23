@@ -132,7 +132,7 @@ jobs:
       - name: U85Q-LP research program (assembles; emulator matches U85Q and the LP model)
         shell: bash
         run: |
-          python3 "$IDF_PATH/tools/bsasm.py" main/u85q_lp.bsasm /tmp/u85q_lp.bsbin \
+          python3 "$IDF_PATH/tools/bsasm.py" research/legacy_demod/u85q_lp.bsasm /tmp/u85q_lp.bsbin \
             -c "$IDF_PATH/components/esp_driver_bitscrambler/bsasm_targets/esp32c5.json"
           /tmp/iqf-test-env/bin/python research/u85q_lp.py check
       - name: Kp ladder tables (generator reproduces the U85Q LUTs; kp_tables.h current)
@@ -141,7 +141,7 @@ jobs:
         run: |
           /tmp/iqf-test-env/bin/python test/test_p64.py
           /tmp/iqf-test-env/bin/python research/p64_validation.py --check
-      - name: Kp ladder at the range edge (control-loop window gate and switch confirmation)
+      - name: Historical kp/LP replay (retired policy baseline)
         run: /tmp/iqf-test-env/bin/python research/ladder_gate.py check research/data/ladder_gate_rates.json
       - name: OUTPUT research invariants (DAC-only changes and bounded policy)
         run: /tmp/iqf-test-env/bin/python research/output_level.py --check

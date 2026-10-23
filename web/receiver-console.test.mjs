@@ -79,7 +79,7 @@ test('command acknowledgements update the menu before the next status report', (
   assert.equal(view.kpMode, 'AUTO kp');
   assert.equal(view.liveProfile, false);
   state.push('KP ladder AUTO kp + LP (program changes briefly restart video; bench test)\n');
-  assert.equal(state.view().kpMode, 'AUTO kp+LP');
+  assert.equal(state.view().kpMode, 'AUTO kp+LP (legacy firmware)');
 });
 
 test('heartbeat tracks the screen menu and reports the end of a calibration', () => {

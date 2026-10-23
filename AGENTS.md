@@ -693,6 +693,15 @@ requirements by themselves**.
 
 ## Current realtime invariants (C5VRX-5)
 
+- Operator cleanup decision (2026-10-23): active firmware has U85Q and
+  U80P64-R1 only. LP programs, LP policy/state, console P/O and the live
+  LUT-write bench H are removed. U85Q retains its kp-only ladder; saved
+  kp_auto=2 means kp-only, saved OFF stays OFF, and lp_cn is ignored.
+  `research/legacy_demod/` preserves retired programs/policies for historical
+  replay and is never compiled into the firmware. This supersedes older
+  LP-control descriptions below. Low-C/N search artifacts remain research
+  candidates until their exact model passes host and hardware qualification.
+
 - This branch boots U85Q on top of #248. The P64 model imported from
   PR #250 (video-state grid 7.2 degrees) is bench-only via `m`. The apparent
   board comparison on 2026-10-23 had the VTX off and was not a picture A/B.

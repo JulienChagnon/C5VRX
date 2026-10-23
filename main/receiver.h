@@ -59,18 +59,15 @@ extern int s_rx_node_count;
 esp_err_t transport_start(void);
 void transport_stop_tx(void);
 void transport_resume_live(void);
-bool transport_resume_raster(int level, bool lp); /* confirmed ladder target at raster exit */
 void transport_start_chain(dma_descriptor_t *first);
-/* P64 is fixed-table; U85Q / U85Q-LP retains the kp ladder. A profile
+/* P64 is fixed-table; U85Q retains the kp ladder. A profile
  * picks the analog filter and the U85Q fallback's starting kp level. */
-bool transport_set_base_level(int level);     /* not live: start level, LP off */
+bool transport_set_base_level(int level);     /* not live: start level */
 uint32_t transport_switch_wait_ms(void);
 bool transport_kp_set(int level);          /* verified kp ladder level (kp_tables.h) */
 int transport_kp_level(void);
 int transport_kp_target(void);
 unsigned transport_kp_tick(void);
-bool transport_set_lp(bool lp);            /* U85Q <-> LP via a brief pipeline restart */
-bool transport_lp(void);
 const char *transport_program_name(void);
 bool transport_set_p64(bool enabled);       /* guarded restart; session only */
 bool transport_p64(void);
@@ -79,7 +76,7 @@ uint32_t transport_restart_errors(void);
 unsigned transport_output(void);
 const char *transport_output_name(void);
 bool transport_set_output(unsigned level);
-bool transport_apply_auto(int level, bool lp);
+bool transport_apply_auto(int level);
 void transport_stop_chain(void);
 void transport_poll_faults(void);
 uint32_t transport_fault_count(void);
@@ -87,7 +84,6 @@ void transport_print(void);
 void transport_sync_flywheel_toggle(void); /* U / menu FLYWHEEL: toggle and save */
 void transport_sync_flywheel_set(bool on, bool save);
 bool transport_sync_flywheel_enabled(void);
-void transport_live_lut_test(void);   /* bench: LUT writes while running (console H) */
 void transport_sync_flywheel_set_boot(bool on); /* settings_load: saved choice */
 void transport_sync_live_tick(void);   /* control loop; never holds a lifetime PHY lease */
 bool transport_sync_live_cancel(void); /* stop/restore before transport ownership changes */
@@ -100,8 +96,8 @@ bool transport_sync_live_release(void);
  * builds its chain from another task. */
 void transport_sync_live_hold(bool on);
 void transport_sync_live_print(void);
-/* Flight-log V1 output telemetry. Demod is 0 unknown, 1 verified U85Q
- * model 1a09f5c092e8, 2 the verified U85Q-LP variant of that model. Lock
+/* Flight-log V1 output telemetry. Demod is 0 unknown, 1 verified U85Q,
+ * 2 reserved for historical LP logs, 3 verified U80P64-R1. Lock
  * percentages are 0xff when the native observer had no fresh samples. */
 typedef struct {
     uint8_t flags, demod, standard, output_level;

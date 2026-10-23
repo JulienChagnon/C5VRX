@@ -1,5 +1,13 @@
 # Where can C5VRX-5 firmware still gain range?
 
+Current branch cleanup (2026-10-23): LP is retired from the firmware. Its
+programs and policy headers are preserved in `legacy_demod/` solely for
+historical replay. The earlier LP sections below describe those experiments;
+they do not describe current controls. Firmware now offers U85Q (kp-only)
+and U80P64-R1. `p64_lowcn_search.py --seconds 900` explores a separate fixed
+P64 candidate down to -10 dB C/N; `p64_lowcn_validate.py` freezes it and runs
+held-out PAL/NTSC and transfer checks. These are host simulations.
+
 Current receiver behavior and validation are summarized in
 [PR #212](../docs/PR212.md): AFC/copy/observer fixes, Direct Gain V6,
 saved GAIN/FLYWHEEL settings and default-OFF experimental sync output.

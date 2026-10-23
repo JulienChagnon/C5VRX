@@ -62,7 +62,7 @@ it is not a demonstrated video or range improvement.
   currently documented as enabled by default and awaiting board validation.
   It restarts part of the receive chain and may interrupt video. Console
   `A` disables live profile switching (report-only mode); confirm the state
-  with `T` on your build. Automatic kp/LP changes also restart the pipeline;
+  with `T` on your build. Automatic kp changes also restart the pipeline;
   console `K` selects AUTO OFF. These settings do not establish flight safety.
 - If you proceed to flight testing, use a controlled area clear of people,
   traffic and property, keep the aircraft close, and have a safe way to recover
@@ -254,26 +254,27 @@ the on-screen VIDEO item. `e` closes the on-screen menu without opening it
 when already closed. Both are direct controls for the web receiver menu.
 
 `m` switches U85Q / experimental P64 (session only; U85Q at boot). P64 uses a fixed table,
-so `K/k/j/P` and the live LUT bench `H` are refused while it is selected.
+so `K/k/j` are refused while it is selected.
 OUTPUT, analog profiles and the flywheel remain available.
 
-When U85Q is selected, `K` cycles OFF / AUTO kp / AUTO kp+LP. `k` steps kp calmer, `j` faster;
-`P` manually toggles U85Q/U85Q-LP. `P`, `k` and `j` persist AUTO OFF,
+When U85Q is selected, `K` cycles OFF / AUTO kp. `k` steps kp calmer, `j` faster;
+`k` and `j` persist AUTO OFF,
 including across reboot; repeated presses do not rewrite unchanged NVS.
-Fresh settings default to AUTO kp+LP (operator decision 2026-10-12);
-an explicitly saved OFF remains OFF. Kp and program changes
+Fresh settings default to AUTO kp; an old saved AUTO kp+LP setting becomes
+kp-only, and an explicitly saved OFF remains OFF. Kp and model changes
 use a brief pipeline restart with a fully verified LUT; they are not seamless.
 All live changes share a **five-second minimum interval**, including manual
-P/k/j, K mode, OUTPUT and live profile changes. AUTO runs on every
+k/j, K mode, OUTPUT and live profile changes. AUTO runs on every
 profile: a profile sets the filter and the kp it starts from (MATCHED 0.5 /
-0.6, else 0.85), the ladder then owns kp and U85Q-LP, with its own curves on
+0.6, else 0.85), the ladder then owns kp, with its own curves on
 the narrow MATCHED filter. With AUTO OFF the profile's start kp stays.
-AUTO also requires the same kp/program target
-for **two seconds of usable measurements**. Rapid P presses are refused
-with `wait_ms`; they are not queued for delayed programme changes.
+AUTO also requires the same target direction for **two seconds of usable
+measurements**. LP, its `P`/`O` controls and the unsafe live LUT-write bench
+`H` have been removed from the firmware. Historical research programs remain
+under `research/legacy_demod/` and are excluded from the firmware build.
 
 Test on the ground and check `T`: `kp_verify_fail`, `prog_verify_fail`,
-`kp_restart_fail`, `prog_restart_fail`, transport faults and measured
+`kp_restart_fail`, transport faults and measured
 `kp_restart_us` / `prog_restart_us`. `switch_wait_ms` shows the remaining
 cooldown. Live TX uses an owned fixed DMA ring and has a bounded
 20-ms readiness wait with task delays, so a failed start cannot keep the
@@ -284,7 +285,7 @@ verified application is saved and restored at boot; the default without a
 valid setting is 1.0x. Higher levels may help weak sync but can clip a wide
 VTX; check both sync and white with the actual 75-ohm load.
 Only DAC bits 0..5 are transformed, preserving all phase/token bits across
-kp changes, LP changes, menu return and rollback. The menu raster retains
+kp changes, model changes, menu return and rollback. The menu raster retains
 its own levels. `T` reports the setting, clipped **LUT entries** (not an
 observed waveform clip rate), recovery errors and a latched failure.
 

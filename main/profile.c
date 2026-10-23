@@ -238,7 +238,7 @@ static void live_apply(void)
         return;
     }
     /* Start level, LP off, in one guarded restart (none if both already hold). */
-    if (!transport_apply_auto(profile_base_level(p), false)) {
+    if (!transport_apply_auto(profile_base_level(p))) {
         (void)rf_set_filter(before);
         ++s_live_switch_fail;
         printf("PROFILE live switch to %s failed: kp restart (see T recovery); filter restored\n", s_names[p]);

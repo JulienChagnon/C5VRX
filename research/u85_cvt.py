@@ -87,7 +87,7 @@ def build_lut(angles=28, law='soft_lock'):
 
 def source(variant=DEFAULT,lp=False):
     lut = build_lut(*variant)
-    template = (MAIN/('u85q_lp.bsasm' if lp else 'u85q.bsasm')).read_text()
+    template = ((MAIN.parent/'research/legacy_demod/u85q_lp.bsasm') if lp else MAIN/'u85q.bsasm').read_text()
     template = re.sub(r'^lut .*$', 'lut '+' '.join(str(int(v)) for v in lut), template,flags=re.M)
     return '# C5VRX by Twotoz/contributors: EXPERIMENTAL U85-CVT '+str(variant)+'\n'+template
 
