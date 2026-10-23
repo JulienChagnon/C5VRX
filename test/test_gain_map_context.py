@@ -89,7 +89,7 @@ int main(void) {
     phy_param[650]=4;
     const dg_map_context_t a=live; const arc_gain_table_t original=actual_table;
     bind(); learn(); dg_map_blob_t saved_a, out;
-    assert(receiver_export_gain_map(&saved_a)==2 && saved_a.version==5 && saved_a.context_valid);
+    assert(receiver_export_gain_map(&saved_a)==2 && saved_a.version==DG_MAP_VERSION && saved_a.context_valid);
     assert(saved_a.freq_mhz==5865 && saved_a.context.iq_scale==4);
     bind(); assert_retained(); /* tracking reset, identical transfer context */
     dg_reset(&s_gain,&actual_table,s_current_gain); assert_retained();
@@ -125,6 +125,7 @@ int main(void) {
     }
     /* Old metadata, wrong duplicated labels, unset context all rejected. */
     dg_map_blob_t bad=saved_a; bad.version=4; assert(!dg_import_map(&s_gain,&bad));
+    bad=saved_a; bad.version=5; assert(!dg_import_map(&s_gain,&bad)); /* before digital mode 0 */
     bad=saved_a; bad.context_valid=0; assert(!dg_import_map(&s_gain,&bad));
     bad=saved_a; bad.freq_mhz=5805; assert(!dg_import_map(&s_gain,&bad));
     bad=saved_a; bad.lane_mode=1; assert(!dg_import_map(&s_gain,&bad));

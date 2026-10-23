@@ -362,7 +362,8 @@ typedef struct {
 /* 2: the anchors are stored too; a map loaded for another channel or filter
  * kept learning without one (operator, 2026-10-20). Version 1 maps are
  * dropped and measured again at the next clean boot. */
-#define CNA_STORE_VERSION 2u
+/* 3: digital RX mode 0; old noise/anchor powers are another RF context. */
+#define CNA_STORE_VERSION 3u
 static cna_store_t s_cna_store;
 static bool s_cna_store_loaded;
 static cna_noise_map_t s_cna_map;

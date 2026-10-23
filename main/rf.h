@@ -29,7 +29,8 @@ uint32_t rf_table_generation(void);
 /* Analog receive filter. code PHY_FILTER_CALIBRATED = the chip's own
  * calibration; skirt = second stage offset; bw20 = digital filter BW20. */
 typedef struct { int8_t code; uint8_t skirt; bool bw20; } rf_filter_t;
-/* True only when the PHY read back exactly the requested code and skirt;
+/* True only when the PHY read back the requested code/skirt and, on the
+ * pinned PHY, digital RX mode 0;
  * on a failed write the PHY layer puts the calibrated bytes back, and
  * rf_filter_applied() then reports the mismatch. */
 bool rf_set_filter(rf_filter_t filter);

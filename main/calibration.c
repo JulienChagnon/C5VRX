@@ -2062,7 +2062,8 @@ static void calibration_task(void *arg)
  * the filter calibration, every DC table and the repair flags, and runs the
  * full first-boot calibration. Raise CAL_GENERATION whenever a firmware
  * changes what a stored calibration means. */
-#define CAL_GENERATION 1u
+/* Mode 0 changes the transfer function/noise seen by the stored tables. */
+#define CAL_GENERATION 2u
 static void calibration_generation(void)
 {
     uint16_t stored = 0;
@@ -2153,6 +2154,8 @@ void calibration_print(void)
            s_filter_cal.wide.nbw_khz, s_filter_cal.calibrated_nbw_khz);
     uint8_t hw[8] = {0}, want[8] = {0};
     const int bad = phy_filter_hw_mismatch(hw, want);
+    printf("DFILT want=%d hw_mode=%d (-1=unsupported)\n",
+           PHY_DFILT_MODE_DEFAULT, phy_dfilt_hw_mode());
     printf("FILTER_HW mismatch=%d hw=%02x%02x%02x%02x%02x%02x%02x%02x want=%02x%02x%02x%02x%02x%02x%02x%02x\n", bad,
            hw[0], hw[1], hw[2], hw[3], hw[4], hw[5], hw[6], hw[7],
            want[0], want[1], want[2], want[3], want[4], want[5], want[6], want[7]);

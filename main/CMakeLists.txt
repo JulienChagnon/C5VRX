@@ -37,7 +37,7 @@ if(NOT C5VRX5_COMMIT)
 endif()
 target_compile_definitions(${COMPONENT_LIB} PRIVATE C5VRX5_COMMIT="${C5VRX5_COMMIT}")
 
-# Filter capacitor and DC DAC access uses PHY internals recovered from this
+# Filter capacitor, digital RX mode and DC DAC access use PHY internals recovered from this
 # exact ESP-IDF 6.0.2 libphy; any other PHY binary builds with them refused.
 set(C5_PHY_ARCHIVE "$ENV{IDF_PATH}/components/esp_phy/lib/esp32c5/libphy.a")
 if(EXISTS "${C5_PHY_ARCHIVE}")
@@ -45,6 +45,6 @@ if(EXISTS "${C5_PHY_ARCHIVE}")
     if(C5_PHY_SHA256 STREQUAL "dbf33c418c8d408d4005c849d12a1432deea82e2e5e57de3c8ddf914d104fffb")
         target_compile_definitions(${COMPONENT_LIB} PRIVATE C5VRX_PHY_PINNED=1)
     else()
-        message(WARNING "Unverified C5 PHY: filter and DC correction disabled (${C5_PHY_SHA256})")
+        message(WARNING "Unverified C5 PHY: analog/digital filter and DC correction disabled (${C5_PHY_SHA256})")
     endif()
 endif()
