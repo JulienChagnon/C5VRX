@@ -49,7 +49,7 @@ def transfer_checks(table):
 
 def export_program(table, out):
     import u85q_lp
-    source = (ROOT/'main/u85q_64.bsasm').read_text()
+    source = (ROOT/'main/p64.bsasm').read_text()
     source = re.sub(r'^lut .+$', 'lut '+' '.join(str(int(v)) for v in table), source, flags=re.M)
     program = out/'p64_lowcn.bsasm'
     program.write_text('# '+MODEL_ID+'; research candidate, not hardware verified.\n'+source, encoding='utf-8')

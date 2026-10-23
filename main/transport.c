@@ -1,6 +1,6 @@
 /* C5VRX-5 by Twotoz and the C5VRX contributors: realtime transport.
  * MODEM_DIAG -> PARLIO RX 40 MS/s -> 32 KiB cyclic ring -> TX BitScrambler
- * (P64, or U85Q fallback) -> PARLIO TX 40 MHz -> 6-bit resistor DAC. Both GDMA rings run
+ * (U80P64-R1) -> PARLIO TX 40 MHz -> 6-bit resistor DAC. Both GDMA rings run
  * with interrupts off and cleared suc_eof (espressif/esp-idf#19091), so no
  * DMA boundary is a stream boundary; the CPU never paces samples. */
 #include "receiver.h"
@@ -20,13 +20,12 @@
 #include "freertos/task.h"
 #include "hal/misc.h"
 #include "hal/bitscrambler_ll.h"
-#include "kp_lut_io.h"
-#include "kp_switch_guard.h"
+#include "transport_lut.h"
+#include "transport_guard.h"
 #include "transport_recovery.h"
 #include "output_level.h"
 #include "sync_flag.h"
 #include "hal/parlio_ll.h"
-#include "kp_tables.h"
 #include "p64_tables.h"
 #include "snapshot.h"
 #include "output_telemetry.h"
@@ -44,22 +43,11 @@
 #include "soc/gpio_reg.h"
 #include "soc/io_mux_reg.h"
 
-/* U85Q UNTRAINED (model 1a09f5c092e8, C5VRX PR #190): closed-form 32-phase
- * tracker on the PAIR4411 shared word, origin cells as coarse quadrant
- * tokens, linear -6..+9 MHz output window. docs/FINDINGS.md. */
-BITSCRAMBLER_PROGRAM(s_u85q, "u85q");
-BITSCRAMBLER_PROGRAM(s_u85q_64, "u85q_64");
-/* PR #250 P64 champion: 64 states / 16 tokens. Keep this identity with
- * the verified program and LUT through menu, OUTPUT and rollback. */
-/* U85Q remains the reference at boot. The first board comparison had no
- * VTX; U80P64-R1 needs explicit live-signal qualification, not noise viewing. */
-static bool s_demod_p64 = false, s_verified_p64 = false;
-static bool s_started;   /* live TX running (cleared while menu/status/recovery owns TX) */
-static const void *tracker_program(void)
-{ return s_demod_p64 ? s_u85q_64 : s_u85q; }
-static bool s_flag_format,s_verified_flag;
-static const uint16_t *tracker_lut(int level)
-{ return s_demod_p64 ? p64_table : kp_tables[level]; }
+/* Fixed U80P64-R1 program and LUT; no runtime demodulator or kp policy. */
+BITSCRAMBLER_PROGRAM(s_p64, "p64");
+static bool s_started;
+static bool s_flag_format, s_verified_flag;
+static const void *tracker_program(void) { return s_p64; }
 
 /* 6-bit resistor DAC, LSB first (XIAO D4..D9; 8.2k/3.9k/2k/1k/470R/240R
  * plus 200R). Do not change the tested pin order. */
@@ -76,7 +64,6 @@ static bool s_transport_fault;
 static uint32_t s_stream_generation;
 static bool s_stream_generation_overflow;
 static unsigned s_output, s_verified_output, s_output_clipped;
-static int s_verified_level;
 static bool s_have_verified;
 static uint32_t s_restart_errors, s_rollbacks, s_rollback_fail;
 #define LIVE_TX_NODES ((RAW_RING_BYTES + 4091u) / 4092u)
@@ -230,8 +217,7 @@ static esp_err_t start_tx(void)
  * board, writes/readback under RUN or PAUSE fail; HALT with the normal
  * load/reset/start sequence succeeds. Do not claim a seamless live update. */
 static uint16_t s_lut_live[1024];   /* what the LUT RAM holds */
-static bool s_lut_known;            /* shadow valid: U85Q program, LUT16 */
-static uint8_t s_kp_target;
+static bool s_lut_known;            /* shadow valid: verified P64 LUT16 */
 /* IDF V1 image: 3 header words, 8 instructions of 9 words, LUT16.
  * Reuse the target LUT storage; only the 300-byte prefix is additional.
  * Prepare before halting so the driver writes the target exactly once. */
@@ -242,28 +228,9 @@ typedef struct {
 static tracker_image_t s_program_work;
 #define s_lut_work s_program_work.lut
 _Static_assert(offsetof(tracker_image_t, lut) == 300u, "BitScrambler V1 LUT offset");
-static uint32_t s_kp_writes, s_kp_verify_fail;
-static uint32_t s_kp_switches, s_kp_restart_fail, s_kp_restart_us;
+static uint32_t s_lut_writes, s_lut_verify_fail;
 static bool resume_live(const uint16_t *restore_lut);
-static bool switch_live(int level);
-static kp_switch_guard_t s_switch_guard;
-
-bool transport_kp_set(int level)
-{
-    if (s_demod_p64) return false;  /* P64 is one fixed table, no kp ladder. */
-    if (s_transport_fault || !s_lut_known || level < 0 || level >= KP_LEVELS) return false;
-    s_kp_target = (uint8_t)level;
-    return true;
-}
-
-/* Verified level, -1 while a different target is pending or unknown. */
-int transport_kp_level(void)
-{
-    if (s_demod_p64 || !s_lut_known || s_transport_fault) return -1;
-    return s_verified_level;
-}
-
-int transport_kp_target(void) { return s_lut_known ? s_kp_target : -1; }
+static transport_guard_t s_switch_guard;
 
 static void select_lut_entry(void *ctx, unsigned entry)
 {
@@ -285,16 +252,6 @@ static int64_t stage_now(void);
 static void stage_note(int stage, int64_t us);
 static void stage_hooks(void) { tr_hook_now = stage_now; tr_hook_note = stage_note; }
 
-unsigned transport_kp_tick(void)
-{
-    stage_hooks();
-    if (s_demod_p64) return 0;
-    if (!s_lut_known || !s_started || s_menu_active || transport_kp_level() == s_kp_target) return 0;
-    uint32_t before = s_kp_writes;
-    (void)switch_live(s_kp_target);
-    return s_kp_writes - before;
-}
-
 static uint32_t s_prog_verify_fail;
 
 static bool program_words(const uint8_t *bin, const uint8_t **inst)
@@ -307,74 +264,27 @@ static bool program_words(const uint8_t *bin, const uint8_t **inst)
     return true;
 }
 
-/* Every live change shares the same five-second restart guard. */
-static bool switch_live(int level)
+/* The analog profile has already changed its filter; restart the same P64
+ * image through the shared guard and verified rollback coordinator. */
+bool transport_restart_profile(void)
 {
-    if (s_demod_p64 || !s_lut_known || !s_started || s_menu_active) return false;
-    if (level < 0 || level >= KP_LEVELS) return false;
-    if (level == s_verified_level) return true;
-    int64_t began = esp_timer_get_time();
-    if (!kp_switch_ready(&s_switch_guard, began)) return false;
-    bool ok = resume_live(kp_tables[level]);
-    if (ok) { s_kp_target = (uint8_t)level; ++s_kp_switches; }
-    else ++s_kp_restart_fail;
-    int64_t finished = esp_timer_get_time();
-    kp_switch_mark(&s_switch_guard, finished);
-    s_kp_restart_us = (uint32_t)(finished-began);
-    /* V1 log payload keeps its retired LP byte zero. */
-    uint8_t event[6] = {(uint8_t)level, 0, ok};
-    event[3]=(uint8_t)s_kp_restart_us; event[4]=(uint8_t)(s_kp_restart_us>>8);
-    event[5]=(uint8_t)(s_kp_restart_us>>16);
-    flightlog_event(FLOG_E_KP, event, sizeof(event));
-    return ok;
-}
-
-bool transport_apply_auto(int level)
-{
-    /* A profile changes the analog filter before this guarded restart. */
-    if (s_demod_p64) {
-        if (s_transport_fault || !s_lut_known || !s_started || s_menu_active ||
-            level < 0 || level >= KP_LEVELS) return false;
-        if (!kp_switch_ready(&s_switch_guard, esp_timer_get_time())) return false;
-        const uint8_t previous = s_kp_target;
-        s_kp_target = (uint8_t)level;
-        stage_hooks();
-        const bool ok = resume_live(p64_table);
-        if (!ok) s_kp_target = previous;
-        kp_switch_mark(&s_switch_guard, esp_timer_get_time());
-        return ok;
-    }
+    if (s_transport_fault || !s_lut_known || !s_started || s_menu_active ||
+        !transport_guard_ready(&s_switch_guard, esp_timer_get_time())) return false;
     stage_hooks();
-    return switch_live(level);
+    const bool ok = resume_live(p64_table);
+    transport_guard_mark(&s_switch_guard, esp_timer_get_time());
+    return ok;
 }
 
 uint32_t transport_switch_wait_ms(void)
 {
     int64_t now = esp_timer_get_time();
-    return kp_switch_ready(&s_switch_guard, now) ? 0 :
-           (uint32_t)((KP_SWITCH_GAP_US - (now - s_switch_guard.last_switch_us) + 999) / 1000);
+    return transport_guard_ready(&s_switch_guard, now) ? 0 :
+           (uint32_t)((TRANSPORT_SWITCH_GAP_US - (now - s_switch_guard.last_switch_us) + 999) / 1000);
 }
 
-const char *transport_program_name(void)
-{ return s_demod_p64 ? P64_MODEL_ID : "U85Q"; }
-bool transport_p64(void) { return s_demod_p64; }
-
-bool transport_set_p64(bool enabled)
-{
-    if (s_transport_fault) return false;
-    if (enabled == s_demod_p64) return true;
-    if (s_menu_active || !s_started) {
-        s_demod_p64 = enabled;
-        return true;
-    }
-    if (!s_lut_known || !kp_switch_ready(&s_switch_guard, esp_timer_get_time())) return false;
-    const bool previous = s_demod_p64;
-    s_demod_p64 = enabled;
-    const bool ok = resume_live(tracker_lut(s_kp_target));
-    if (!ok) s_demod_p64 = previous;
-    kp_switch_mark(&s_switch_guard, esp_timer_get_time());
-    return ok;
-}
+const char *transport_program_name(void) { return P64_MODEL_ID; }
+bool transport_live(void) { return s_started; }
 bool transport_faulted(void) { return s_transport_fault; }
 uint32_t transport_restart_errors(void) { return s_restart_errors; }
 unsigned transport_output(void) { return s_output; }
@@ -390,19 +300,18 @@ bool transport_set_output(unsigned level)
     if (s_transport_fault || level >= OUTPUT_LEVELS) return false;
     if (level == s_output) return true;
     if (s_menu_active || !s_started) { s_output = level; return true; }
-    if (!kp_switch_ready(&s_switch_guard, esp_timer_get_time())) return false;
+    if (!transport_guard_ready(&s_switch_guard, esp_timer_get_time())) return false;
     s_output = level;
-    bool ok = resume_live(s_lut_known ? tracker_lut(s_verified_level) : NULL);
-    kp_switch_mark(&s_switch_guard, esp_timer_get_time());
+    bool ok = resume_live(s_lut_known ? p64_table : NULL);
+    transport_guard_mark(&s_switch_guard, esp_timer_get_time());
     return ok;
 }
 
 /* Selected configuration stays separate from the last fully verified live
  * configuration. Publication waits for both DMA starts, including readback
- * of the complete program and LUT on boot/menu/rollback as well as model/kp changes. */
+ * of the complete program and LUT on boot/menu/rollback as well as OUTPUT/format changes. */
 typedef struct {
     const uint8_t *program;
-    int level;
     bool flag;
     unsigned output, clipped;
 } restart_t;
@@ -511,9 +420,7 @@ static bool restart_stage(void *ctx, tr_stage_t stage, bool rollback)
 {
     restart_t *r = ctx;
     if (stage == TR_BS_ENABLE && rollback) {
-        s_demod_p64 = s_verified_p64;
         s_output = s_verified_output;
-        r->level = s_verified_level;
         r->output = s_verified_output;
         r->flag = s_verified_flag;
         s_flag_format=s_verified_flag;
@@ -531,7 +438,7 @@ static bool restart_stage(void *ctx, tr_stage_t stage, bool rollback)
         break;
     case TR_PROGRAM_LOAD:
         err = bitscrambler_load_program(s_bs, &s_program_work);
-        if (err == ESP_OK) s_kp_writes += KP_LUT_ENTRIES;
+        if (err == ESP_OK) s_lut_writes += TRANSPORT_LUT_ENTRIES;
         break;
     case TR_INSTRUCTION_VERIFY: {
         const uint8_t *inst;
@@ -553,7 +460,7 @@ static bool restart_stage(void *ctx, tr_stage_t stage, bool rollback)
         break;
     }
     case TR_LUT_VERIFY:
-        if (!kp_lut_verify(s_lut_work, NULL, select_lut_entry, read_lut_entry, &s_kp_verify_fail)) {
+        if (!transport_lut_verify(s_lut_work, NULL, select_lut_entry, read_lut_entry, &s_lut_verify_fail)) {
             printf("TRANSPORT restart lut_verify failed rollback=%u\n", rollback);
             return false;
         }
@@ -672,21 +579,6 @@ esp_err_t transport_start(void)
     return resume_live(NULL) ? ESP_OK : ESP_FAIL;
 }
 
-/* Start level of a profile (kp_tables.h). Never under live video:
- * only before the pipeline starts or while the menu / a status screen owns
- * TX; the LUT is then loaded and verified by the normal start sequence. A
- * live profile switch uses transport_apply_auto() (guarded restart). */
-bool transport_set_base_level(int level)
-{
-    if (level < 0 || level >= KP_LEVELS) return false;
-    if (s_started && !s_menu_active) {
-        printf("BASE level change refused: live video\n");
-        return false;
-    }
-    s_kp_target = (uint8_t)level;
-    return true;
-}
-
 /* Live -> menu: the raster takes TX, but RX keeps collecting IQ for filter,
  * DC and profile calibration. Full recovery quiesce stops RX as well. */
 void transport_stop_tx(void)
@@ -741,17 +633,17 @@ void transport_stop_chain(void)
 static bool resume_live(const uint16_t *restore_lut)
 {
     if (s_transport_fault) return false;
-    restart_t r = {.program=tracker_program(), .level=s_kp_target,
+    stage_hooks();
+    restart_t r = {.program=tracker_program(),
         .flag=s_flag_format,.output=s_output};
     const uint8_t *program_inst;
     if (!program_words(r.program, &program_inst)) return false;
     memcpy(s_program_work.prefix, r.program, sizeof(s_program_work.prefix));
-    if (!restore_lut) restore_lut = tracker_lut(s_kp_target);
+    if (!restore_lut) restore_lut = p64_table;
     if(restore_lut==s_lut_live && s_flag_format!=s_verified_flag)
-        restore_lut=tracker_lut(s_verified_level);
+        restore_lut=p64_table;
     if (restore_lut == s_lut_live) {
         memcpy(s_lut_work, s_lut_live, sizeof(s_lut_work));
-        r.level = s_verified_level;
         r.clipped = s_output_clipped;
     } else {
         const uint8_t *inst;
@@ -762,7 +654,6 @@ static bool resume_live(const uint16_t *restore_lut)
                                   output_entry(restore_lut[i], s_output, &clipped);
             r.clipped += clipped;
         }
-        for (int k = 0; k < KP_LEVELS; ++k) if (restore_lut == kp_tables[k]) r.level = k;
     }
     tr_result_t result = tr_restart(&r, quiesce, restart_stage, s_have_verified);
     if (result != TR_APPLIED) ++s_restart_errors;
@@ -777,24 +668,20 @@ static bool resume_live(const uint16_t *restore_lut)
     s_started = true;
     if (result == TR_ROLLED_BACK) {
         ++s_rollbacks;
-        s_kp_target = (uint8_t)s_verified_level;
         transport_sync_restart_finish(true);
-        printf("TRANSPORT rollback=verified program=%s kp_level=%d output=%s\n",
-               transport_program_name(), s_verified_level, transport_output_name());
+        printf("TRANSPORT rollback=verified program=%s output=%s\n",
+               transport_program_name(), transport_output_name());
         return false;
     }
     memcpy(s_lut_live, s_lut_work, sizeof(s_lut_live));
     const bool output_changed = s_have_verified && s_verified_output != r.output;
-    s_verified_p64 = s_demod_p64;
     s_verified_flag=r.flag;
-    s_verified_level = r.level;
     s_verified_output = r.output;
     s_output_clipped = r.clipped;
     s_have_verified = true;
     s_lut_known = true;
-    s_kp_target = (uint8_t)r.level;
     transport_sync_restart_finish(true);
-    /* Automatic kp/program changes never write NVS. A failed restart or
+    /* A failed restart or
      * rollback returns above and cannot replace the remembered output. */
     if (output_changed) settings_save_output(r.output);
     return true;
@@ -804,10 +691,12 @@ static bool transport_flag_format(bool flag)
 {
     if(s_transport_fault || !s_started || !s_have_verified || !s_lut_known)return false;
     if(s_verified_flag==flag)return true;
+    if(!transport_guard_ready(&s_switch_guard,esp_timer_get_time()))return false;
     if(!transport_sync_live_cancel())return false;
     if(flag && !flag_pin_acquire())return false;
     s_flag_format=flag;
-    bool ok=resume_live(tracker_lut(s_verified_level));
+    bool ok=resume_live(p64_table);
+    transport_guard_mark(&s_switch_guard,esp_timer_get_time());
     if(!s_transport_fault && !s_verified_flag) {
         if(!flag_pin_restored()){s_transport_fault=true;s_lut_known=false;return false;}
         s_flag_pin->active=false;s_flag_pin=NULL;
@@ -820,7 +709,7 @@ static bool transport_flag_format(bool flag)
 void transport_resume_live(void)
 {
     if (!resume_live(NULL)) printf("TRANSPORT menu return failed; inspect T recovery status\n");
-    kp_switch_mark(&s_switch_guard, esp_timer_get_time());
+    transport_guard_mark(&s_switch_guard, esp_timer_get_time());
 }
 
 void transport_poll_faults(void)
@@ -849,7 +738,6 @@ uint32_t transport_fault_count(void)
 /* Transport identity the live flywheel was started on. */
 typedef struct {
     uint32_t generation;
-    int level;
     unsigned output;
 } sync_live_context_t;
 
@@ -875,7 +763,7 @@ void transport_flog_identity(uint8_t *demod, uint8_t *output_level, bool *flag_f
 {
     const bool verified = s_started && s_tx_enabled && s_bs_enabled && s_have_verified && s_lut_known &&
                           !s_transport_fault;
-    if (demod) *demod = verified ? (s_verified_p64 ? FLOG_DEMOD_P64_R1 : FLOG_DEMOD_U85Q_1A09F5C092E8) : FLOG_DEMOD_UNKNOWN;
+    if (demod) *demod = verified ? FLOG_DEMOD_P64_R1 : FLOG_DEMOD_UNKNOWN;
     if (output_level) *output_level = verified ? (uint8_t)s_verified_output : 0xffu;
     if (flag_format) *flag_format = verified && s_verified_flag;
 }
@@ -958,7 +846,6 @@ static bool IRAM_ATTR transport_sync_live_valid(uint32_t generation)
     if(s->coasting_restart)return true;
     return s_started && s_rx_enabled && s_tx_enabled && s_bs_enabled &&
         s_stream_generation==s->stream_generation &&
-        s_verified_level==s->context.level &&
         s_verified_output==s->context.output;
 }
 
@@ -984,7 +871,6 @@ static void transport_sync_restart_finish(bool verified)
         (void)transport_sync_live_cancel();
         return;
     }
-    s->context.level=s_verified_level;
     s->context.output=s_verified_output;s->stream_generation=s_stream_generation;
     __sync_synchronize();
     s->coasting_restart=false;
@@ -1091,7 +977,7 @@ void transport_sync_live_tick(void)
         if(!transport_flag_format(true)) {++s->failures;s->retry_us=now+1000000;}
     }
     if(eligible && s_verified_flag && !s->fault && !active && now>=s->retry_us && !s_output_probe_busy) {
-        s->context=(sync_live_context_t){s_stream_generation,s_verified_level,s_verified_output};
+        s->context=(sync_live_context_t){s_stream_generation,s_verified_output};
         s->stream_generation=s_stream_generation;
         s->authorized=true;
         phy_set_observation_hook(sync_output_live_invalidate);
@@ -1202,7 +1088,7 @@ void transport_sync_live_print(void)
 void transport_print(void)
 {
     const char *verified_demod = s_have_verified && s_lut_known && !s_transport_fault ?
-        (s_verified_p64 ? P64_MODEL_ID : "U85Q") : "unknown";
+        P64_MODEL_ID : "unknown";
     printf("DEMOD selected=%s verified=%s p64_model=%s p64_table_sha256=%s\n",
            transport_program_name(), verified_demod, P64_MODEL_ID, P64_TABLE_SHA256);
     printf("TRANSPORT_STAGES_US quiesce=%lu bs_enable=%lu program_load=%lu instruction_verify=%lu lut_verify=%lu "
@@ -1219,14 +1105,12 @@ void transport_print(void)
            (unsigned long)s_restart_errors, (unsigned long)s_rollbacks, (unsigned long)s_rollback_fail,
            s_transport_fault, s_started);
     printf("TRANSPORT rx_descriptors=%d tx_empty=%lu rx_overflow=%lu dma_faults=%lu bs_overload=%lu "
-           "kp_level=%d kp_target=%d kp_writes=%lu kp_verify_fail=%lu program=%s flag_format=%u "
-           "switch_wait_ms=%lu kp_switches=%lu kp_restart_fail=%lu kp_restart_us=%lu prog_verify_fail=%lu\n",
+           "lut_writes=%lu lut_verify_fail=%lu program=%s flag_format=%u switch_wait_ms=%lu prog_verify_fail=%lu\n",
            s_rx_node_count, (unsigned long)s_tx_empty, (unsigned long)s_rx_overflow,
-           (unsigned long)s_dma_faults, (unsigned long)s_bs_overload, transport_kp_level(),
-           transport_kp_target(), (unsigned long)s_kp_writes, (unsigned long)s_kp_verify_fail,
-           transport_program_name(),(unsigned)s_verified_flag,
-           (unsigned long)transport_switch_wait_ms(), (unsigned long)s_kp_switches, (unsigned long)s_kp_restart_fail, (unsigned long)s_kp_restart_us,
-           (unsigned long)s_prog_verify_fail);
+           (unsigned long)s_dma_faults, (unsigned long)s_bs_overload,
+           (unsigned long)s_lut_writes, (unsigned long)s_lut_verify_fail,
+           transport_program_name(), (unsigned)s_verified_flag,
+           (unsigned long)transport_switch_wait_ms(), (unsigned long)s_prog_verify_fail);
     printf("CONTROL_COPY calls=%lu not_ready=%lu source_invalid=%lu pointer_invalid=%lu "
            "lapped=%lu timed_out=%lu max_us=%lu max_advance=%lu\n",
            (unsigned long)s_control_copy.calls, (unsigned long)s_control_copy.not_ready,

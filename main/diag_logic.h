@@ -58,7 +58,7 @@ typedef struct {
     int16_t cn_x10;         /* C/N estimate x10 dB (cn_estimate.h), -990 noise-like */
     int16_t origin_pm, clip_pm;
     int16_t offset_khz;     /* AFC tuning offset */
-    int8_t kp_level;        /* verified kp ladder level (0 = kp 0.85), -1 unknown */
+    int8_t kp_level;        /* reserved historical kp slot; P64 writes -1 */
     uint8_t lp;             /* reserved historical LP byte; current firmware writes zero */
     uint8_t flags;
 } diag_record_t;

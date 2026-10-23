@@ -9,7 +9,7 @@ export const BAND_NAMES = {
 export const KP_MODES = ['OFF', 'AUTO kp', 'AUTO kp+LP (legacy firmware)'];
 // Keys the firmware routes through control.c command(): ignored while a
 // calibration/lane-test status screen owns the picture.
-export const MENU_COMMAND_KEYS = new Set(['o', 'e', 'v', 'n', 'x', 'c', 'b', 's', 'm', 'K', 'k', 'j', 'g', 'A', 'U', 'G', 'Q', 'Z']);
+export const MENU_COMMAND_KEYS = new Set(['o', 'e', 'v', 'n', 'x', 'c', 'b', 's', 'g', 'A', 'U', 'G', 'Q', 'Z']);
 
 const FIELDS = /(?:^|\s)(\w+)=([^\s]+)/g;
 const fields = (line, target = {}) => {
@@ -211,6 +211,7 @@ export class ReceiverConsole {
       flywheel: this.flywheel.requested === undefined ? null : this.flywheel.requested === '1',
       flywheelActive: this.flywheel.active === undefined ? null : this.flywheel.active === '1',
       kpMode: Number.isInteger(kp) ? KP_MODES[kp] || '' : '',
+      demod: c.demod || '',
       profile: c.mode || this.profile.active || '',
       liveProfile: this.profile.live,
       dacStep: this.dac.step || '',
@@ -227,6 +228,7 @@ export class ReceiverConsole {
     if (key === 'G') return this.current && this.gainControl;
     if (key === 'U') return this.current && this.flywheelControl;
     if (key === 'Z') return this.current && this.dacTest;
+    if (['m', 'K', 'k', 'j', 'P', 'O', 'H'].includes(key)) return false;
     return ['T', 'h', '?'].includes(key) || (this.current && (!['v', 'e'].includes(key) || this.directMenu));
   }
 }

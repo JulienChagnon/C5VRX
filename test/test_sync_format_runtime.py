@@ -16,24 +16,20 @@ PREFIX = r'''
 #include <stdlib.h>
 #include <string.h>
 #include <stddef.h>
-#include "kp_tables.h"
 #include "p64_tables.h"
 #include "sync_flag.h"
 #include "transport_recovery.h"
-#include "kp_switch_guard.h"
-static const uint8_t s_u85q[300]={1,0,3,8,0,2,1,[12]=1};
-static const uint8_t s_u85q_64[300]={1,0,3,8,0,2,1,[12]=4};
-static bool s_demod_p64,s_verified_p64;
+#include "transport_guard.h"
+#include "transport_lut.h"
+static const uint8_t s_p64[300]={1,0,3,8,0,2,1,[12]=4};
 static bool s_menu_active;
-static kp_switch_guard_t s_switch_guard;
+static transport_guard_t s_switch_guard;
 static int64_t now=10000000;
 static int64_t esp_timer_get_time(void){return now;}
 static bool s_started,s_transport_fault,s_lut_known,s_have_verified;
 static bool s_flag_format,s_verified_flag;
 static unsigned s_output,s_verified_output,s_output_clipped;
 static uint16_t s_lut_live[1024],before[1024];
-static uint8_t s_kp_target;
-static int s_verified_level;
 static uint32_t s_restart_errors,s_rollback_fail,s_rollbacks,s_control_epoch;
 static unsigned settings_writes,cancels,acquires,stages,checks;
 static unsigned restart_finishes;static bool restart_finish_ok;
@@ -46,8 +42,8 @@ void transport_sync_restart_finish(bool ok){
 }
 static int fail_forward=-1,fail_rollback=-1;
 static bool physical_clamp,cancel_ok,acquire_ok;
-static int before_level;static unsigned before_output;
-static bool before_flag,before_p64;
+static unsigned before_output;
+static bool before_flag;
 static struct {bool active;} owner_storage,*s_flag_pin;
 static bool transport_sync_live_cancel(void){++cancels;return cancel_ok;}
 static bool flag_pin_acquire(void){
@@ -65,14 +61,14 @@ static int quiet_printf(const char *format,...){(void)format;return 1;}
 STAGES = r'''
     /* Production rollback assignments above run before mocked SDK stages. */
     assert(!memcmp(s_lut_live,before,sizeof(before)));
-    assert(s_verified_level==before_level && s_verified_output==before_output &&
-        s_verified_flag==before_flag && s_verified_p64==before_p64);
+    assert(s_verified_output==before_output &&
+        s_verified_flag==before_flag);
     assert(r->program==tracker_program());
     assert(!memcmp(s_program_work.prefix,r->program,sizeof(s_program_work.prefix)));
     if(stage==TR_LUT_VERIFY){
         for(unsigned i=0;i<1024;++i){
             bool clipped;
-            const uint16_t *canonical=tracker_lut(r->level);
+            const uint16_t *canonical=p64_table;
             uint16_t expected=r->flag?sync_flag_entry(canonical[i],r->output,&clipped):
                 output_entry(canonical[i],r->output,&clipped);
             assert(s_lut_work[i]==expected);++checks;
@@ -87,19 +83,18 @@ static bool quiesce(void *context){(void)context;s_started=false;return true;}
 SUFFIX = r'''
 #undef printf
 static void snapshot(void){
- memcpy(before,s_lut_live,sizeof(before));before_level=s_verified_level;
+ memcpy(before,s_lut_live,sizeof(before));now+=6000000;
  before_output=s_verified_output;before_flag=s_verified_flag;
- before_p64=s_verified_p64;
 }
 static void reset(unsigned level,unsigned output){
- s_demod_p64=s_verified_p64=false;
+ (void)level;
  s_menu_active=false;memset(&s_switch_guard,0,sizeof(s_switch_guard));now=10000000;
  s_started=s_lut_known=s_have_verified=true;s_transport_fault=false;
  s_flag_format=s_verified_flag=false;
- s_output=s_verified_output=output;s_verified_level=(int)level;s_kp_target=(uint8_t)level;
+ s_output=s_verified_output=output;
  s_output_clipped=0;
  for(unsigned i=0;i<1024;++i){bool clipped;
-  s_lut_live[i]=output_entry(kp_tables[level][i],output,&clipped);s_output_clipped+=clipped;
+  s_lut_live[i]=output_entry(p64_table[i],output,&clipped);s_output_clipped+=clipped;
  }
  s_flag_pin=NULL;owner_storage.active=false;physical_clamp=false;
  cancel_ok=acquire_ok=true;fail_forward=fail_rollback=-1;
@@ -107,26 +102,35 @@ static void reset(unsigned level,unsigned output){
  s_restart_errors=s_rollback_fail=s_rollbacks=s_control_epoch=0;snapshot();
 }
 static void verify(bool flag,unsigned level,unsigned output){
+ (void)level;
  assert(s_lut_known&&!s_transport_fault&&s_have_verified&&s_started);
  assert(restart_finishes&&restart_finish_ok);
- assert(s_verified_flag==flag&&s_flag_format==flag&&s_verified_level==(int)level);
+ assert(s_verified_flag==flag&&s_flag_format==flag);
  assert(s_verified_output==output&&physical_clamp==flag);
  assert(flag?(s_flag_pin&&s_flag_pin->active):!s_flag_pin);
  unsigned clipped_count=0;
  for(unsigned i=0;i<1024;++i){bool clipped;
-  const uint16_t *canonical=tracker_lut((int)level);
+  const uint16_t *canonical=p64_table;
   uint16_t expected=flag?sync_flag_entry(canonical[i],output,&clipped):
     output_entry(canonical[i],output,&clipped);
   assert(s_lut_live[i]==expected);clipped_count+=clipped;++checks;
  }
  assert(s_output_clipped==clipped_count);
 }
+static unsigned selected, reads;
+static unsigned corrupt;
+static void select_entry(void *ctx,unsigned entry){(void)ctx;selected=entry;}
+static uint32_t read_entry(void *ctx){(void)ctx;++reads;return p64_table[selected] ^ (selected==corrupt?1u:0u);}
 int main(void){
- /* Use the production initializers, not fixture defaults: a reboot must
-  * not reactivate the P64 board regression after a manual U85Q recovery. */
- assert(!s_demod_p64&&!s_verified_p64);
+ uint32_t failures=0;corrupt=1024;
+ assert(transport_lut_verify(p64_table,NULL,select_entry,read_entry,&failures));
+ assert(reads==1024&&!failures);
+ for(corrupt=0;corrupt<1024;++corrupt){
+  reads=0;assert(!transport_lut_verify(p64_table,NULL,select_entry,read_entry,&failures));
+  assert(reads==1024&&failures==corrupt+1);++checks;
+ }
  /* Exhaustive supported formats: comparison uses canonical code even at5x. */
- for(unsigned level=0;level<KP_LEVELS;++level)
+ for(unsigned level=0;level<1;++level)
  for(unsigned output=0;output<OUTPUT_LEVELS;++output){
   reset(level,output);assert(transport_flag_format(true));verify(true,level,output);
   assert(!settings_writes&&acquires==1);
@@ -138,11 +142,11 @@ int main(void){
  /* While flagged, ordinary output/kp/LP updates must rebuild encoded LUTs. */
  reset(0,0);assert(transport_flag_format(true));
  for(unsigned output=0;output<OUTPUT_LEVELS;++output)
- for(unsigned level=0;level<KP_LEVELS;++level){
+ for(unsigned level=0;level<1;++level){
   snapshot();s_output=output;
-  assert(resume_live(kp_tables[level]));verify(true,level,output);
+  assert(resume_live(p64_table));verify(true,level,output);
  }
- snapshot();assert(transport_flag_format(false));verify(false,s_verified_level,s_output);
+ snapshot();assert(transport_flag_format(false));verify(false,0,s_output);
  /* Failure after any forward stage may not publish a partially encoded LUT.
   * Real rollback prefix restores selected configuration and pin SDK fixture. */
  for(int stage=0;stage<TR_STAGES;++stage)for(unsigned exit=0;exit<2;++exit){
@@ -156,7 +160,7 @@ int main(void){
   * user-facing selections and the original encoded shadow. */
  reset(2,4);assert(transport_flag_format(true));snapshot();
  fail_forward=TR_TX_START;s_output=8;
- assert(!resume_live(kp_tables[6]));verify(true,2,4);
+ assert(!resume_live(p64_table));verify(true,2,4);
  assert(s_output==4&&!settings_writes);++checks;
  /* Failed verified recovery latches unknown and keeps pin ownership retained. */
  for(unsigned exit=0;exit<2;++exit){
@@ -170,60 +174,23 @@ int main(void){
  }
  reset(0,0);cancel_ok=false;assert(!transport_flag_format(true)&&!acquires&&!stages);++checks;
  reset(0,0);acquire_ok=false;assert(!transport_flag_format(true)&&!stages&&!s_flag_pin);++checks;
- /* P64 uses its own program even with the comparator format enabled.
-  * Every output setting must preserve all six state bits and four tokens. */
- for(unsigned output=0;output<OUTPUT_LEVELS;++output){
-  reset(2,output);assert(transport_set_p64(true));
-  assert(s_verified_p64&&s_demod_p64&&tracker_program()==s_u85q_64);
-  verify(false,2,output);snapshot();
-  assert(transport_flag_format(true));verify(true,2,output);snapshot();
-  assert(resume_live(s_lut_live));verify(true,2,output);snapshot();
-  assert(transport_flag_format(false));verify(false,2,output);
- }
- /* Mode changes obey the shared cooldown and publish only after a full
-  * verified restart; a failure restores the prior program and table. */
- for(unsigned previous=0;previous<2;++previous)for(int stage=0;stage<TR_STAGES;++stage){
-  reset(3,4);if(previous){assert(transport_set_p64(true));snapshot();now+=6000000;}
-  assert(transport_flag_format(true));snapshot();fail_forward=stage;
-  assert(!transport_set_p64(!previous));
-  assert(s_demod_p64==(bool)previous&&s_verified_p64==(bool)previous);
-  assert(!memcmp(before,s_lut_live,sizeof(before)));
-  assert(!transport_set_p64(!previous)); /* failed attempt also starts cooldown */
- }
- reset(2,0);assert(transport_set_p64(true));snapshot();
- assert(!transport_set_p64(false)&&s_demod_p64);
- now+=6000000;assert(transport_set_p64(false)&&!s_verified_p64);verify(false,2,0);snapshot();
- now+=6000000;assert(transport_set_p64(true));snapshot();now+=6000000;
- assert(transport_set_output(4)&&s_verified_p64);verify(false,2,4);
- /* Menu staging and initial boot both load the selected complete image. */
- reset(1,0);s_menu_active=true;assert(transport_set_p64(true));
- assert(!stages&&!s_verified_p64);s_menu_active=false;assert(resume_live(NULL));
- verify(false,1,0);assert(s_verified_p64);
- reset(0,0);s_have_verified=s_started=s_lut_known=false;s_demod_p64=true;
- assert(resume_live(NULL)&&s_verified_p64);verify(false,0,0);
- unsigned untouched=stages;snapshot();
- assert(transport_kp_level()==-1&&!transport_kp_set(3));
- assert(!transport_apply_auto(KP_LEVELS)&&stages==untouched);
- assert(transport_apply_auto(3)&&s_kp_target==3&&stages>untouched);
- verify(false,3,0);snapshot();untouched=stages;
- assert(!transport_set_output(4)&&!transport_set_p64(false)&&stages==untouched);
- assert(!transport_apply_auto(4)); /* all live actions share profile cooldown */
- assert(!memcmp(before,s_lut_live,sizeof(before))&&s_verified_p64);
- /* Profile restarts retain P64, including every verified rollback path. */
+ /* Cold boot loads only the complete P64 image. */
+ reset(0,0);s_have_verified=s_started=s_lut_known=false;
+ assert(resume_live(NULL));verify(false,0,0);snapshot();
+ assert(tracker_program()==s_p64);
+ /* Profile and OUTPUT changes share the guard, including rollback. */
+ assert(transport_restart_profile());verify(false,0,0);
+ unsigned untouched=stages;
+ assert(!transport_set_output(4)&&!transport_restart_profile()&&stages==untouched);
+ snapshot();assert(transport_set_output(4));verify(false,0,4);
  for(int stage=0;stage<TR_STAGES;++stage){
-  reset(2,0);assert(transport_set_p64(true));snapshot();now+=6000000;
-  fail_forward=stage;assert(!transport_apply_auto(6));
-  assert(s_verified_p64&&s_demod_p64&&s_verified_level==2&&s_kp_target==2);
-  assert(!memcmp(before,s_lut_live,sizeof(before))&&!transport_set_output(4));
+  reset(0,4);fail_forward=stage;assert(!transport_restart_profile());
+  verify(false,0,4);assert(!memcmp(before,s_lut_live,sizeof(before)));
+  assert(!transport_set_output(6)&&!transport_restart_profile());
  }
- /* Terminal failures cannot advertise the attempted decoder or allow a
-  * subsequent mode change after verified recovery also failed. */
- for(unsigned previous=0;previous<2;++previous){
-  reset(0,0);if(previous){assert(transport_set_p64(true));snapshot();now+=6000000;}
-  fail_forward=fail_rollback=TR_TX_START;
-  assert(!transport_set_p64(!previous)&&s_transport_fault&&!s_lut_known);
-  assert(s_verified_p64==(bool)previous&&!transport_set_p64(!previous));
- }
+ reset(0,4);fail_forward=fail_rollback=TR_TX_START;
+ assert(!transport_restart_profile()&&s_transport_fault&&!s_lut_known);
+ assert(!transport_set_output(6)&&!transport_restart_profile());
  printf("PASS: %u actual format/publication/recovery checks; no physical claim\n",checks);
 }
 '''
@@ -233,14 +200,13 @@ def main():
     def segment(start,stop):
         a=source.index(start);return source[a:source.index(stop,a)]
     tracker=segment('static const void *tracker_program(void)', '/* 6-bit resistor DAC')
-    image=segment('typedef struct {\n    uint32_t prefix[', 'static uint32_t s_kp_writes')
-    initializers=source[source.index('static bool s_demod_p64'):].split('\n',1)[0]
-    prefix=PREFIX.replace('static bool s_demod_p64,s_verified_p64;',initializers)
+    image=segment('typedef struct {\n    uint32_t prefix[', 'static uint32_t s_lut_writes')
+    prefix=PREFIX
     prefix=prefix.replace('static uint16_t s_lut_live[1024],before[1024];',
                           image+'\nstatic uint16_t s_lut_live[1024],before[1024];')
     # Keep only production selectors; state lives in the fixture above.
     tracker=tracker.replace('static bool s_flag_format,s_verified_flag;','')
-    words=segment('static bool program_words(', '/* Every live change shares')
+    words=segment('static bool program_words(', '/* The analog profile has already changed')
     a=source.index('typedef struct {\n    const uint8_t *program;')
     restart=source[a:source.index('} restart_t;',a)+len('} restart_t;')]
     rollback=segment('static bool restart_stage(void *ctx, tr_stage_t stage, bool rollback)', '    esp_err_t err = ESP_OK;\n    switch (stage)')
@@ -250,14 +216,12 @@ def main():
         while depth:
             depth+=(source[end]=='{')-(source[end]=='}');end+=1
         return source[a:end]+'\n'
-    selectors='static void stage_hooks(void){}\nstatic bool switch_live(int level){assert(!s_demod_p64);(void)level;return false;}\n'
+    selectors='static void stage_hooks(void){}\n'
     selectors+=''.join(function(signature) for signature in (
-        'bool transport_set_p64(bool enabled)', 'bool transport_set_output(unsigned level)',
-        'bool transport_kp_set(int level)', 'int transport_kp_level(void)',
-        'bool transport_apply_auto(int level)'))
+        'bool transport_set_output(unsigned level)', 'bool transport_restart_profile(void)'))
     with tempfile.TemporaryDirectory() as directory:
         path=Path(directory);unit=path/'run.c';binary=path/'run'
-        unit.write_text(prefix+tracker+words+restart+rollback+STAGES+publication+selectors+SUFFIX)
+        unit.write_text(prefix+tracker+words+restart+rollback+STAGES+'static void stage_hooks(void);\n'+publication+selectors+SUFFIX)
         subprocess.run([os.environ.get('CC','cc'),'-O2','-std=c11','-Wall','-Wextra','-Werror',
             '-I',str(ROOT/'main'),str(unit),'-o',str(binary)],check=True)
         subprocess.run([str(binary)],check=True)

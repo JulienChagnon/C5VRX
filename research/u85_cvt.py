@@ -87,7 +87,7 @@ def build_lut(angles=28, law='soft_lock'):
 
 def source(variant=DEFAULT,lp=False):
     lut = build_lut(*variant)
-    template = ((MAIN.parent/'research/legacy_demod/u85q_lp.bsasm') if lp else MAIN/'u85q.bsasm').read_text()
+    template = ((MAIN.parent/'research/legacy_demod/u85q_lp.bsasm') if lp else HERE/'legacy_demod/u85q.bsasm').read_text()
     template = re.sub(r'^lut .*$', 'lut '+' '.join(str(int(v)) for v in lut), template,flags=re.M)
     return '# C5VRX by Twotoz/contributors: EXPERIMENTAL U85-CVT '+str(variant)+'\n'+template
 
@@ -103,9 +103,9 @@ def generate(variant=DEFAULT):
 def check():
     # MATCHED trackers have the same instruction geometry; their known LUT
     # levels can use the existing verified ladder and LP without losing filter.
-    base=assemble(MAIN/'u85q.bsasm')[0]
-    assert base==assemble(MAIN/'u85q_kp050.bsasm')[0]
-    assert base==assemble(MAIN/'u85q_kp060.bsasm')[0]
+    base=assemble(HERE/'legacy_demod/u85q.bsasm')[0]
+    assert base==assemble(HERE/'legacy_demod/u85q_kp050.bsasm')[0]
+    assert base==assemble(HERE/'legacy_demod/u85q_kp060.bsasm')[0]
     rng=np.random.default_rng(196201)
     raw=rng.integers(0,256,16384,np.uint8)
     for variant in VARIANTS:

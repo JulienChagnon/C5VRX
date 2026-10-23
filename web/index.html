@@ -80,7 +80,7 @@
           <div id="paneAlpha" class="tab-pane active">
             <div id="alphaBuildWarning" class="warning-box">
               <strong>C5VRX-5 firmware</strong>
-              <span>The untrained U85Q demodulator, fixed ultrafine IQ, KEEL-1 gain control (peak AGC on 3 dB home rows) and an analog filter that calibrates itself on the first boot (VTX off is best). Choose the latest build or an unmerged PR build. Use Full firmware when switching from another generation.</span>
+              <span>The U80P64-R1 demodulator, fixed ultrafine IQ, KEEL-1 gain control (peak AGC on 3 dB home rows) and an analog filter that calibrates itself on the first boot (VTX off is best). Choose the latest build or an unmerged PR build. Use Full firmware when switching from another generation.</span>
             </div>
             <div class="field">
               <label for="selectAlphaBuild">Build</label>
@@ -316,16 +316,13 @@
             <details class="shortcut-details">
               <summary>Advanced / bench</summary>
               <dl class="readouts compact">
-                <div><dt>Automatic rescue</dt><dd data-value="kpMode">—</dd></div>
+                <div><dt>Demodulator</dt><dd data-value="demod">—</dd></div>
                 <div><dt>Live VTX matching</dt><dd data-value="liveProfile">—</dd></div>
                 <div><dt>Profile</dt><dd data-value="profile">—</dd></div>
               </dl>
               <p class="hint">Test on the ground. Manual tracker changes save automatic rescue OFF. Live changes share a five-second firmware cooldown.</p>
               <div class="command-buttons">
-                <button type="button" class="command-button" data-command="K" data-hint="Cycle OFF / AUTO kp? The setting is saved; a change can briefly interrupt video." disabled>Cycle automatic rescue <kbd>K</kbd></button>
                 <button type="button" class="command-button" data-command="A" data-hint="Toggle automatic live VTX profile switching? This setting is saved; profile changes can briefly interrupt video." disabled>Toggle live VTX matching <kbd>A</kbd></button>
-                <button type="button" class="command-button" data-command="k" data-hint="Step the tracker calmer? This saves automatic rescue OFF, including after reboot." disabled>Tracker calmer <kbd>k</kbd></button>
-                <button type="button" class="command-button" data-command="j" data-hint="Step the tracker faster? This saves automatic rescue OFF, including after reboot." disabled>Tracker faster <kbd>j</kbd></button>
                 <button type="button" class="command-button" data-command="L" data-hint="Run the bench-only IQ lane comparison? Live video stops for about three seconds." disabled>Compare IQ lanes <kbd>L</kbd></button>
                 <button type="button" class="command-button" data-command="`" data-hint="Reboot into USB download mode for flashing? Video stops and the terminal disconnects." disabled>USB download mode <kbd>`</kbd></button>
               </div>

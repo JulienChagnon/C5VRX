@@ -1,7 +1,7 @@
 /* C5VRX-5 by Twotoz and the C5VRX contributors: receiver-wide state.
  *
  * Data plane (hardware only): MODEM_DIAG Q4/I4 (fixed ultrafine lane) ->
- * PARLIO RX 40 MS/s -> 32 KiB cyclic raw ring -> TX BitScrambler U85Q
+ * PARLIO RX 40 MS/s -> 32 KiB cyclic raw ring -> TX BitScrambler U80P64-R1
  * (50 ns span, two bundles, LUT16) -> PARLIO TX 40 MHz [D,D] -> 6-bit DAC.
  * The CPU only observes completed RX descriptors and owns gain, AFC, DC,
  * filter, menu and console. */
@@ -27,9 +27,9 @@
 #define PROBE_REGION_BYTES  64u
 #define PROBE_BYTES         (PROBE_REGIONS * PROBE_REGION_BYTES)
 #define MAX_RING_DESCRIPTORS 16
-/* AFC centres the VTX blanking level here. The U85Q window (-6..+9 MHz)
+/* AFC centres the VTX blanking level here. The -6..+9 MHz output window
  * holds more of the sync-to-white swing with the porch at -1.0 MHz than at
- * the -436 kHz that suited the trained trackers: held-out simulation,
+ * the -436 kHz that suited the trained trackers: historical U85Q simulation,
  * 400 cases, picture 0.969 vs 0.908, +0.85 dB SINAD, deviation 1.8 VTXs
  * 0.90 vs 0.64 (docs/FINDINGS.md). */
 #define AFC_PORCH_TARGET_KHZ (-1000)
@@ -60,23 +60,15 @@ esp_err_t transport_start(void);
 void transport_stop_tx(void);
 void transport_resume_live(void);
 void transport_start_chain(dma_descriptor_t *first);
-/* P64 is fixed-table; U85Q retains the kp ladder. A profile
- * picks the analog filter and the U85Q fallback's starting kp level. */
-bool transport_set_base_level(int level);     /* not live: start level */
 uint32_t transport_switch_wait_ms(void);
-bool transport_kp_set(int level);          /* verified kp ladder level (kp_tables.h) */
-int transport_kp_level(void);
-int transport_kp_target(void);
-unsigned transport_kp_tick(void);
 const char *transport_program_name(void);
-bool transport_set_p64(bool enabled);       /* guarded restart; session only */
-bool transport_p64(void);
+bool transport_live(void);
+bool transport_restart_profile(void);
 bool transport_faulted(void);
 uint32_t transport_restart_errors(void);
 unsigned transport_output(void);
 const char *transport_output_name(void);
 bool transport_set_output(unsigned level);
-bool transport_apply_auto(int level);
 void transport_stop_chain(void);
 void transport_poll_faults(void);
 uint32_t transport_fault_count(void);
@@ -266,7 +258,6 @@ int profile_active(void);
 int profile_deviation_x100(size_t channel);
 int profile_live_deviation_x100(void);     /* measured this channel session, -1 = not yet */
 int profile_for_deviation(int dev_x100);
-int profile_base_level(int profile);       /* kp_tables.h level a profile starts from */
 bool profile_set(int profile);
 void profile_load(void);
 void profile_boot(void);

@@ -574,7 +574,7 @@ function receiverValues(v) {
     menu: v.menu === null ? '' : v.menu ? 'OPEN' : 'CLOSED · LIVE VIDEO',
     calibrate: v.busy ? 'RUNNING · VIDEO STOPPED' : v.stage || v.statusAt ? 'READY' : '',
     scan: v.scan,
-    kpMode: v.kpMode,
+    demod: v.demod,
     liveProfile: v.liveProfile === undefined ? '' : v.liveProfile ? 'ON' : 'OFF · REPORT ONLY',
     profile: v.profile,
     dac: !v.dacStep ? '' : v.dacStep === 'PATTERN' ? 'TEST PATTERN ON SCREEN'

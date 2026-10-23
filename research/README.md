@@ -1,3 +1,11 @@
+# Current firmware versus archived receiver studies
+
+The active firmware now uses U80P64-R1 only (operator decision 2026-10-23).
+The U85Q/kp/LP studies below retain their original evidence and assumptions;
+they do not describe current firmware controls. Retired programs/tables and
+policies are under `research/legacy_demod/`; they are excluded from the build.
+See [P64](../docs/P64.md) for the active fixed-model integration.
+
 # Where can C5VRX-5 firmware still gain range?
 
 Current branch cleanup (2026-10-23): LP is retired from the firmware. Its

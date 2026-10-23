@@ -1,37 +1,12 @@
 /* C5VRX-5 by Twotoz and the C5VRX contributors: receive profile per channel.
  *
- * The VTX deviation sets the best filter width and tracker loop gain
- * (research, simulation, usable-picture threshold):
- *   deviation 0.69: 10 MHz + kp 0.5, 3.2 dB better than 14 MHz + kp 0.85;
- *   deviation 1.0:  10 MHz + kp 0.6, 1.7 dB better;
- *   deviation 1.4:  12 MHz + kp 0.85 (the default) is already best;
- *   deviation 1.7:  16 MHz + kp 0.85, 0.4 dB better and +2 dB SINAD at 8 dB;
- *   deviation 2.0:  16 MHz + kp 0.85, 2.8 dB better (data/wide.txt).
- * The narrow profiles hurt a wide VTX badly, so a profile is only taken
- * from a clear measurement, kept per channel in NVS. At startup it is
- * applied behind a status screen; in flight only by the optional live
- * switch below (asymmetric, guarded restart). Anything uncertain keeps
- * DEFAULT.
- *
- * A stored deviation is not a VTX identity: another VTX on the same
- * channel can be much wider. So every boot and every channel change starts
- * in DEFAULT, and a matched profile needs a fresh measurement in the same
- * channel session, taken in the bounded startup phase (or a manual
- * CALIBRATE) while the DEFAULT picture keeps running; only then the switch
- * happens behind a status screen. After startup the measurement continues
- * passively on live video (no retune, no filter or tracker change): a new
- * cycle every 30 s (continuous VTX matching, profile_logic.h). Each result
- * updates the session deviation (the kp ladder's class) and is kept as
- * PENDING for the next boot or CALIBRATE; agreement and mismatch streaks are
- * reported. With the live switch on (NVS prof_live, default, console A) a
- * reliable result changes the active profile in flight: widening after one
- * decision, narrowing after two agreeing decisions (profile_logic.h), via
- * a filter relock plus the guarded, verified kp restart (a few ms). A
- * profile sets the filter and the kp level it starts from; with AUTO the
- * kp ladder takes over from there on every profile (control.c).
- * In report-only mode a VTX that reads wide while a matched profile is
- * active is reported loudly and DEFAULT returns at the next boot, channel
- * change or CALIBRATE.
+ * The VTX deviation selects a calibrated analog filter class (normal,
+ * narrow or wide). The P64 program and loop gain never change with profiles.
+ * Narrowing needs fresh, reliable deviation, AFC lock and matching DC rows;
+ * widening can act sooner. Live switches retain the shared five-second guard,
+ * checked filter restore and verified halted transport restart. Historical
+ * U85Q bandwidth/quality curves are research evidence, not P64 range proof.
+ * Every boot/channel starts DEFAULT; stored deviation is only provisional.
  *
  * Deviation: the AFC measures the sync tip and the burst-free porch of
  * confirmed lines (burst or line timing); their distance is deviation x 1.914 MHz (40 of 140
@@ -51,8 +26,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-static const char *const s_names[PROFILES] = {"DEFAULT 12MHZ KP0.85", "MATCHED 10MHZ KP0.6", "MATCHED 10MHZ KP0.5",
-                                              "WIDE 16MHZ KP0.85"};
+static const char *const s_names[PROFILES] = {"DEFAULT 12MHZ", "NARROW 10MHZ", "NARROW 10MHZ (legacy)",
+                                              "WIDE 16MHZ"};
 static uint16_t s_dev_table[FPV_CHANNELS];    /* last deviation x100 per channel, provisional */
 static volatile int s_profile = PROFILE_DEFAULT;
 static const char *volatile s_reason = "boot_default";
@@ -90,32 +65,25 @@ int profile_for_deviation(int dev_x100)
     return profile_class(dev_x100, filter_setting(FILTER_NARROW, &f), filter_setting(FILTER_WIDE, &f));
 }
 
-/* kp ladder level (kp_tables.h) a profile starts from. */
-int profile_base_level(int p)
-{
-    return profile_base_level_for(p);
-}
-
-/* Filter class and start kp level of a profile. Only while TX is not live: before
+/* Analog filter class of a profile; P64 uses the same fixed table everywhere. Only while TX is not live: before
  * transport_start or with the menu / a status screen owning TX. A filter
  * that does not read back leaves DEFAULT, never a half-applied profile. */
 bool profile_set(int p)
 {
-    if (p < 0 || p >= PROFILES) return false;
+    if (p < 0 || p >= PROFILES || p == PROFILE_RETIRED_KP050) return false;
     rf_filter_t f;
     const int cls = p == PROFILE_DEFAULT ? FILTER_NORMAL : p == PROFILE_WIDE ? FILTER_WIDE : FILTER_NARROW;
     if (!filter_setting(cls, &f)) {
         if (p != PROFILE_DEFAULT) return false;
         f = rf_filter();            /* uncalibrated: keep what is set */
     }
-    if (!transport_set_base_level(profile_base_level(p))) return false;   /* refuses while TX is live */
+    if (transport_live() && !s_menu_active) return false;
     if ((!rf_filter_equal(rf_filter(), f) || !rf_filter_applied()) && !rf_set_filter(f)) {
         printf("PROFILE error: filter code=%d skirt=%u not applied (read back code=%d skirt=%d)\n", f.code, f.skirt,
                phy_filter_code(), phy_filter_skirt());
         if (p != PROFILE_DEFAULT) {
             rf_filter_t d;
             if (filter_setting(FILTER_NORMAL, &d)) (void)rf_set_filter(d);
-            (void)transport_set_base_level(profile_base_level(PROFILE_DEFAULT));
             s_profile = PROFILE_DEFAULT;
             return false;
         }
@@ -237,11 +205,11 @@ static void live_apply(void)
                f.code, f.skirt);
         return;
     }
-    /* Apply the profile start level through the shared verified restart. */
-    if (!transport_apply_auto(profile_base_level(p))) {
+    /* Restart the fixed P64 image after the filter change. */
+    if (!transport_restart_profile()) {
         (void)rf_set_filter(before);
         ++s_live_switch_fail;
-        printf("PROFILE live switch to %s failed: kp restart (see T recovery); filter restored\n", s_names[p]);
+        printf("PROFILE live switch to %s failed: transport restart (see T recovery); filter restored\n", s_names[p]);
         return;
     }
     const int old = s_profile;
@@ -346,7 +314,7 @@ void profile_commit(int dev_x100)
     s_live_channel = ch;
     int p = profile_for_deviation(dev_x100);
     if (p == PROFILE_DEFAULT) {
-        s_reason = dev_x100 >= DEV_WIDE_MIN ? "no_wide_filter" : dev_x100 > DEV_KP060_MAX ? "measured_default_vtx" :
+        s_reason = dev_x100 >= DEV_WIDE_MIN ? "no_wide_filter" : dev_x100 > DEV_NARROW_MAX ? "measured_default_vtx" :
                    "no_narrow_filter";
         /* No status screen: the picture stays (operator: "VTX MATCHED" in
          * flight). The live switch applies it right after startup. */

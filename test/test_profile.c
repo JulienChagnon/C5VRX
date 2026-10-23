@@ -13,7 +13,6 @@
 #include <math.h>
 #include <stdio.h>
 #include "profile_logic.h"
-#include "kp_tables.h"
 
 static uint64_t s_rng = 0x2545f4914f6cdd1dull;
 static double uniform(void)
@@ -63,17 +62,16 @@ int main(void)
         for (unsigned b = 0; b < 4u; ++b)
             for (unsigned c = 0; c < 3u; ++c) {
                 scenario_t sc = {devs[a], noises[b], outliers[c], 0.0};
-                unsigned count[PROFILES] = {0}, none = 0, worst = PROFILE_DEFAULT;
+                unsigned count[PROFILES] = {0}, none = 0;
                 for (unsigned t = 0; t < 2000u; ++t) {
                     int dev, p = run(&sc, &dev);
                     if (p < 0) { ++none; continue; }
                     ++count[p];
-                    if (p == PROFILE_KP050 || (p == PROFILE_KP060 && worst == PROFILE_DEFAULT)) worst = (unsigned)p;
                 }
                 /* Never narrow on a wide VTX, never kp 0.5 on a medium one,
                  * never WIDE below 1.45 (it would cost ~0.5-0.8 dB there). */
-                bool ok = (devs[a] >= 1.15 ? count[PROFILE_KP060] + count[PROFILE_KP050] == 0
-                                           : count[PROFILE_KP050] == 0) &&
+                bool ok = (devs[a] >= 1.15 ? count[PROFILE_NARROW] == 0
+                                           : true) &&
                           (devs[a] > 1.45 || count[PROFILE_WIDE] == 0);
                 snprintf(name, sizeof(name), "dev=%.2f noise=%2.0f%% outliers=%2.0f%%", devs[a], noises[b],
                          outliers[c] * 100);
@@ -91,8 +89,8 @@ int main(void)
         if (p >= 0 && dev > 75) ++bad;
     }
     /* Clean narrow VTXs still get their profile. */
-    const struct { double dev; int want; } clean[] = {{0.69, PROFILE_KP050}, {0.75, PROFILE_KP050},
-                                                     {1.0, PROFILE_KP060}, {1.02, PROFILE_KP060}, {1.4, PROFILE_DEFAULT},
+    const struct { double dev; int want; } clean[] = {{0.69, PROFILE_NARROW}, {0.75, PROFILE_NARROW},
+                                                     {1.0, PROFILE_NARROW}, {1.02, PROFILE_NARROW}, {1.4, PROFILE_DEFAULT},
                                                      {1.7, PROFILE_WIDE}, {2.0, PROFILE_WIDE}};
     for (unsigned a = 0; a < 7u; ++a) {
         unsigned hit = 0;
@@ -114,13 +112,13 @@ int main(void)
         dev_monitor_t m;
         dev_monitor_reset(&m, 0);
         check("monitor: first cycle collects at once", m.collecting && !dev_monitor_tick(&m, 1000), "");
-        dev_monitor_decided(&m, 100, PROFILE_KP060, PROFILE_DEFAULT, 6000000);
+        dev_monitor_decided(&m, 100, PROFILE_NARROW, PROFILE_DEFAULT, 6000000);
         check("monitor: idle until 30 s after the cycle start", !dev_monitor_tick(&m, 29999999) && !m.collecting, "");
         check("monitor: next cycle at 30 s", dev_monitor_tick(&m, 30000000) && m.collecting, "");
         check("monitor: no timeout before 120 s", !dev_monitor_tick(&m, 149999999), "");
         check("monitor: a cycle without a decision restarts after 120 s",
               dev_monitor_tick(&m, 150000000) && m.timeouts == 1u, "");
-        dev_monitor_decided(&m, 101, PROFILE_KP060, PROFILE_DEFAULT, 160000000);
+        dev_monitor_decided(&m, 101, PROFILE_NARROW, PROFILE_DEFAULT, 160000000);
         check("monitor: agree and mismatch streaks", m.agree_streak == 2u && m.mismatch_streak == 2u, "");
         dev_monitor_decided(&m, 140, PROFILE_DEFAULT, PROFILE_DEFAULT, 200000000);
         check("monitor: a matching result clears the mismatch streak",
@@ -153,12 +151,12 @@ int main(void)
             int r = dev_add(&e, (int32_t)span);
             if (r < 0) continue;
             int want = profile_class(r, true, true);
-            dev_monitor_decided(&m, r, want, PROFILE_KP060, t);
-            if (t < 300000000LL) before += want == PROFILE_KP060;
+            dev_monitor_decided(&m, r, want, PROFILE_NARROW, t);
+            if (t < 300000000LL) before += want == PROFILE_NARROW;
             else {
                 after += want == PROFILE_WIDE;
                 if (first_wide < 0 && want == PROFILE_WIDE) first_wide = t;
-                mixed += want == PROFILE_KP050;
+                mixed += want == PROFILE_RETIRED_KP050;
             }
         }
         snprintf(detail, sizeof(detail), "decisions=%u timeouts=%u kp06_before=%u wide_after=%u first_wide_s=%.1f",
@@ -170,14 +168,13 @@ int main(void)
     }
     /* Live profile switch: widen at once, narrow after two agreeing results. */
     check("live switch: report-only never switches",
-          !profile_live_switch_wanted(false, PROFILE_DEFAULT, PROFILE_KP050, 5u, true), "");
+          !profile_live_switch_wanted(false, PROFILE_DEFAULT, PROFILE_NARROW, 5u, true), "");
     check("live switch: narrow -> DEFAULT on the first result",
-          profile_live_switch_wanted(true, PROFILE_DEFAULT, PROFILE_KP050, 1u, true), "");
+          profile_live_switch_wanted(true, PROFILE_DEFAULT, PROFILE_NARROW, 1u, true), "");
     check("live switch: DEFAULT -> WIDE on the first result",
           profile_live_switch_wanted(true, PROFILE_WIDE, PROFILE_DEFAULT, 1u, true), "");
-    check("live switch: kp0.6 -> kp0.5 waits for agreement",
-          !profile_live_switch_wanted(true, PROFILE_KP050, PROFILE_KP060, 1u, true) &&
-          profile_live_switch_wanted(true, PROFILE_KP050, PROFILE_KP060, 2u, true), "");
+    check("live switch: retired kp-only profile cannot be selected",
+          !profile_live_switch_wanted(true, PROFILE_RETIRED_KP050, PROFILE_NARROW, 9u, true), "");
     check("live switch: WIDE -> DEFAULT waits for agreement",
           !profile_live_switch_wanted(true, PROFILE_DEFAULT, PROFILE_WIDE, 1u, true) &&
           profile_live_switch_wanted(true, PROFILE_DEFAULT, PROFILE_WIDE, 2u, true), "");
@@ -188,16 +185,15 @@ int main(void)
      * free), so the lock now gates only the narrow filter: narrowing waits
      * for it, widening never does. */
     check("live switch: narrowing waits for the AFC lock",
-          !profile_live_switch_wanted(true, PROFILE_KP050, PROFILE_DEFAULT, 5u, false) &&
-          !profile_live_switch_wanted(true, PROFILE_KP060, PROFILE_DEFAULT, 5u, false) &&
+          !profile_live_switch_wanted(true, PROFILE_NARROW, PROFILE_DEFAULT, 5u, false) &&
           !profile_live_switch_wanted(true, PROFILE_DEFAULT, PROFILE_WIDE, 5u, false) &&
-          profile_live_switch_wanted(true, PROFILE_KP050, PROFILE_DEFAULT, 2u, true), "");
+          profile_live_switch_wanted(true, PROFILE_NARROW, PROFILE_DEFAULT, 2u, true), "");
     check("live switch: widening needs no AFC lock",
-          profile_live_switch_wanted(true, PROFILE_DEFAULT, PROFILE_KP050, 1u, false) &&
+          profile_live_switch_wanted(true, PROFILE_DEFAULT, PROFILE_NARROW, 1u, false) &&
           profile_live_switch_wanted(true, PROFILE_WIDE, PROFILE_DEFAULT, 1u, false) &&
-          profile_live_switch_wanted(true, PROFILE_WIDE, PROFILE_KP060, 1u, false), "");
-    check("narrowing order: KP050 < KP060 < DEFAULT < WIDE",
-          profile_narrowing(PROFILE_KP050, PROFILE_KP060) && profile_narrowing(PROFILE_KP060, PROFILE_DEFAULT) &&
+          profile_live_switch_wanted(true, PROFILE_WIDE, PROFILE_NARROW, 1u, false), "");
+    check("narrowing order: NARROW < DEFAULT < WIDE",
+          profile_narrowing(PROFILE_NARROW, PROFILE_DEFAULT) &&
           profile_narrowing(PROFILE_DEFAULT, PROFILE_WIDE) && !profile_narrowing(PROFILE_WIDE, PROFILE_DEFAULT) &&
           !profile_narrowing(PROFILE_DEFAULT, PROFILE_DEFAULT), "");
     /* The 10-minute run again with the switch applied: a VTX that widens
@@ -235,17 +231,6 @@ int main(void)
         check("live switch run: wide VTX leaves the narrow profile within one cycle",
               left_at >= 0 && left_at - 300000000LL <= 30000000LL + 15000000LL && active == PROFILE_WIDE, detail);
         check("live switch run: no flapping", switches == 2u, detail);
-    }
-    {   /* A profile is a filter plus a start level of the one U85Q program: the
-         * old KP060/KP050 programs' LUTs are these ladder levels bit-exactly. */
-        bool ok = true;
-        for (int p = 0; p < PROFILES; ++p) {
-            int lv = profile_base_level_for(p);
-            ok &= lv >= 0 && lv < KP_LEVELS && kp_level_x100[lv] == profile_base_kp_x100(p);
-        }
-        check("profile start levels: DEFAULT/WIDE 0.85, KP060 0.60, KP050 0.50",
-              ok && profile_base_level_for(PROFILE_KP050) == 7 && profile_base_level_for(PROFILE_KP060) == 5 &&
-              profile_base_level_for(PROFILE_DEFAULT) == 0 && profile_base_level_for(PROFILE_WIDE) == 0, "");
     }
     printf("%s (%d failures)\n", s_fail ? "FAILED" : "PASSED", s_fail);
     return s_fail != 0;

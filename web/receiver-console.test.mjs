@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { ReceiverConsole } from './receiver-console.js';
+import { MENU_COMMAND_KEYS, ReceiverConsole } from './receiver-console.js';
 
 test('fw= names the exact build: PR channels share one version string', () => {
   const state = new ReceiverConsole();
@@ -35,7 +35,8 @@ test('unknown/legacy firmware cannot enable current receiver actions', () => {
   assert.equal(state.supports('T'), true);
   assert.deepEqual(state.control, {});
   state.push('C5VRX-5 keys: T status\n');
-  assert.equal(state.supports('K'), true);
+  assert.equal(state.supports('K'), false);
+  assert.equal(state.supports('g'), true);
 });
 
 test('reconnect discards firmware capabilities and previous settings', () => {
@@ -229,4 +230,14 @@ test('the firmware help line enables the DAC self-test key', () => {
   state.push('C5VRX-5 keys: T status\n');
   state.push(`${help[1].replace(/\n$/, '')}\n`);
   assert.equal(state.supports('Z'), true);
+});
+
+ test('P64 status reports the sole model and retired commands stay unavailable', () => {
+ const state = new ReceiverConsole();
+ state.push('C5VRX5 version=v5.0.9 demod=U80P64-R1\nSTATUS channel=A1 freq=5865 demod=U80P64-R1 mode=DEFAULT output=2.0x\n');
+ assert.equal(state.view().demod, 'U80P64-R1');
+ for (const key of ['m','K','k','j','P','O','H']) {
+   assert.equal(state.supports(key), false);
+   assert.equal(MENU_COMMAND_KEYS.has(key), false);
+ }
 });

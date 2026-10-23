@@ -1,7 +1,7 @@
 /* C5VRX-5 by Twotoz and the C5VRX contributors: receiver state supervisor,
  * shadow mode (pure logic, host test test/test_rx_state.c).
  *
- * The control loops (Direct Gain, DC servo, AFC, profile, kp) act on
+ * The control loops (Direct Gain, DC servo, AFC, profile) act on
  * partly overlapping evidence on their own schedules, and one can mislead
  * another: in the first blackbox reads a DC-pushed cloud read as overload
  * and Direct Gain dropped 10-20 steps (PR #225 proposal: one coordinated

@@ -11,7 +11,7 @@
 
 /* Resident observer. Task context only; caller serializes begin/poll/end
  * against transport mutations with short ownership, never a resident lease.
- * At1x the resident DATA4 observation can be investigated on either U85Q
+ * At1x the resident DATA4 observation can be investigated on P64
  * program; absence of a qualified model alone does not authorize repairing
  * an unqualified strong-signal program. No output gates are enabled here.
  * Invalidate BEFORE a receive

@@ -1,7 +1,7 @@
 /* C5VRX by Twotoz/contributors: live-DC evidence gates and hardware LUT layout.
  * Uses the real archived VTX-off captures; not a physical sensitivity test. */
 #include "dc_live.h"
-#include "kp_tables.h"
+#include "../research/legacy_demod/kp_tables.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>

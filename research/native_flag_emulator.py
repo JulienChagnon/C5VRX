@@ -105,7 +105,7 @@ int main(void) {
 }
 ''')
     subprocess.run(shlex.split(compiler) + ["-O2", "-std=c11", "-Wall", "-Wextra", "-Werror",
-                   "-I", str(ROOT / "main"), str(source), "-o", str(executable)], check=True)
+                   "-I", str(ROOT / "main"), "-I", str(ROOT / "research/legacy_demod"), str(source), "-o", str(executable)], check=True)
     result = subprocess.run([str(executable)], capture_output=True, check=True).stdout
     if len(result) < 8:
         raise RuntimeError("C LUT exporter produced an incomplete header")
@@ -151,7 +151,7 @@ def prove(idf: Path, compiler: str, threshold: int, output_bytes: int, seed: int
     namespace = generic_emulator(idf)
     assemble = namespace["assemble"]
     emulate = namespace["emulate"]
-    normal_path = ROOT / "main/u85q.bsasm"
+    normal_path = ROOT / "research/legacy_demod/u85q.bsasm"
     lp_path = ROOT / "research/legacy_demod/u85q_lp.bsasm"
     production_flag_path = ROOT / "research/legacy_demod/u85q_lp_flag.bsasm"
     normal = assemble(normal_path)
@@ -239,7 +239,7 @@ def prove(idf: Path, compiler: str, threshold: int, output_bytes: int, seed: int
     paths = {"normal_program": normal_path, "lp_program": lp_path,
              "production_flag_program": production_flag_path,
              "production_flag_mapping": ROOT / "main/sync_flag.h",
-             "kp_tables": ROOT / "main/kp_tables.h", "output_mapping": ROOT / "main/output_level.h",
+             "kp_tables": ROOT / "research/legacy_demod/kp_tables.h", "output_mapping": ROOT / "main/output_level.h",
              "generic_emulator": ROOT / "research/u85q_lp.py", "runner": Path(__file__),
              "sdk_assembler": idf / "tools/bsasm.py",
              "sdk_target": idf / "components/esp_driver_bitscrambler/bsasm_targets/esp32c5.json"}

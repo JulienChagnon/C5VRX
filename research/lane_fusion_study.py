@@ -109,7 +109,7 @@ def compressed_lut(plan, ctx, n):
 
 
 def export_program(plan, ctx, path, n):
-    template = (Path(__file__).resolve().parents[1] / 'main' / 'u85q.bsasm').read_text()
+    template = (Path(__file__).resolve().parents[1] / 'research' / 'legacy_demod' / 'u85q.bsasm').read_text()
     lut = compressed_lut(plan, ctx, n)
     text = re.sub(r'^lut [0-9 ]+$', 'lut ' + ' '.join(map(str, lut)), template, flags=re.M)
     preamble = '# IQLaneFusion fixed-context COMPRESSED EXPERIMENT, not live adaptive firmware.\n'

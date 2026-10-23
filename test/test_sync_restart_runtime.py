@@ -22,7 +22,7 @@ static bool s_transport_fault,s_stream_generation_overflow,s_menu_active,s_scan_
 static bool s_rx_enabled,s_tx_enabled,s_bs_enabled;
 static bool s_output_probe_busy;
 static unsigned s_output,s_verified_output;
-static int s_verified_level,s_rx_node_count;
+static int s_rx_node_count;
 static uint32_t s_stream_generation;
 static bool pin_clamped,observer_active,output_end_ok,observer_end_ok;
 static unsigned invalidates,output_ends,observer_ends,source_calls;
@@ -58,11 +58,11 @@ static sync_live_owner_t owner;
 static void reset(void){
  memset(&owner,0,sizeof(owner));s_live_owner=&owner;
  owner.requested=owner.authorized=owner.output_requested=true;
- owner.context=(sync_live_context_t){7,2,4};owner.stream_generation=7;
+ owner.context=(sync_live_context_t){7,4};owner.stream_generation=7;
  s_stream_generation=7;s_started=s_have_verified=s_lut_known=s_verified_flag=s_flag_format=true;
  s_transport_fault=s_stream_generation_overflow=s_menu_active=s_scan_active=false;
  s_rx_enabled=s_tx_enabled=s_bs_enabled=true;
- s_output=s_verified_output=4;s_verified_level=2;s_rx_node_count=9;s_output_probe_busy=true;
+ s_output=s_verified_output=4;s_rx_node_count=9;s_output_probe_busy=true;
  pin_clamped=observer_active=output_end_ok=observer_end_ok=true;
  invalidates=output_ends=observer_ends=source_calls=pin_applies=tx_enables=0;tx_enable_error=0;events[0]=0;
  assert(transport_sync_live_valid(7));
@@ -82,11 +82,11 @@ int main(void){unsigned checks=0;
  assert(transport_sync_live_valid(7)&&!transport_sync_live_valid(8));
  unsigned calls=source_calls;assert(!transport_sync_native_source(NULL,&epoch)&&source_calls==calls);++checks;
  ++s_stream_generation;assert(transport_sync_live_valid(7)); /* lease != DMA generation */
- s_verified_level=6;s_verified_output=8;
+ s_verified_output=8;
  s_started=s_rx_enabled=s_tx_enabled=s_bs_enabled=true;
  transport_sync_restart_finish(true);
  assert(!owner.coasting_restart&&owner.context.generation==7&&owner.stream_generation==8);
- assert(owner.context.level==6&&owner.context.output==8);
+ assert(owner.context.output==8);
  assert(transport_sync_live_valid(7)&&!transport_sync_live_valid(8));
  assert(!output_ends&&!observer_ends&&observer_active);++checks;
  /* Rollback performs a second quiesce on the same clock, then rebinds the
@@ -152,7 +152,7 @@ def function(source,signature):
 
 def main():
     source=(ROOT/'main/transport.c').read_text()
-    a=source.index('typedef struct {\n    uint32_t generation;\n    int level;')
+    a=source.index('typedef struct {\n    uint32_t generation;')
     context=source[a:source.index('} sync_live_context_t;',a)+len('} sync_live_context_t;')]
     a=source.index('typedef struct {\n    sync_live_context_t context;')
     owner=source[a:source.index('static sync_live_owner_t *s_live_owner;',a)+len('static sync_live_owner_t *s_live_owner;')]

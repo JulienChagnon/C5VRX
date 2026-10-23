@@ -6,9 +6,9 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
-#include "kp_ladder.h"
+#include "kp_only_kp_ladder.h"
 #include "kp_tables.h"
-#include "kp_switch_guard.h"
+#include "kp_only_kp_switch_guard.h"
 
 /* U85Q-only ladder (K mode 1): the joint update with LP disallowed. */
 static uint8_t kp_ladder_update(kp_ladder_t *l, int cn_x10, bool ok, int dev, int64_t t)

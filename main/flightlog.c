@@ -186,7 +186,7 @@ static void snapshot(uint8_t trigger)
     transport_flog_identity(&demod_id, &output_level, &flag_format);
     const flog_snap_t s = {
         .trigger = trigger, .gain = s_current_gain, .lane = (uint8_t)rf_lane(), .profile = (uint8_t)profile_active(),
-        .kp = (uint8_t)transport_kp_level(), .lp = 0u, .freq_mhz = rf_frequency_mhz(),
+        .kp = 0xffu, .lp = 0u, .freq_mhz = rf_frequency_mhz(),
         .filter_key = (uint16_t)((f.bw20 ? 0x8000u : 0u) | (((unsigned)(f.code + 1) & 0x7fu) << 8) | (f.skirt & 0xffu)),
         .session = s_session, .seq = s_snap_seq, .t_ms = (uint32_t)(esp_timer_get_time() / 1000),
         .off_i = (int16_t)off[0], .off_q = (int16_t)off[1], .dc_i_mcells = (int16_t)dc[0], .dc_q_mcells = (int16_t)dc[1],

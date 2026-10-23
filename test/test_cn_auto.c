@@ -33,7 +33,7 @@
 #include <string.h>
 #include "cn_auto.h"
 #include "cn_estimate.h"
-#include "kp_ladder.h"
+#include "../research/legacy_demod/kp_only_kp_ladder.h"
 
 static unsigned s_fail, s_run;
 static void check(const char *name, int ok)

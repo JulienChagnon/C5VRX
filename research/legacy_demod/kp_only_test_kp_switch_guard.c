@@ -1,7 +1,7 @@
 /* C5VRX by Twotoz/contributors: kp confirmation and shared restart guard. */
 #include <assert.h>
 #include <stdio.h>
-#include "kp_switch_guard.h"
+#include "kp_only_kp_switch_guard.h"
 int main(void) {
     kp_switch_guard_t physical={0}, candidate={0};
     assert(kp_switch_ready(&physical,0));

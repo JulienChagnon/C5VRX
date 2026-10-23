@@ -6,9 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "afc_ctrl.h"
-#include "kp_ladder.h"
 #include "output_level.h"
-#include "kp_switch_guard.h"
 #include "profile_logic.h"
 #include "menu_entry.h"
 #include "cn_estimate.h"
@@ -69,7 +67,7 @@ volatile video_standard_t s_detected_std = VIDEO_STD_NTSC;
 volatile int64_t s_last_video_us;
 QueueHandle_t s_commands;
 
-/* One control-task scratch buffer: the control window (gain/kp/AFC) and,
+/* One control-task scratch buffer: the control window (gain/AFC) and,
  * during a scan (receiver paused), a separate endpoint area. Saves the
  * scan's malloc. */
 #define SCAN_BUF_OFFSET 4096u
@@ -88,29 +86,6 @@ typedef struct {
     const char *window, *held;
 } afc_evidence_snapshot_t;
 static afc_evidence_snapshot_t s_afc_evidence = {.window="boot", .held="boot", .cn_x10=CN_UNKNOWN_X10};
-/* U85Q kp-only ladder. P64 keeps its own fixed table. */
-static kp_ladder_t s_kp;
-static kp_switch_guard_t s_auto_candidate;
-/* Ladder evidence (T CONTROL line): windows offered, and why the unusable
- * ones were (board walk 2026-10-13: the log could not show it). */
-static uint32_t s_ladder_windows, s_ladder_copy_fail, s_ladder_settle, s_ladder_gain, s_ladder_ctx, s_ladder_stuck,
-    s_guard_confirms, s_kp_restarts_skipped;   /* skipped: a single kp level not worth a restart */
-static uint8_t s_kp_auto;
-static int s_saved_kp_auto = -1;
-static bool s_mode_reset_pending;
-static void save_auto_mode(void)
-{
-    /* Holding k/j must not wear NVS by rewriting OFF on every press. */
-    if (s_saved_kp_auto != s_kp_auto && blob_store("kp_auto", &s_kp_auto, 1))
-        s_saved_kp_auto = s_kp_auto;
-}
-static void manual_auto_off(void)
-{
-    s_kp_auto = 0;
-    save_auto_mode();
-    s_mode_reset_pending = false;
-    s_auto_candidate.candidate = false;
-}
 /* Learned offset sign (afc_ctrl.h sign check), persisted once observed. */
 static volatile int8_t s_afc_sign = 1;
 static volatile uint8_t s_afc_sign_state;
@@ -320,29 +295,11 @@ static void command(int c, unsigned *menu_idle)
     case 'c': rf_next_channel(); after_retune(); break;
     case 'b': rf_next_band(); after_retune(); break;
     case 's': scan(); break;
-    case 'K':
-        if (transport_p64()) { printf("KP refused: P64 has a fixed table (m selects U85Q)\n"); break; }
-        s_kp_auto = (uint8_t)((s_kp_auto + 1u) % 2u);
-        save_auto_mode();
-        kp_ladder_reset(&s_kp);
-        s_auto_candidate.candidate = false;
-        (void)transport_kp_set(profile_base_level(profile_active()));
-        s_mode_reset_pending = !transport_apply_auto(profile_base_level(profile_active()));
-        printf("KP ladder %s\n", s_kp_auto ? "AUTO kp (brief restarts)" : "OFF");
-        break;
     case 'A': {
         profile_set_live_mode(!profile_live_mode());
         printf("PROFILE live switch %s (saved): %s\n", profile_live_mode() ? "ON" : "OFF",
                profile_live_mode() ? "widen after one reliable result, narrow after two agreeing results"
                                    : "report only, PENDING for the next boot or CALIBRATE");
-        break;
-    }
-    case 'k': case 'j': {
-        if (transport_p64()) { printf("KP refused: P64 has a fixed table (m selects U85Q)\n"); break; }
-        manual_auto_off();
-        int next = (transport_kp_target() + (c == 'k' ? 1 : KP_LADDER_LEVELS - 1)) % KP_LADDER_LEVELS;
-        printf("KP manual level=%d %s\n", next, transport_kp_set(next) ? "queued (brief pipeline restart)" :
-               "refused (needs a verified level and live video)");
         break;
     }
     case 'g': {
@@ -353,12 +310,6 @@ static void command(int c, unsigned *menu_idle)
                transport_output() == 9 ? " (low swing: halves noise & clipping; requires sensitive sync)" :
                (transport_output() ? " WARNING: may clip wide VTX; verify sync/white into 75 ohm" : ""));
         if (s_menu_active) menu_render();
-        break;
-    }
-    case 'm': {
-        const bool ok = transport_set_p64(!transport_p64());
-        printf("DEMOD %s result=%s (session only; boot default U85Q; P64 experimental)\n",
-               transport_program_name(), ok ? "applied" : "refused: cooldown or recovery failure");
         break;
     }
     default: break;
@@ -387,16 +338,13 @@ static void control_task(void *arg)
     bool own_write = false;
     uint8_t afc_lost = 0;
     unsigned settle = RETUNE_SETTLE_TICKS, btn = 0, boot_grace = 20, menu_idle = 0, menu_refresh = 0;
-    bool long_fired = false, was_locked = false, ladder_was_active = true;
+    bool long_fired = false, was_locked = false;
     int64_t next_control_us = esp_timer_get_time();
-    int seen_profile = profile_active();
     uint32_t seen_phy = phy_generation(), seen_control = s_control_epoch;
-    uint32_t seen_ladder_context = afc_context();
-    uint32_t seen_restart_errors = transport_restart_errors();
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(2));
         transport_sync_live_tick();
-        /* The flywheel owner ticks every 2 ms; gain/AFC/ladder/button/menu
+        /* The flywheel owner ticks every 2 ms; gain/AFC/button/menu
          * timing stays at its original 50 ms. */
         int64_t control_now = esp_timer_get_time();
         if (control_now < next_control_us) continue;
@@ -408,7 +356,6 @@ static void control_task(void *arg)
          * (menu: do the selected item). */
         /* A calibration status screen owns the picture: no menu, no idle exit. */
         if (menu_status_active()) {
-            s_auto_candidate.candidate = false;
             btn = 0; long_fired = false; menu_idle = 0; continue;
         }
         if (boot_grace) { --boot_grace; btn = 0; long_fired = false; }
@@ -452,14 +399,6 @@ static void control_task(void *arg)
         } else menu_idle = menu_refresh = 0;
 
         transport_poll_faults();
-        if (transport_faulted() || seen_restart_errors != transport_restart_errors()) {
-            seen_restart_errors = transport_restart_errors();
-            manual_auto_off();
-            kp_ladder_reset(&s_kp);
-            int actual = transport_kp_level();
-            if (actual >= 0) s_kp.level = (uint8_t)actual;
-
-        }
         if (phy_generation() != seen_phy || s_control_epoch != seen_control) {
             seen_phy = phy_generation();
             seen_control = s_control_epoch;
@@ -469,7 +408,6 @@ static void control_task(void *arg)
         }
         uint32_t gain_epoch = s_gain_epoch, ctx = afc_context();
         if (s_scan_active) {
-            s_auto_candidate.candidate = false;
             afc2_ctrl_invalidate(&afc);
             memset(&s_afc_evidence, 0, sizeof(s_afc_evidence));
             s_afc_evidence.window="scan"; s_afc_evidence.held="scan";
@@ -478,7 +416,6 @@ static void control_task(void *arg)
             continue;
         }
         const bool copied = copy_control_window(s_window, CONTROL_BYTES);
-        if (!copied) ++s_ladder_copy_fail;
         metrics_t m = {0};
         if (copied) {
             m = measure_window(s_window, CONTROL_BYTES);
@@ -490,22 +427,13 @@ static void control_task(void *arg)
         if (afc2_ctrl_sync(&afc, ctx, own_write)) { s_afc_locked = false; afc_lost = 0; }
         own_write = false;
         int64_t now = esp_timer_get_time();
-        /* The kp estimate only needs a settled receiver (no retune, gain
-         * write or context change); the AFC additionally needs a stationary
-         * envelope. Near the FM threshold receiver noise alone fails that
-         * test (12 MHz class: 46 % of windows pass at 0 dB C/N, 74 % at
-         * 2 dB), which froze the ladder exactly at the range edge
-         * (kp_ladder.h, research/ladder_gate.py). */
-        const bool program_ok = settle == 0 && ctx == afc_context() && !phy_busy();
-        const bool ladder_ok = copied && kp_ladder_window_usable(program_ok, ctx == afc_context(), now - s_last_gain_write_us);
-        ++s_ladder_windows;
-        s_ladder_settle += settle != 0;
-        s_ladder_ctx += ctx != afc_context();
-        s_ladder_gain += now - s_last_gain_write_us < KP_GAIN_WRITE_GUARD_US;
-        s_ladder_stuck += s_obs_stuck;
-        bool window_ok = ladder_ok && afc2_envelope_stationary(s_window, CONTROL_BYTES);
+        /* Preserve the receiver-settling gate independently of the retired
+         * kp ladder: AFC must never use samples spanning a gain/context write. */
+        const bool receiver_ok = copied && settle == 0 && ctx == afc_context() && !phy_busy() &&
+                                 now - s_last_gain_write_us >= 5000;
+        bool window_ok = receiver_ok && afc2_envelope_stationary(s_window, CONTROL_BYTES);
         const char *afc_window_reason = !copied ? "copy_missing" : settle ? "settle" :
-            ctx != afc_context() ? "context" : phy_busy() ? "phy_busy" : !ladder_ok ? "gain_settle" :
+            ctx != afc_context() ? "context" : phy_busy() ? "phy_busy" : !receiver_ok ? "gain_settle" :
             !window_ok ? "nonstationary" : "measured";
         if (settle) --settle;
         afc2_result_t r = {0};
@@ -580,65 +508,6 @@ static void control_task(void *arg)
                 s_afc_sign_saved = blob_store("afc_sign", &sign, 1);
             }
         }
-        /* The ladder owns kp on every profile (one U85Q topology; a
-         * profile only sets the filter and the start level). It is inactive
-         * only while the verified level is unknown (fault, pending restart).
-         * A profile or receiver context change restarts it from the level
-         * that now runs, so C/N never survives a channel/filter/offset/PHY
-         * change into a context without its own noise reference. */
-        const bool ladder_active = transport_kp_level() >= 0;
-        const int profile = profile_active();
-        if (ladder_active && (!ladder_was_active || profile != seen_profile ||
-                              ctx != seen_ladder_context)) {   /* start from what runs */
-            kp_ladder_reset(&s_kp);
-            s_kp.level = (uint8_t)transport_kp_level();
-
-            s_auto_candidate.candidate = false;
-        }
-        ladder_was_active = ladder_active;
-        if (ladder_active) {
-            seen_profile = profile;
-            seen_ladder_context = ctx;
-        }
-        if (s_kp_auto && !s_menu_active && !ladder_active) {
-            s_auto_candidate.candidate = false;
-        } else if (s_kp_auto && !s_menu_active) {
-            /* MATCHED profiles (start level below kp 0.85) run the narrow class:
-             * decided by the profile, not by filter equality, since the narrow
-             * and normal sweep entries may be the same setting; its curves
-             * only when the narrow filter measured close to their 10 MHz model. */
-            s_kp.narrow = kp_ladder_narrow_rows(profile_base_level(profile) > 0, calibration_narrow_width_khz());
-            s_kp.wide = profile == PROFILE_WIDE;   /* the 16 MHz rows of a measured wide VTX */
-            uint8_t level = kp_ladder_update_evidence(&s_kp, cn_x10, ladder_ok,
-                                                      profile_live_deviation_x100(), now);
-            bool usable = ladder_ok && ctx == afc_context();
-            /* Only a restart worth its picture gap (kp_switch_worth): a
-             * single kp level waits; the ladder keeps its own level. */
-            static int64_t last_kp_restart_us;
-            const int applied = transport_kp_level();
-            static int skipped_level = -1;   /* count a skipped restart once per wanted level, not per tick */
-            if (!kp_switch_worth(level, applied, last_kp_restart_us, now)) {
-                if ((int)level != skipped_level) { skipped_level = level; ++s_kp_restarts_skipped; }
-                level = (uint8_t)applied;
-            } else {
-                skipped_level = -1;
-            }
-            /* Confirm the program and the direction, not the exact level the
-             * ladder is stepping through (kp_switch_guard.h). */
-            if (kp_switch_confirm_toward(&s_auto_candidate, level, applied,
-                                         ctx, usable, now)) {
-                ++s_guard_confirms;
-                s_mode_reset_pending = !transport_apply_auto(level);
-                if (!s_mode_reset_pending && (int)level != applied) last_kp_restart_us = now;
-            }
-        } else {
-            s_auto_candidate.candidate = false;
-            if (!s_kp_auto) {
-                if (s_mode_reset_pending)
-                    s_mode_reset_pending = !transport_apply_auto(profile_base_level(profile_active()));
-                else (void)transport_kp_tick();
-            }  /* manual target, same backend cooldown */
-        }
         diag_window(window_ok, valid, own_write);   /* own_write: an AFC step this window */
         if (s_afc_locked && !was_locked)
             printf("[VIDEO] locked %s %u MHz %s offset_khz=%d gain=%u\n", rf_channel()->name,
@@ -663,16 +532,8 @@ void control_start(void)
         s_afc_sign_state = AFC2_SIGN_CONFIRMED;
         s_afc_sign_saved = true;
     }
-    if (!blob_load("kp_auto", &s_kp_auto, 1) || s_kp_auto > 2) s_kp_auto = 1;
-    else if (s_kp_auto == 2) s_kp_auto = 1; /* retire saved kp+LP as kp-only */
-    else s_saved_kp_auto = s_kp_auto; /* an explicitly saved OFF wins */
     s_commands = xQueueCreate(16, sizeof(int));
     ESP_ERROR_CHECK(s_commands ? ESP_OK : ESP_ERR_NO_MEM);
-    /* Initialize the policy from the verified running level. */
-    kp_ladder_reset(&s_kp);
-    const int actual = transport_kp_level();
-    if (actual >= 0) s_kp.level = (uint8_t)actual;
-
     /* IDF task stack depths are bytes. Reserve before driver allocations,
      * then supply that same 6144-byte stack and TCB without another malloc. */
     ESP_ERROR_CHECK(control_prepare() &&
@@ -685,12 +546,12 @@ void control_start(void)
  * without a status request. Read-only. */
 void control_print_beat(void)
 {
-    printf("STATUS channel=%s freq=%u afc_locked=%u standard=%s detected=%s signal=%d menu=%u mode=%s kp_auto=%u "
+    printf("STATUS channel=%s freq=%u afc_locked=%u standard=%s detected=%s signal=%d menu=%u mode=%s demod=%s "
            "output=%s live=%u busy=%u fw=%s\n",
            rf_channel()->name, rf_frequency_mhz(), s_afc_locked,
            s_std_mode == STD_MODE_AUTO ? "AUTO" : s_std_mode == STD_MODE_PAL ? "PAL" : "NTSC",
            s_detected_std_valid ? (s_detected_std == VIDEO_STD_PAL ? "PAL" : "NTSC") : "none",
-           s_signal_strength, s_menu_active, profile_name(profile_active()), s_kp_auto, transport_output_name(),
+           s_signal_strength, s_menu_active, profile_name(profile_active()), transport_program_name(), transport_output_name(),
            profile_live_mode(), menu_status_active(), firmware_id());
 }
 
@@ -727,24 +588,14 @@ void control_print(void)
            afc_snapshot.cn_x10, afc_snapshot.window, afc_snapshot.held);
     printf("CONTROL channel=%s freq=%u offset_khz=%d cfo_khz=%d afc_locked=%u afc_corrections=%u "
            "afc_weak_skips=%u afc_sign=%+d(%s) standard=%s detected=%s signal=%d menu=%u deviation_x100=%d mode=%s "
-           "kp_auto=%u%s kp_steps=%lu busy=%u\n"
-           "LADDER windows=%lu unusable_settle=%lu unusable_gain_write=%lu unusable_context=%lu copy_fail=%lu "
-           "stuck_iq=%lu guard_confirms=%lu guard_resets=%lu level=%u cn_smoothed_x10=%ld kp_restarts_skipped=%lu\n",
+           "demod=%s busy=%u\n",
            rf_channel()->name, rf_frequency_mhz(), rf_offset_khz(), s_cfo_khz, s_afc_locked,
            s_afc_corrections, s_afc_weak_skips, s_afc_sign,
            s_afc_sign_state == AFC2_SIGN_FLIPPED ? "flipped" : s_afc_sign_state == AFC2_SIGN_CONFIRMED ? "confirmed" :
            "unverified", s_std_mode == STD_MODE_AUTO ? "AUTO" : s_std_mode == STD_MODE_PAL ? "PAL" : "NTSC",
            s_detected_std_valid ? (s_detected_std == VIDEO_STD_PAL ? "PAL" : "NTSC") : "none",
            s_signal_strength, s_menu_active, profile_deviation_x100(rf_channel_index()),
-           profile_name(profile_active()), s_kp_auto,
-           transport_p64() ? "(inactive: P64 fixed table)" :
-           s_kp_auto && transport_kp_level() < 0 ? "(inactive: kp level unverified)" : "", (unsigned long)s_kp.steps,
-           menu_status_active(),
-           (unsigned long)s_ladder_windows, (unsigned long)s_ladder_settle, (unsigned long)s_ladder_gain,
-           (unsigned long)s_ladder_ctx, (unsigned long)s_ladder_copy_fail, (unsigned long)s_ladder_stuck,
-           (unsigned long)s_guard_confirms, (unsigned long)s_auto_candidate.resets, s_kp.level,
-           (long)(s_kp.cn_q4 / 16),
-           (unsigned long)s_kp_restarts_skipped);
+           profile_name(profile_active()), transport_program_name(), menu_status_active());
     vq_t vq;
     control_video_quality(&vq);
     printf("VIDEO_Q known=%u snr_x10=%d lines_x100=%u lines=%lu windows=%lu periods=%lu (end-to-end: sync/porch "

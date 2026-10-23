@@ -530,7 +530,7 @@ int calibration_filter_class_mhz(void)
     rf_filter_t f, now = rf_filter();
     /* The sweep can select the same setting for normal and narrow (board:
      * both 13.125 MHz). Prefer normal, and do not call a measured >11 MHz
-     * narrow entry 10 MHz; the kp ladder uses the same width boundary. */
+     * narrow entry 10 MHz. */
     if (filter_setting(FILTER_NORMAL, &f) && rf_filter_equal(f, now)) return 12;
     if (filter_setting(FILTER_NARROW, &f) && rf_filter_equal(f, now))
         return s_filter_cal.narrow.width_khz > 11000u ? 12 : 10;
@@ -1887,7 +1887,7 @@ static void startup_phase(bool manual)
  * Production keeps the ultrafine lane {9,6,5,4}. This compares it with fine
  * {9,7,6,5} and coarse {9,8,7,6} on the same RF input, gain, filter and
  * tuning, in ABBA order (U F C C F U) so a slow fade does not favour one
- * lane. Raw-IQ statistics only: U85Q's LUTs are made for ultrafine, so
+ * lane. Raw-IQ statistics only: P64's LUT is made for ultrafine, so
  * this is no demodulation, sensitivity or range result. Only on an
  * explicit request; the status screen owns TX for the ~3 s it takes and
  * the ultrafine lane is always routed back. */
@@ -1990,7 +1990,7 @@ static void lane_compare(void)
     }
     esp_err_t back = rf_set_lane(RF_LANE_ULTRAFINE);
     for (unsigned t = 0; back != ESP_OK && t < 3u; ++t) { vTaskDelay(pdMS_TO_TICKS(10)); back = rf_set_lane(RF_LANE_ULTRAFINE); }
-    printf("LANE_CMP freq=%u gain=%u filter_code=%d skirt=%u routed=%u restored=%s (raw IQ only; U85Q is made for "
+    printf("LANE_CMP freq=%u gain=%u filter_code=%d skirt=%u routed=%u restored=%s (raw IQ only; P64 is made for "
            "ultrafine, not a range result)\n", rf_frequency_mhz(), s_current_gain, rf_filter().code, rf_filter().skirt,
            routed, back == ESP_OK && rf_lane() == RF_LANE_ULTRAFINE ? "ultrafine" : "FAILED");
     for (unsigned l = 0; l < RF_LANES; ++l) {

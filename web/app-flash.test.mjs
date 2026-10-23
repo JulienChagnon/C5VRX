@@ -143,7 +143,7 @@ test('the STATUS beat updates the menu by itself and stays out of the log', asyn
 test('legacy identity leaves current shortcuts disabled and help usable', () => {
   const h = harness('alpha');
   vm.runInContext("isConnected = false; serialConsole.state = 'connected'; appendSerial('C5VRX-3 ready\\n');", h.context);
-  assert.equal(h.shortcuts.find(b => b.dataset.command === 'K').disabled, true);
+  assert.equal(h.shortcuts.find(b => b.dataset.command === 'g').disabled, true);
   assert.equal(h.shortcuts.find(b => b.dataset.command === 'h').disabled, false);
 });
 

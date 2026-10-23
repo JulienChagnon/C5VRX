@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include "transport_recovery.h"
 #include "output_level.h"
-#include "kp_tables.h"
+#include "../research/legacy_demod/kp_tables.h"
 typedef struct { int fail, rollback_fail, clean_fail, cleans, starts, published; bool enabled; } model_t;
 static bool clean(void *ctx)
 {

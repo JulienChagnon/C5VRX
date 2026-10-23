@@ -26,13 +26,13 @@
 Analog 5.8 GHz FPV receiver on one Seeed Studio XIAO ESP32-C5 with a passive
 6-bit resistor DAC: live FM video in, composite PAL/NTSC out for goggles.
 
-C5VRX-5 on this branch boots **U85Q** on top of the digital RX mode-0
-changes in PR #248. **U80P64-R1**, a repair of the model from PR #250, is an experimental bench
-selection via console `m`. The first reported comparison had the VTX off,
-so it was not a picture-quality test. A separate host check found a porch
-tone incorrectly trapped at a sync level. R1 fixes that transfer defect;
-live-signal validation remains pending. P64 is not saved across
-reboot. Its 7.2-degree video-state grid does not establish picture quality. See
+C5VRX-5 on this branch uses **U80P64-R1 only**, on top of the digital RX
+mode-0 changes in PR #248. U85Q, LP, automatic/manual kp changes and demod
+switching are retired from the firmware. The operator selected this single-model
+configuration on 2026-10-23; it is not a claim of completed range qualification.
+The unchanged R1 table has one positive VTX-on NTSC observation; PAL,
+weak-signal and the final cleanup still need board validation. Its 7.2-degree
+video-state grid is not input phase accuracy. See
 [P64 source, integration and board checks](docs/P64.md).
 Its receive-chain evidence is recorded in
 [docs/FINDINGS.md](docs/FINDINGS.md); the U85Q study it is built on, with
@@ -62,8 +62,7 @@ it is not a demonstrated video or range improvement.
   currently documented as enabled by default and awaiting board validation.
   It restarts part of the receive chain and may interrupt video. Console
   `A` disables live profile switching (report-only mode); confirm the state
-  with `T` on your build. Automatic kp changes also restart the pipeline;
-  console `K` selects AUTO OFF. These settings do not establish flight safety.
+  with `T` on your build. Live OUTPUT, format and profile changes restart the pipeline. These settings do not establish flight safety.
 - If you proceed to flight testing, use a controlled area clear of people,
   traffic and property, keep the aircraft close, and have a safe way to recover
   control if video disappears. Follow applicable local rules, including visual
@@ -83,12 +82,9 @@ that cannot legally be excluded.
 
 ## What it does
 
-- **P64 bench demodulator** in the TX BitScrambler: a fixed 64-state /
-  16-token model, with 50 video states and 14 sync states. Explicit `m`
-  selection only; valid live-signal comparison and acceptance remain pending.
-- **U85Q default**: an untrained 32-phase tracker
-  that keeps the picture locked across VTX deviations, off-centre carriers
-  and multipath instead of dropping out. Board-validated on real video.
+- **U80P64-R1 demodulator** in the TX BitScrambler: a fixed 64-state /
+  16-token model, with 50 video states and 14 sync states. The same program
+  and LUT run on every profile; no automatic demodulator/kp/LP switching.
 - **Fixed ultrafine IQ** (ADC bits 9,6,5,4) at 40 MS/s, no CPU in the sample
   path.
 - **Direct Gain V6**: V5 gain control plus carrier memory across brief fades
@@ -109,7 +105,7 @@ that cannot legally be excluded.
   confirmed sync, C/N >= 8 dB, no clipping, held gain; no AFC lock needed,
   a carrier offset does not change the sync-to-porch span). Each
   result is logged (`PROFILE live`), shown in `T` with agree/mismatch
-  streaks and feeds the kp ladder's deviation class. With the **live
+  streaks. With the **live
   switch** on (default, console `A`, NVS `prof_live`) a reliable result
   changes the profile in flight: wider (narrow -> DEFAULT -> WIDE) after one
   result, narrower only after two agreeing results and with the AFC locked
@@ -253,39 +249,28 @@ before selecting or flashing a build. Ground-test the exact build before use.
 the on-screen VIDEO item. `e` closes the on-screen menu without opening it
 when already closed. Both are direct controls for the web receiver menu.
 
-`m` switches U85Q / experimental P64 (session only; U85Q at boot). P64 uses a fixed table,
-so `K/k/j` are refused while it is selected.
-OUTPUT, analog profiles and the flywheel remain available.
+U80P64-R1 is the only demodulator, including after reboot. The retired
+`m`, `K`, `k`, `j`, `P`, `O` and `H` controls are removed. Saved `kp_auto`
+and `lp_cn` keys are ignored; OUTPUT and flywheel preferences still restore.
+Profiles select only the analog filter (DEFAULT, NARROW or WIDE); the two
+old narrow kp profiles are consolidated. Historical numeric log IDs stay
+reserved so existing flight logs can still be decoded.
 
-When U85Q is selected, `K` cycles OFF / AUTO kp. `k` steps kp calmer, `j` faster;
-`k` and `j` persist AUTO OFF,
-including across reboot; repeated presses do not rewrite unchanged NVS.
-Fresh settings default to AUTO kp; an old saved AUTO kp+LP setting becomes
-kp-only, and an explicitly saved OFF remains OFF. Kp and model changes
-use a brief pipeline restart with a fully verified LUT; they are not seamless.
-All live changes share a **five-second minimum interval**, including manual
-k/j, K mode, OUTPUT and live profile changes. AUTO runs on every
-profile: a profile sets the filter and the kp it starts from (MATCHED 0.5 /
-0.6, else 0.85), the ladder then owns kp, with its own curves on
-the narrow MATCHED filter. With AUTO OFF the profile's start kp stays.
-AUTO also requires the same target direction for **two seconds of usable
-measurements**. LP, its `P`/`O` controls and the unsafe live LUT-write bench
-`H` have been removed from the firmware. Historical research programs remain
-under `research/legacy_demod/` and are excluded from the firmware build.
-
-Test on the ground and check `T`: `kp_verify_fail`, `prog_verify_fail`,
-`kp_restart_fail`, transport faults and measured
-`kp_restart_us` / `prog_restart_us`. `switch_wait_ms` shows the remaining
-cooldown. Live TX uses an owned fixed DMA ring and has a bounded
-20-ms readiness wait with task delays, so a failed start cannot keep the
-control task spinning indefinitely.
+OUTPUT, comparator-format and live profile changes share a **five-second
+minimum interval** and a bounded halted restart with instruction/LUT readback.
+A failed change rolls back to the last verified P64 output/format; failed
+recovery latches live OFF while USB remains available. `T` reports
+`lut_verify_fail`, `prog_verify_fail`, recovery counters, per-stage timing and
+`switch_wait_ms`. The owned DMA ring and 20-ms readiness bound are retained.
+Retired programs and policies live under `research/legacy_demod/` and are
+excluded from the firmware build.
 
 `g` and menu **OUTPUT** cycle 0.5x..5.0x in 0.5x steps. A successful,
 verified application is saved and restored at boot; the default without a
 valid setting is 1.0x. Higher levels may help weak sync but can clip a wide
 VTX; check both sync and white with the actual 75-ohm load.
 Only DAC bits 0..5 are transformed, preserving all phase/token bits across
-kp changes, model changes, menu return and rollback. The menu raster retains
+OUTPUT/format changes, menu return and rollback. The menu raster retains
 its own levels. `T` reports the setting, clipped **LUT entries** (not an
 observed waveform clip rate), recovery errors and a latched failure.
 
@@ -384,7 +369,7 @@ release and Pages mirror contain the resulting firmware.
 ## Repository layout
 
 ```text
-main/        C5VRX-5 firmware (U85Q, Direct Gain V6, calibration, menu, console)
+main/        C5VRX-5 firmware (U80P64-R1, Direct Gain V6, calibration, menu, console)
 test/        host tests (CI)
 research/    simulations, generators and data behind the design choices
 docs/        findings, field-test protocol, task plan, DAC schematic

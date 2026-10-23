@@ -34,6 +34,14 @@ def reference(raw, table):
 
 
 def main():
+    # The sole firmware program must stay P64; retired references are research.
+    build = (ROOT / "main/CMakeLists.txt").read_text()
+    assert build.count('target_bitscrambler_add_src(') == 1
+    assert 'target_bitscrambler_add_src("p64.bsasm")' in build
+    for name in ("transport.c", "control.c", "receiver.h"):
+        source = (ROOT / "main" / name).read_text()
+        for retired in ("transport_set_p64", "transport_kp_set", "kp_tables.h", "kp_ladder.h", 'blob_load("kp_auto"', 'blob_load("lp_cn"'):
+            assert retired not in source, (name, retired)
     table = p64_model.checked_in_table()
     assert len(table) == 1024
     assert np.array_equal(table, p64_model.repaired_table())
@@ -91,7 +99,7 @@ def main():
             assert np.max(np.abs(mean - 21)) < 0.5
             assert np.convolve((porch < 19).astype(int), np.ones(80, dtype=int), mode="valid").max() < 80
 
-    program = ROOT / "main/u85q_64.bsasm"
+    program = ROOT / "main/p64.bsasm"
     instructions, meta, lut = u85q_lp.assemble(program)
     assert len(instructions) == 8 and np.array_equal(lut, table)
     binary = u85q_lp._bsasm().insts_to_binary(instructions, meta, lut)

@@ -24,7 +24,7 @@
  *   Disagreement lowers the confidence; it never teaches an offset.
  * - The output carries confidence and source. Unknown is never low.
  * - Only an input-referred power result backed by a noise map may drive
- *   AFC/profile/kp decisions. M2M4 and the envelope model remain useful
+ *   AFC/profile decisions. M2M4 and the envelope model remain useful
  *   diagnostics, but amplitude fading can make either look like thermal
  *   noise without changing the RF C/N (issue #222).
  *
