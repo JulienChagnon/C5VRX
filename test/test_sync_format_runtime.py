@@ -202,10 +202,20 @@ int main(void){
  assert(resume_live(NULL)&&s_verified_p64);verify(false,0,0,false);
  unsigned untouched=stages;snapshot();
  assert(transport_kp_level()==-1&&!transport_kp_set(3)&&!transport_set_lp(true));
- assert(transport_apply_auto(3,false)&&s_kp_target==3); /* retain profile fallback */
- assert(!transport_apply_auto(3,true));
+ assert(!transport_apply_auto(3,true)&&stages==untouched);
  assert(!transport_apply_auto(KP_LEVELS,false)&&stages==untouched);
+ assert(transport_apply_auto(3,false)&&s_kp_target==3&&stages>untouched);
+ verify(false,3,0,false);snapshot();untouched=stages;
+ assert(!transport_set_output(4)&&!transport_set_p64(false)&&stages==untouched);
+ assert(!transport_apply_auto(4,false)); /* all live actions share profile cooldown */
  assert(!memcmp(before,s_lut_live,sizeof(before))&&s_verified_p64);
+ /* Profile restarts retain P64, including every verified rollback path. */
+ for(int stage=0;stage<TR_STAGES;++stage){
+  reset(2,0,false);assert(transport_set_p64(true));snapshot();now+=6000000;
+  fail_forward=stage;assert(!transport_apply_auto(6,false));
+  assert(s_verified_p64&&s_demod_p64&&s_verified_level==2&&s_kp_target==2);
+  assert(!memcmp(before,s_lut_live,sizeof(before))&&!transport_set_output(4));
+ }
  /* Terminal failures cannot advertise the attempted decoder or allow a
   * subsequent mode change after verified recovery also failed. */
  for(unsigned previous=0;previous<2;++previous){
@@ -238,7 +248,7 @@ def main():
         while depth:
             depth+=(source[end]=='{')-(source[end]=='}');end+=1
         return source[a:end]+'\n'
-    selectors='static void stage_hooks(void){assert(!s_demod_p64);}\nstatic bool switch_live(int level,bool lp){assert(!s_demod_p64);(void)level;(void)lp;return false;}\n'
+    selectors='static void stage_hooks(void){}\nstatic bool switch_live(int level,bool lp){assert(!s_demod_p64);(void)level;(void)lp;return false;}\n'
     selectors+=''.join(function(signature) for signature in (
         'bool transport_set_p64(bool enabled)', 'bool transport_set_output(unsigned level)',
         'bool transport_kp_set(int level)', 'int transport_kp_level(void)',

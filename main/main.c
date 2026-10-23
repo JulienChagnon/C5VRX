@@ -51,6 +51,7 @@ void app_main(void)
     receiver_start();
     control_start();
     s_boot_stage = "ready";
-    printf("C5VRX5 %s ready: %s %u MHz, U85Q, ultrafine IQ, KEEL-1 ('h' for keys) fw=%s\n",
-           esp_app_get_description()->version, rf_channel()->name, rf_frequency_mhz(), firmware_id());
+    printf("C5VRX5 %s ready: %s %u MHz, %s, ultrafine IQ, KEEL-1 ('h' for keys) fw=%s\n",
+           esp_app_get_description()->version, rf_channel()->name, rf_frequency_mhz(),
+           transport_program_name(), firmware_id());
 }

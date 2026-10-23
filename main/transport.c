@@ -377,12 +377,20 @@ static bool switch_live(int level, bool lp)
 
 bool transport_apply_auto(int level, bool lp)
 {
-    /* Profile changes still apply their analog filter; P64 has no kp/LP
-     * target to rewrite. Do not feed U85Q tables to its six-bit state. */
+    /* A profile's analog filter has changed before this call. P64 keeps
+     * its fixed table, but still needs the guarded, verified restart and
+     * cooldown shared with OUTPUT and decoder changes. */
     if (s_demod_p64) {
-        if (s_transport_fault || !s_lut_known || lp || level < 0 || level >= KP_LEVELS) return false;
-        s_kp_target = (uint8_t)level;  /* profile's U85Q fallback, no P64 rewrite */
-        return true;
+        if (s_transport_fault || !s_lut_known || !s_started || s_menu_active ||
+            lp || level < 0 || level >= KP_LEVELS) return false;
+        if (!kp_switch_ready(&s_switch_guard, esp_timer_get_time())) return false;
+        const uint8_t previous = s_kp_target;
+        s_kp_target = (uint8_t)level;  /* retain the profile's U85Q fallback */
+        stage_hooks();
+        const bool ok = resume_live(p64_table);
+        if (!ok) s_kp_target = previous;
+        kp_switch_mark(&s_switch_guard, esp_timer_get_time());
+        return ok;
     }
     stage_hooks();
     return switch_live(level, lp);
