@@ -124,6 +124,9 @@ static void verify(bool flag,unsigned level,unsigned output,bool lp){
  assert(s_output_clipped==clipped_count);
 }
 int main(void){
+ /* Use the production initializers, not fixture defaults: a reboot must
+  * not reactivate the P64 board regression after a manual U85Q recovery. */
+ assert(!s_demod_p64&&!s_verified_p64);
  /* Exhaustive supported formats: comparison uses canonical code even at5x. */
  for(unsigned lp=0;lp<2;++lp)for(unsigned level=0;level<KP_LEVELS;++level)
  for(unsigned output=0;output<OUTPUT_LEVELS;++output){
@@ -234,7 +237,9 @@ def main():
         a=source.index(start);return source[a:source.index(stop,a)]
     tracker=segment('static const void *tracker_program(bool lp)', '/* 6-bit resistor DAC')
     image=segment('typedef struct {\n    uint32_t prefix[', 'static uint32_t s_kp_writes')
-    prefix=PREFIX.replace('static uint16_t s_lut_live[1024],before[1024];',
+    initializers=source[source.index('static bool s_demod_p64'):].split('\n',1)[0]
+    prefix=PREFIX.replace('static bool s_demod_p64,s_verified_p64;',initializers)
+    prefix=prefix.replace('static uint16_t s_lut_live[1024],before[1024];',
                           image+'\nstatic uint16_t s_lut_live[1024],before[1024];')
     # Keep only production selectors; state lives in the fixture above.
     tracker=tracker.replace('static bool s_flag_format,s_verified_flag;','')

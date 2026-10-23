@@ -38,9 +38,9 @@ void firmware_print(void)
 static void status(void)
 {
     firmware_print();
-    printf("C5VRX5 version=%s demod=U85Q_1a09f5c092e8 lane=ultrafine gain_owner=keel1 "
+    printf("C5VRX5 version=%s demod=%s lane=ultrafine gain_owner=keel1 "
            "uptime_s=%lld heap_internal=%u heap_largest=%u heap_dma=%u heap_dma_largest=%u heap_lp=%u fw=%s\n",
-           esp_app_get_description()->version,
+           esp_app_get_description()->version, transport_program_name(),
            esp_timer_get_time() / 1000000, (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
            (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),
            (unsigned)heap_caps_get_free_size(MALLOC_CAP_DMA), (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_DMA),
@@ -92,7 +92,7 @@ static void help(void)
     printf("C5VRX-5 keys: T status, D range/health report, M gain map (for a preset), R per-second FIELD_DIAG lines on/off,\n"
            "  K kp ladder OFF -> AUTO kp -> AUTO kp+LP (brief restarts), k/j kp calmer/faster, P U85Q/U85Q-LP\n"
            "    (k/j/P save AUTO OFF; fresh settings default to AUTO kp+LP),\n"
-           "  m P64 (7.2-degree video-state grid, boot default) / U85Q (brief restart; session only),\n"
+           "  m U85Q (boot default) / P64 bench (experimental; brief restart; session only),\n"
            "    K/k/j/P control U85Q only; P64 uses one fixed table with no LP ladder,\n"
            "  g OUTPUT 0.5x..5.0x in 0.5x steps (saved after application; restored at boot),\n"
            "  G RX gain AUTO (KEEL-1) -> MAX -> fixed G78..G24 (until the next boot; every boot starts AUTO),\n"

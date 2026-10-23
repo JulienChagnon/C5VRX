@@ -26,10 +26,11 @@
 Analog 5.8 GHz FPV receiver on one Seeed Studio XIAO ESP32-C5 with a passive
 6-bit resistor DAC: live FM video in, composite PAL/NTSC out for goggles.
 
-C5VRX-5 on this branch boots the **P64 model from PR #250** on top of
-the digital RX mode-0 changes in PR #248. Console `m` switches between P64
-and U85Q for the session with a brief restart. P64's 7.2-degree video-state
-grid is host-tested; physical picture/range gains remain unproven. See
+C5VRX-5 on this branch boots **U85Q** on top of the digital RX mode-0
+changes in PR #248. The **P64 model from PR #250** is an experimental bench
+selection via console `m`. Its first board test produced heavy static and
+desync; switching back to U85Q restored the picture. P64 is not saved across
+reboot. Its 7.2-degree video-state grid does not establish picture quality. See
 [P64 source, integration and board checks](docs/P64.md).
 Its receive-chain evidence is recorded in
 [docs/FINDINGS.md](docs/FINDINGS.md); the U85Q study it is built on, with
@@ -80,10 +81,10 @@ that cannot legally be excluded.
 
 ## What it does
 
-- **P64 demodulator** in the TX BitScrambler: a fixed 64-state / 16-token
-  model, with 50 video states and 14 sync states. U85Q is available via `m`.
-  P64 integration is host-tested; board acceptance is pending.
-- **U85Q fallback**: an untrained 32-phase tracker
+- **P64 bench demodulator** in the TX BitScrambler: a fixed 64-state /
+  16-token model, with 50 video states and 14 sync states. Explicit `m`
+  selection only; board comparison failed, acceptance remains pending.
+- **U85Q default**: an untrained 32-phase tracker
   that keeps the picture locked across VTX deviations, off-centre carriers
   and multipath instead of dropping out. Board-validated on real video.
 - **Fixed ultrafine IQ** (ADC bits 9,6,5,4) at 40 MS/s, no CPU in the sample
@@ -250,7 +251,7 @@ before selecting or flashing a build. Ground-test the exact build before use.
 the on-screen VIDEO item. `e` closes the on-screen menu without opening it
 when already closed. Both are direct controls for the web receiver menu.
 
-`m` switches P64 / U85Q (session only; P64 at boot). P64 uses a fixed table,
+`m` switches U85Q / experimental P64 (session only; U85Q at boot). P64 uses a fixed table,
 so `K/k/j/P` and the live LUT bench `H` are refused while it is selected.
 OUTPUT, analog profiles and the flywheel remain available.
 

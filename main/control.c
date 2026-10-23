@@ -385,7 +385,7 @@ static void command(int c, unsigned *menu_idle)
     }
     case 'm': {
         const bool ok = transport_set_p64(!transport_p64());
-        printf("DEMOD %s result=%s (session only; boot default P64)\n",
+        printf("DEMOD %s result=%s (session only; boot default U85Q; P64 experimental)\n",
                transport_program_name(), ok ? "applied" : "refused: cooldown or recovery failure");
         break;
     }

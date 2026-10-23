@@ -61,7 +61,9 @@ BITSCRAMBLER_PROGRAM(s_u85q_lp_flag, "u85q_lp_flag");
 BITSCRAMBLER_PROGRAM(s_u85q_64, "u85q_64");
 /* PR #250 P64 champion: 64 states / 16 tokens. Keep this identity with
  * the verified program and LUT through menu, OUTPUT and rollback. */
-static bool s_demod_p64 = true, s_verified_p64 = true;
+/* Board A/B on 2026-10-23: P64 caused heavy static/desync; switching to
+ * U85Q restored the picture. Keep P64 opt-in until physically qualified. */
+static bool s_demod_p64 = false, s_verified_p64 = false;
 static bool s_started;   /* live TX running (cleared while menu/status/recovery owns TX) */
 static bool s_prog_lp;   /* U85Q-LP instructions loaded */
 static const void *tracker_program(bool lp)

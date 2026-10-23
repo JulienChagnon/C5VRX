@@ -693,8 +693,11 @@ requirements by themselves**.
 
 ## Current realtime invariants (C5VRX-5)
 
-- This branch boots the P64 model imported from PR #250 (video-state grid
-  7.2 degrees) on top of #248. `m` selects U85Q for the session. P64 uses
+- This branch boots U85Q on top of #248. The P64 model imported from
+  PR #250 (video-state grid 7.2 degrees) is bench-only via `m`: board A/B
+  on 2026-10-23 produced severe static/desync with P64 and a normal picture
+  after switching to U85Q. Never restore P64 as default from host-only tests.
+  P64 uses
   its own program and fixed LUT: never apply U85Q kp/LP tables or instructions
   to it, including comparator-format changes, OUTPUT or rollback. The normal
   raw-ring/DAC cadence and bounded restart ownership remain unchanged.

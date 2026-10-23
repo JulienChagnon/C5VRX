@@ -10,10 +10,12 @@ Measured range is not established.
 ## P64 demodulator on mode 0 (PR #250 model, 2026-10-23)
 
 This branch uses the P64 champion from PR #250 on top of the digital-filter
-work in #248. Boot selects P64; `m` switches to/from U85Q for the session.
+work in #248. Boot selects U85Q; `m` opts into P64 for a bench session.
 The 7.2-degree number describes the 50-video-state grid, not measured phase
 precision. The full table and assembled output are host-checked; combined
-firmware picture quality, physical timing and range remain untested.
+firmware timing and range remain unproven. First board A/B on 2026-10-23
+reported severe static/desync with P64 and a normal picture after switching
+to U85Q. P64 therefore stays opt-in, never persisted across reboot.
 See [P64 integration, source provenance and board checks](P64.md).
 
 ## Digital RX filter mode 0 (PR #244 follow-up, 2026-10-23)
