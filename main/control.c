@@ -772,6 +772,7 @@ void control_print(void)
            s_detected_std_valid ? (s_detected_std == VIDEO_STD_PAL ? "PAL" : "NTSC") : "none",
            s_signal_strength, s_menu_active, profile_deviation_x100(rf_channel_index()),
            profile_name(profile_active()), s_kp_auto,
+           transport_p64() ? "(inactive: P64 fixed table)" :
            s_kp_auto && transport_kp_level() < 0 ? "(inactive: kp level unverified)" : "", (unsigned long)s_kp.steps,
            (unsigned long)s_kp.lp_switches, menu_status_active(),
            (unsigned long)s_ladder_windows, (unsigned long)s_ladder_settle, (unsigned long)s_ladder_gain,
