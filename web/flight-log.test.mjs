@@ -118,14 +118,16 @@ test('console dump lines rebuild the image; damaged lines get another pass; miss
     if (o === SECTOR * 5 + 768) l = l.replace(/ ([0-9a-f]{8})$/, ' 00000000');                 // looks like hex, wrong CRC
     assert.equal(cap.push(`STATUS x=1 ${l}`), true);
   }
-  assert.equal(cap.push('FLOG_END blocks=1 snapshots=1'), true);
+  assert.equal(cap.push('FLOG_END blocks=1 snapshots=1 ms=38250 usb=fifo'), true);
   assert.equal(cap.damaged, 2);
   assert.equal(cap.done, false);
   assert.equal(cap.needsPass, true);
   cap.nextPass();
   for (const o of offsets) cap.push(line(o));
-  cap.push('FLOG_END blocks=1 snapshots=1');
+  cap.push('FLOG_END blocks=1 snapshots=1 ms=8150 usb=driver');
   assert.equal(cap.done, true);
+  assert.equal(cap.dumpMs, 46400);
+  assert.equal(cap.slowPasses, 1);
   assert.equal(cap.passes, 2);
   assert.ok(cap.progress > 0.99);
   assert.equal(decodeImage(cap.image).sessions[0].seconds.length, 2);
@@ -134,4 +136,9 @@ test('console dump lines rebuild the image; damaged lines get another pass; miss
   missing.push('FLOG partition=missing (flash the full image to add it)');
   assert.match(missing.error, /full firmware image/);
   assert.equal(new FlightLogCapture().push('CONTROL channel=A1'), false);
+  const old = new FlightLogCapture();   // firmware before ms=/usb=
+  old.start();
+  old.push('FLOG_END blocks=0 snapshots=0');
+  assert.equal(old.dumpMs, null);
+  assert.equal(old.slowPasses, 0);
 });

@@ -50,6 +50,9 @@ export function crc32(bytes, crc = 0) {
 // damaged; it is dropped and, after FLOG_END, `needsPass` asks for another
 // dump (key W) that fills in only what is still missing. `done` once every
 // announced block and snapshot arrived intact, or after MAX_PASSES.
+// FLOG_END carries the pass's time (ms=) and USB path (usb=driver|fifo,
+// main/flightlog.c); `dumpMs` sums the passes, `slowPasses` counts the fifo
+// ones. Older firmware sends neither: dumpMs stays null.
 const LINE_BYTES = 256;
 export const MAX_PASSES = 4;
 const LINE = /^FLOG_D (\d+) ([0-9a-f]+) ([0-9a-f]{8})$/;
@@ -74,6 +77,8 @@ export class FlightLogCapture {
     this.needsPass = false;
     this.passes = 0;
     this.damaged = 0;
+    this.dumpMs = null;
+    this.slowPasses = 0;
     this.error = '';
     this.info = {};
   }
@@ -116,6 +121,9 @@ export class FlightLogCapture {
     }
     if (line.startsWith('FLOG_END')) {
       this.active = false;
+      const ms = line.match(/ ms=(\d+)/);
+      if (ms) this.dumpMs = (this.dumpMs ?? 0) + Number(ms[1]);
+      if (/ usb=fifo\b/.test(line)) this.slowPasses++;
       const c = this.completeness();
       const whole = c.header && c.blocks >= Number(this.info.blocks || 0) && c.snapshots >= Number(this.info.snapshots || 0);
       if (whole || this.passes >= MAX_PASSES) this.done = true; else this.needsPass = true;
