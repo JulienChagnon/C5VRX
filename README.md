@@ -27,9 +27,11 @@ Analog 5.8 GHz FPV receiver on one Seeed Studio XIAO ESP32-C5 with a passive
 6-bit resistor DAC: live FM video in, composite PAL/NTSC out for goggles.
 
 C5VRX-5 on this branch boots **U85Q** on top of the digital RX mode-0
-changes in PR #248. The **P64 model from PR #250** is an experimental bench
-selection via console `m`. Its first board test produced heavy static and
-desync; switching back to U85Q restored the picture. P64 is not saved across
+changes in PR #248. **P64-R1**, a repair of the model from PR #250, is an experimental bench
+selection via console `m`. The first reported comparison had the VTX off,
+so it was not a picture-quality test. A separate host check found a porch
+tone incorrectly trapped at a sync level. R1 fixes that transfer defect;
+live-signal validation remains pending. P64 is not saved across
 reboot. Its 7.2-degree video-state grid does not establish picture quality. See
 [P64 source, integration and board checks](docs/P64.md).
 Its receive-chain evidence is recorded in
@@ -83,7 +85,7 @@ that cannot legally be excluded.
 
 - **P64 bench demodulator** in the TX BitScrambler: a fixed 64-state /
   16-token model, with 50 video states and 14 sync states. Explicit `m`
-  selection only; board comparison failed, acceptance remains pending.
+  selection only; valid live-signal comparison and acceptance remain pending.
 - **U85Q default**: an untrained 32-phase tracker
   that keeps the picture locked across VTX deviations, off-centre carriers
   and multipath instead of dropping out. Board-validated on real video.

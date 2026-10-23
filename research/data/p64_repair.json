@@ -1,0 +1,30 @@
+{
+  "model_id": "P64-R1",
+  "source_pr": 250,
+  "source_commit": "9e4a6163e6cfde5620137d70097cf91344e24c68",
+  "original_lut_sha256": "cb4bd6ef835b21ed32aeb6fd9242109f348ba81f0cda869cfd5e0cf796e41b2f",
+  "params": {
+    "n_sync": 14,
+    "kp_sync": 0.6,
+    "kp_vid": 0.8,
+    "v_sync_prior": -0.98,
+    "v_video_prior": 0.0,
+    "r_uncertainty": 0.0,
+    "w_uncertainty": 0.3912601459493753,
+    "err_pos_bound": 1.3253549555419375,
+    "err_neg_bound": -1.4752378695700792,
+    "err_scale": 0.11729215721955881,
+    "w_suppress_thresh": 0.6586194701115526,
+    "exit_sync_th": -0.4,
+    "enter_sync_th": -1.0010771963716354,
+    "sync_weight_thresh": 0.4735229126996897,
+    "vid_weight_thresh": 0.3,
+    "code_quant_offset": -0.23906383131799172,
+    "video_gain_boost": 1.0,
+    "min_video_code": 14,
+    "max_sync_code": 15,
+    "token_sectors": 16,
+    "phase_consistent_output": true
+  },
+  "evidence": "host transfer and PAL/NTSC simulation only; live VTX validation pending"
+}

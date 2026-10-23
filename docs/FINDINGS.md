@@ -9,13 +9,17 @@ Measured range is not established.
 
 ## P64 demodulator on mode 0 (PR #250 model, 2026-10-23)
 
-This branch uses the P64 champion from PR #250 on top of the digital-filter
-work in #248. Boot selects U85Q; `m` opts into P64 for a bench session.
+This branch repairs the P64 model from PR #250 on top of the digital-filter
+work in #248. Boot selects U85Q; `m` opts into P64-R1 for a bench session.
 The 7.2-degree number describes the 50-video-state grid, not measured phase
 precision. The full table and assembled output are host-checked; combined
-firmware timing and range remain unproven. First board A/B on 2026-10-23
-reported severe static/desync with P64 and a normal picture after switching
-to U85Q. P64 therefore stays opt-in, never persisted across reboot.
+firmware timing and range remain unproven. The initial board comparison on
+2026-10-23 had the VTX off (operator clarification), so it does not establish
+picture quality. A separate host tone test found the original P64 latching
+porch/zero frequency into sync code 15. R1 corrects phase-advance output,
+exit behavior and token allocation; 588 clean-tone cases and 12 PAL/NTSC
+validation cases pass. Physical validation is still pending, so R1 stays
+opt-in and is never persisted across reboot.
 See [P64 integration, source provenance and board checks](P64.md).
 
 ## Digital RX filter mode 0 (PR #244 follow-up, 2026-10-23)

@@ -1,7 +1,9 @@
-"""C5VRX by Twotoz/contributors: reproduce PR #250 P64 champion table.
+"""C5VRX by Twotoz/contributors: reproduce the PR #250 P64 and P64-R1 tables.
 
 Adapted from research/p64_optimizer.py at 9e4a616; optimization and benchmark
 scores are simulation evidence. 7.2 degrees is the video-state grid spacing.
+P64-R1 uses all 16 phase tokens, permits sync-to-porch escape, and emits the
+committed phase advance instead of a clamp on an uncommitted prediction.
 """
 import json
 import math
@@ -27,7 +29,9 @@ def build_lut64_from_params(params):
     n_sync = int(params['n_sync'])
     n_vid = 64 - n_sync
     T = 16 # 16 tokens total
-    TA = 12 # 12 phase sectors (30 deg each)
+    TA = int(params.get('token_sectors', 12))
+    if TA not in (12, 16) or (TA == 16 and params['r_uncertainty'] > 0):
+        raise ValueError('16 phase tokens leave no separate erasure tokens')
     bits = (4, 5, 6, 7, 0, 1, 2, 3, 15, 11)
     lo_step = 2 * math.pi * (-6.0e6) * 50e-9
     hi_step = 2 * math.pi * (+9.0e6) * 50e-9
@@ -66,7 +70,7 @@ def build_lut64_from_params(params):
     obs_weights = np.ones(T)
     for t in range(TA):
         obs_angles[t] = (t + 0.5) * 2 * math.pi / TA - math.pi
-    for q in range(4):
+    for q in range(T - TA):
         obs_angles[TA + q] = (q + 0.5) * 0.5 * math.pi - math.pi
         obs_weights[TA + q] = w_unc
 
@@ -125,6 +129,13 @@ def build_lut64_from_params(params):
                 code = max(raw_code, min_vid_c)
 
             # Table address = (s << 4) | t
+            if params.get('phase_consistent_output', False):
+                # The recurrent state contains the QUANTIZED phase. Its
+                # actual advance, not the uncommitted prediction, is the
+                # recovered frequency. Do not force a constant sync code.
+                committed = ph_sync[nxt] if nxt < n_sync else ph_vid[nxt - n_sync]
+                advance = (committed - curr_phase + math.pi) % (2 * math.pi) - math.pi
+                code = int(np.rint(np.clip((advance - lo_step) / (hi_step - lo_step) * 63, 0, 63)))
             lut[(s << 4) | t] = code | (nxt << 6)
     # Bundle 0 token in bits 12..15
     lut |= tok.astype(np.int64) << 12
@@ -136,6 +147,11 @@ def champion_table():
     return build_lut64_from_params(champion['best_candidate'])
 
 
+def repaired_table():
+    repair = json.loads((ROOT / 'research/data/p64_repair.json').read_text())
+    return build_lut64_from_params(repair['params'])
+
+
 def checked_in_table():
     text = (ROOT / 'main/p64_tables.h').read_text()
     values = text.split('p64_table[1024] = {', 1)[1].split('}', 1)[0]
@@ -143,5 +159,5 @@ def checked_in_table():
 
 
 if __name__ == '__main__':
-    assert np.array_equal(champion_table(), checked_in_table()), 'P64 header differs from PR #250 champion'
-    print('PASS: P64 header reproduces all 1024 champion words from PR #250')
+    assert np.array_equal(repaired_table(), checked_in_table()), 'P64 header differs from repair parameters'
+    print('PASS: P64-R1 header reproduces all 1024 words from repair parameters')

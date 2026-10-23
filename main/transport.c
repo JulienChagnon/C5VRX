@@ -61,8 +61,8 @@ BITSCRAMBLER_PROGRAM(s_u85q_lp_flag, "u85q_lp_flag");
 BITSCRAMBLER_PROGRAM(s_u85q_64, "u85q_64");
 /* PR #250 P64 champion: 64 states / 16 tokens. Keep this identity with
  * the verified program and LUT through menu, OUTPUT and rollback. */
-/* Board A/B on 2026-10-23: P64 caused heavy static/desync; switching to
- * U85Q restored the picture. Keep P64 opt-in until physically qualified. */
+/* U85Q remains the reference at boot. The first board comparison had no
+ * VTX; P64-R1 needs explicit live-signal qualification, not noise viewing. */
 static bool s_demod_p64 = false, s_verified_p64 = false;
 static bool s_started;   /* live TX running (cleared while menu/status/recovery owns TX) */
 static bool s_prog_lp;   /* U85Q-LP instructions loaded */
@@ -417,7 +417,7 @@ bool transport_set_lp(bool lp)
 bool transport_lp(void) { return s_prog_lp; }
 
 const char *transport_program_name(void)
-{ return s_demod_p64 ? "P64" : s_prog_lp ? "U85Q-LP" : "U85Q"; }
+{ return s_demod_p64 ? P64_MODEL_ID : s_prog_lp ? "U85Q-LP" : "U85Q"; }
 bool transport_p64(void) { return s_demod_p64; }
 
 bool transport_set_p64(bool enabled)
@@ -1270,6 +1270,10 @@ void transport_sync_live_print(void)
 
 void transport_print(void)
 {
+    const char *verified_demod = s_have_verified && s_lut_known && !s_transport_fault ?
+        (s_verified_p64 ? P64_MODEL_ID : s_verified_lp ? "U85Q-LP" : "U85Q") : "unknown";
+    printf("DEMOD selected=%s verified=%s p64_model=%s p64_table_sha256=%s\n",
+           transport_program_name(), verified_demod, P64_MODEL_ID, P64_TABLE_SHA256);
     printf("TRANSPORT_STAGES_US quiesce=%lu bs_enable=%lu program_load=%lu instruction_verify=%lu lut_verify=%lu "
            "bs_reset=%lu bs_start=%lu rx_enable=%lu tx_enable=%lu rx_start=%lu tx_start=%lu (last restart)\n",
            (unsigned long)s_quiesce_us, (unsigned long)s_stage_us[TR_BS_ENABLE], (unsigned long)s_stage_us[TR_PROGRAM_LOAD],
