@@ -266,17 +266,17 @@ summary { cursor: pointer; color: #b0b7c1; min-height: 32px; }
 .project-info, .project-faq { margin-top: 30px; padding-top: 24px; border-top: 1px solid var(--line); }
 .project-info h3 { margin: 22px 0 8px; font-size: 16px; font-weight: 600; }
 .project-info p, .project-faq p { margin: 0 0 12px; color: var(--text-2); line-height: 1.7; }
-.project-overview { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .8fr); gap: 20px; align-items: start; }
-.project-overview figure { margin: 0; }
-.project-overview img { display: block; width: 100%; height: auto; }
-.project-overview figcaption { margin-top: 7px; color: var(--muted); font-size: 12px; }
+.kit-preview { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+.kit-preview figure { margin: 0; }
+.kit-preview img { display: block; width: 100%; height: auto; }
+.kit-preview figcaption { margin-top: 7px; color: var(--muted); font-size: 12px; }
 .hardware-heading { margin-top: 30px; }
 .hardware-heading + .hardware-purchase { margin-top: 0; }
 .project-faq details { border-top: 1px solid var(--line); }
 .project-faq summary { padding: 14px 0; font-weight: 600; cursor: pointer; }
 .project-faq details p { padding-bottom: 4px; }
-#tools, #about, #hardware, #faq { scroll-margin-top: 20px; }
+#tools, #about, #diy-kit, #hardware, #faq { scroll-margin-top: 20px; }
 @media (max-width: 640px) {
-  .project-overview { grid-template-columns: 1fr; }
-  .project-overview figure { max-width: 420px; }
+  .kit-preview { grid-template-columns: 1fr; }
+  .kit-preview figure { max-width: 100%; }
 }
