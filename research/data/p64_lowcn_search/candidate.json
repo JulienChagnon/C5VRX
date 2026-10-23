@@ -1,0 +1,29 @@
+{
+  "model_id": "P64-LowCN-E1",
+  "params": {
+    "n_sync": 24,
+    "kp_sync": 0.5344937245879723,
+    "kp_vid": 0.7941631184069803,
+    "v_sync_prior": -1.1001786778736666,
+    "v_video_prior": 0.13494626822156588,
+    "r_uncertainty": 0.0,
+    "w_uncertainty": 0.3912601459493753,
+    "err_pos_bound": 1.3253549555419375,
+    "err_neg_bound": -1.4752378695700792,
+    "err_scale": 0.11729215721955881,
+    "w_suppress_thresh": 0.6586194701115526,
+    "exit_sync_th": -0.4074784585004324,
+    "enter_sync_th": -1.0647175628286447,
+    "sync_weight_thresh": 0.4735229126996897,
+    "vid_weight_thresh": 0.3,
+    "code_quant_offset": -0.23906383131799172,
+    "video_gain_boost": 1.0,
+    "min_video_code": 14,
+    "max_sync_code": 15,
+    "token_sectors": 16,
+    "phase_consistent_output": true
+  },
+  "lut_sha256": "80642e2af88715dc803802ac5fe8908070764fd765c648fcbd7a47cffd7c81ff",
+  "source": "U80P64-R1 / PR250; C5VRX by Twotoz and contributors",
+  "evidence": "experimental host candidate; not installed in firmware"
+}

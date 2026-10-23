@@ -1,0 +1,6 @@
+{
+  "uncompressed_sha256": "270d2839129a0533638e749b6a437467fdcfa9bbe4f9794843bc4af3eb56d7e6",
+  "bytes": 1784142,
+  "records": 1667,
+  "format": "gzip compressed JSON Lines; rejected tone/high trials and full evaluated candidates"
+}

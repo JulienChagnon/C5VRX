@@ -1,0 +1,238 @@
+{
+  "metadata": {
+    "source": "C5VRX by Twotoz and contributors; extends PR250 / U80P64-R1",
+    "evidence": "host LUT simulation only; not flashed or hardware verified",
+    "baseline_sha256": "8027b82680c202738038435ce68eefb0145f58a112da773aefadefca0792482c",
+    "seed": 250731,
+    "specs": [
+      [
+        731,
+        -10.0,
+        "PAL",
+        1.0
+      ],
+      [
+        731,
+        -6.0,
+        "PAL",
+        1.0
+      ],
+      [
+        731,
+        -3.0,
+        "PAL",
+        1.0
+      ],
+      [
+        731,
+        -1.0,
+        "PAL",
+        1.0
+      ],
+      [
+        731,
+        0.0,
+        "PAL",
+        1.0
+      ],
+      [
+        732,
+        -2.0,
+        "NTSC",
+        1.0
+      ],
+      [
+        733,
+        20.0,
+        "PAL",
+        0.7
+      ],
+      [
+        733,
+        20.0,
+        "PAL",
+        1.4
+      ],
+      [
+        733,
+        20.0,
+        "NTSC",
+        0.7
+      ],
+      [
+        733,
+        20.0,
+        "NTSC",
+        1.4
+      ]
+    ],
+    "cn_reference_bandwidth_hz": 20000000,
+    "rx_filter_hz": 12000000,
+    "adc_gain": 3.0,
+    "optional_demod_lp": false,
+    "requested_seconds": 900.0,
+    "high_gate": "each 20 dB case: SINAD loss <= 0.3 dB; lock loss <= 0.02",
+    "low_gate": "each training case: SINAD loss <= 0.25 dB; lock loss <= 0.05",
+    "fitness": "mean low-C/N SINAD gain + 3 * mean lock-fraction gain",
+    "selection": "After E1 failed validation, freeze best training candidate retaining the original 14/50 state partition; validate on fresh seeds 30001..30004"
+  },
+  "baseline": [
+    {
+      "sinad": -8.48281452480597,
+      "lock": 0.0,
+      "spark": 0.6483475196169703,
+      "streak": 2.7611868139608955
+    },
+    {
+      "sinad": -8.425083524574713,
+      "lock": 0.0,
+      "spark": 0.5986583987232345,
+      "streak": 2.7207824152080793
+    },
+    {
+      "sinad": -6.941866165893055,
+      "lock": 0.0,
+      "spark": 0.4869414150817928,
+      "streak": 2.0869599759973587
+    },
+    {
+      "sinad": -5.184010076650544,
+      "lock": 0.7427536231884058,
+      "spark": 0.38393735869131534,
+      "streak": 1.7268292131663365
+    },
+    {
+      "sinad": -4.0148063989905305,
+      "lock": 0.9632352941176471,
+      "spark": 0.3253740524005852,
+      "streak": 1.377383124862047
+    },
+    {
+      "sinad": -6.186051002357514,
+      "lock": 0.26180257510729615,
+      "spark": 0.44066956968466375,
+      "streak": 1.969979485299286
+    },
+    {
+      "sinad": 9.1880037330844,
+      "lock": 1.0,
+      "spark": 0.0005785343795717515,
+      "streak": 0.10241686612499272
+    },
+    {
+      "sinad": 13.00015618224868,
+      "lock": 1.0,
+      "spark": 1.6624551137119298e-06,
+      "streak": 0.038907204996720145
+    },
+    {
+      "sinad": 9.28813972143993,
+      "lock": 1.0,
+      "spark": 0.0005810113266629156,
+      "streak": 0.10701276540048366
+    },
+    {
+      "sinad": 13.343442259662481,
+      "lock": 1.0,
+      "spark": 0.0,
+      "streak": 0.038507427600158455
+    }
+  ],
+  "best": {
+    "trial": 382,
+    "params": {
+      "n_sync": 14,
+      "kp_sync": 0.5344937245879723,
+      "kp_vid": 0.7984461881441218,
+      "v_sync_prior": -1.0501803814562078,
+      "v_video_prior": 0.040447825017228906,
+      "r_uncertainty": 0.0,
+      "w_uncertainty": 0.3912601459493753,
+      "err_pos_bound": 1.3253549555419375,
+      "err_neg_bound": -1.4752378695700792,
+      "err_scale": 0.11729215721955881,
+      "w_suppress_thresh": 0.6586194701115526,
+      "exit_sync_th": -0.3823303127649209,
+      "enter_sync_th": -1.0647175628286447,
+      "sync_weight_thresh": 0.4735229126996897,
+      "vid_weight_thresh": 0.3,
+      "code_quant_offset": -0.23906383131799172,
+      "video_gain_boost": 1.0,
+      "min_video_code": 14,
+      "max_sync_code": 15,
+      "token_sectors": 16,
+      "phase_consistent_output": true
+    },
+    "sha256": "2acb7c50c866beeaa92413655a84a02995b1ce85a646b91882f14cfef8ba3a92",
+    "fitness": 0.49351172537330684,
+    "eligible": true,
+    "scores": [
+      {
+        "sinad": -8.23527630123185,
+        "lock": 0.0,
+        "spark": 0.6420667641973666,
+        "streak": 2.6874309702948738
+      },
+      {
+        "sinad": -8.571587154981708,
+        "lock": 0.0,
+        "spark": 0.6066065966218912,
+        "streak": 2.7293500305410787
+      },
+      {
+        "sinad": -7.071402881861456,
+        "lock": 0.3745704467353952,
+        "spark": 0.4936211597286873,
+        "streak": 2.056943488550207
+      },
+      {
+        "sinad": -5.254323867401482,
+        "lock": 0.9272727272727272,
+        "spark": 0.38699295119031785,
+        "streak": 1.739637707047244
+      },
+      {
+        "sinad": -4.058148070321117,
+        "lock": 0.9852941176470589,
+        "spark": 0.3269949461364543,
+        "streak": 1.363109934614517
+      },
+      {
+        "sinad": -6.274626696726604,
+        "lock": 0.7445887445887446,
+        "spark": 0.4451239898557461,
+        "streak": 2.0053191210175823
+      },
+      {
+        "sinad": 9.037687707946885,
+        "lock": 1.0,
+        "spark": 0.0008811012102673228,
+        "streak": 0.10003885039146562
+      },
+      {
+        "sinad": 12.933050535401216,
+        "lock": 1.0,
+        "spark": 4.987365341135789e-06,
+        "streak": 0.040130806117769695
+      },
+      {
+        "sinad": 9.14588545070013,
+        "lock": 1.0,
+        "spark": 0.000862343126941801,
+        "streak": 0.10669115365858592
+      },
+      {
+        "sinad": 13.272474351310388,
+        "lock": 1.0,
+        "spark": 0.0,
+        "streak": 0.0401100114236842
+      }
+    ],
+    "mean_sinad_gain": -0.038455546541981654,
+    "mean_lock_gain": 0.17732242397176282
+  },
+  "trials": 1683,
+  "rejected_tone": 486,
+  "rejected_high": 388,
+  "elapsed_seconds": 900.4978579999988
+}
