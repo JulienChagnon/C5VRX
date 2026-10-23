@@ -7,6 +7,50 @@ scripts and data live in that branch under `v4/docs/PICTURE_CLIFF_STUDY.md`,
 Synthetic results are host simulations; board results are labelled as such.
 Measured range is not established.
 
+## Digital RX filter mode 0 (PR #244 follow-up, 2026-10-23)
+
+Source: [Twotoz's bench report on PR #244](https://github.com/Twotoz/C5VRX/pull/244#issuecomment-6345839653),
+COM10 NiceMCU, 5865 MHz / A1, 2026-10-22. This extends the digital-filter
+and coupled ADC-selector investigation in
+`legacy/c5vrx4/PREDEMOD_LAB.md`, rather than introducing another IQ source.
+
+With the VTX off, the reported baseline mode 8 had noise power m2=7.691
+and noise bandwidth 13.210 MHz. Mode 0 measured m2=6.757 (-0.56 dB) and
+12.907 MHz; modes 4/8/12 measured 7.516/7.457/8.490 in that sweep.
+Modes with low two bits set stalled IQ (m2=0); the observed working values
+of `0x600A0430[21:18]` were 0, 4, 8 and 12. These are bench observations,
+not a general specification of this undocumented register.
+
+The report also describes live NTSC lock, `sync_valid_pct=100`, coherence
+99 and gain 23..26. Its envelope figures alone do not establish an unchanged
+signal transfer function. The noise-only power difference is not a measured
+input-referred sensitivity, C/N or range gain. Repeated paired measurements,
+controlled RF attenuation and PAL/NTSC checks across channels are still needed.
+
+Production now applies only mode 0 through the pinned vendor helper, reads
+back the full four-bit field, and reasserts it after boot, channel, bandwidth
+and AFC restores. It preserves the vendor-selected ADC rate (selector 0 up
+to 5830 MHz and 1 above in the pinned PHY). Unsupported PHYs refuse the
+private write; a readback mismatch is logged and cannot pass
+`rf_filter_applied()`. Console calibration diagnostics report wanted/actual
+mode, with -1 for unsupported. There are no live mode/ADC experiments or
+noise sweeps in this change.
+
+Upgrades invalidate filter/DC calibration (generation 2), saved gain maps
+(version 6), C/N noise/anchor maps (version 3), and the separate noise-derived
+gain/dBm table `gtab` (version 3), whose transfer context
+otherwise omits the digital mode. First boot recalibrates through the existing
+bounded startup procedure. C/N remains unknown until a fresh noise reference
+is available; old powers must not be reused with mode 0.
+
+Host regression tests compile the production ownership, DFILT and RF restore
+code with mocked SDK/vendor/MMIO boundaries, including unsupported builds,
+all four-bit readback values, nested generation/invalidation ordering, and
+failed writes. They do not establish RF response or physical video quality.
+On the board, check `DFILT want=0 hw_mode=0` after boot, A3/A2 channel changes
+across 5830 MHz, BW20/BW40 profile changes and AFC offsets; confirm fresh
+calibration, VTX-off/on recovery, colour/detail and sync on PAL and NTSC.
+
 ## The problem: the whole picture dropped out
 
 With slightly bad video the C5VRX-4 picture did not get noisy, it vanished.

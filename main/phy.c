@@ -4,6 +4,7 @@
 #include "dsp.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "soc/soc.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -204,6 +205,45 @@ int phy_filter_calibrated_code(void)
     return s_filter_base_valid ? (int)(s_filter_base[0] & 63u) : -1;
 #else
     return -1;
+#endif
+}
+
+/* ---- Digital RX filter --------------------------------------------------
+ * C5VRX/Twotoz bench #244: mode 0 reduced captured noise power at 5865 MHz
+ * versus vendor mode 8. Reapply after vendor setup (which changes the mode
+ * above 5830 MHz). Never change the coupled ADC-rate selector here.
+ * Read all four bits: modes with low bits set stalled IQ on the bench. */
+#ifdef C5VRX_PHY_PINNED
+extern void phy_rx_filter_mode(uint32_t mode);
+#define DFILT_REG   0x600A0430u
+#define DFILT_SHIFT 18u
+#define DFILT_MASK  (UINT32_C(0xF) << DFILT_SHIFT)
+#endif
+
+int phy_dfilt_hw_mode(void)
+{
+#ifdef C5VRX_PHY_PINNED
+    lock_take();
+    const int mode = (int)((REG_READ(DFILT_REG) & DFILT_MASK) >> DFILT_SHIFT);
+    lock_give();
+    return mode;
+#else
+    return -1;
+#endif
+}
+
+bool phy_dfilt_apply_default(void)
+{
+#ifdef C5VRX_PHY_PINNED
+    /* Nested in restore_lock's transaction; standalone calls also invalidate
+     * observations before the write and publish a fresh PHY generation. */
+    phy_begin();
+    phy_rx_filter_mode(PHY_DFILT_MODE_DEFAULT);
+    const bool ok = phy_dfilt_hw_mode() == PHY_DFILT_MODE_DEFAULT;
+    phy_end();
+    return ok;
+#else
+    return false;
 #endif
 }
 

@@ -169,6 +169,8 @@ static void restore_lock(void)
     phy_wifi_fbw_sel(s_filter.bw20 ? 0u : 1u);
     phy_force_rx_gain(true, s_gain);
     apply_filter();
+    if (!phy_dfilt_apply_default())
+        ESP_EARLY_LOGW(TAG, "digital RX filter mode 0 not applied (unsupported PHY or readback mismatch)");
     if (s_post_gain_hook) s_post_gain_hook(s_gain);
 }
 
@@ -363,7 +365,9 @@ rf_filter_t rf_filter(void) { return s_filter; }
  * be written, so only the chip's own calibration counts as applied. */
 bool rf_filter_applied(void)
 {
-    return phy_filter_code() == s_filter.code && phy_filter_skirt() == (int)s_filter.skirt;
+    const int digital = phy_dfilt_hw_mode();
+    return phy_filter_code() == s_filter.code && phy_filter_skirt() == (int)s_filter.skirt &&
+           (digital < 0 || digital == PHY_DFILT_MODE_DEFAULT);
 }
 
 /* 6 bands x 8 channels. */

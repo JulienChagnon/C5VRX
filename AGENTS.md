@@ -693,6 +693,13 @@ requirements by themselves**.
 
 ## Current realtime invariants (C5VRX-5)
 
+- Digital RX filter mode 0 is reapplied after every vendor restore on the
+  pinned PHY (PR #244 bench follow-up). Preserve the vendor ADC-rate choice;
+  other mode values and ADC-rate overrides are lab research. Readback and
+  calibration migration are required when changing the receive transfer
+  function. See `docs/FINDINGS.md`, "Digital RX filter mode 0" for evidence
+  boundaries; the reported noise reduction is not a proven range gain.
+
 - **Direct Gain V5 is the only gain owner.** There is no native hardware AGC
   in C5VRX-5 (removed with C5VRX-3, 2026-10-12): on a continuous carrier the
   C5 packet AGC re-acquires every ~21 us on a different gain, which caused

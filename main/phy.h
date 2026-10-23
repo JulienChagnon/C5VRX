@@ -41,6 +41,14 @@ int phy_filter_calibrated_code(void);
  * unsupported; hw[8]/want[8] receive the bytes when not NULL. */
 int phy_filter_hw_mismatch(uint8_t hw[8], uint8_t want[8]);
 
+/* PR #244: fixed production digital RX filter, separate from the analog
+ * capacitor/skirt setting. Only mode 0 is exposed; other modes remain lab
+ * research. The vendor-selected ADC rate is preserved. Unsupported PHYs
+ * refuse the write and report -1 for readback. */
+#define PHY_DFILT_MODE_DEFAULT 0
+bool phy_dfilt_apply_default(void);
+int phy_dfilt_hw_mode(void);
+
 /* RX DC DACs (PBUS blocks 2/3 bank 2). A hold forces one pair in PBUS
  * debug mode with every owned live word re-asserted; any gain write or PHY
  * restore releases it first (rf.c) and the post-gain hook re-holds. */
