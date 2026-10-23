@@ -37,7 +37,8 @@ mode, with -1 for unsupported. There are no live mode/ADC experiments or
 noise sweeps in this change.
 
 Upgrades invalidate filter/DC calibration (generation 2), saved gain maps
-(version 6), and C/N noise/anchor maps (version 3), whose transfer context
+(version 6), C/N noise/anchor maps (version 3), and the separate noise-derived
+gain/dBm table `gtab` (version 3), whose transfer context
 otherwise omits the digital mode. First boot recalibrates through the existing
 bounded startup procedure. C/N remains unknown until a fresh noise reference
 is available; old powers must not be reused with mode 0.

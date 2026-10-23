@@ -136,9 +136,66 @@ int main(void) {
     puts("PASS: unsupported PHY refuses DFILT without MMIO/vendor calls");
 }
 '''
+GAIN_PREFIX = r'''
+#include <assert.h>
+#include <string.h>
+#include <stdio.h>
+#include "gain.h"
+#include "cn_auto.h"
+unsigned char phy_param[2048];
+static direct_gain_t s_gain;
+static bool s_cna_gain_dirty;
+static bool blob_load(const char *,void *,size_t);
+static bool blob_store(const char *,const void *,size_t);
+'''
+GAIN_HARNESS = r'''
+static gtab_blob_t disk;
+static unsigned stores;
+static bool blob_load(const char *key,void *data,size_t size) {
+    assert(!strcmp(key,"gtab") && size==sizeof(disk));memcpy(data,&disk,size);return true;
+}
+static bool blob_store(const char *key,const void *data,size_t size) {
+    assert(!strcmp(key,"gtab") && size==sizeof(disk));memcpy(&disk,data,size);++stores;return true;
+}
+int main(void) {
+    arc_gain_table_t table;
+    arc_gain_table_from_bytes(&table,NULL,ARC_5G_GAIN_MAX);
+    dg_reset(&s_gain,&table,83);
+    const int16_t old_model=s_gain.model_db_q8[82];
+    disk=(gtab_blob_t){.version=2,.rows=2};
+    disk.th_x256[83]=1024;disk.th_x256[82]=512;
+    /* VTX-on boot: no fresh noise pass; old mode-8 data must be ignored. */
+    cna_apply_gain();
+    assert(!s_gain_rows_measured && s_gain.model_db_q8[82]==old_model);
+    assert(s_gain_th[83]==0 && s_gain_th[82]==0 && !stores);
+    /* Existing mode-0 table remains usable on the next VTX-on boot. */
+    disk.version=GTAB_VERSION;s_gain_th_loaded=false;
+    cna_apply_gain();assert(s_gain_rows_measured==2 && s_gain_th[83]==4);
+    /* A clean startup pass replaces an old blob and publishes new data. */
+    disk.version=2;
+    const float noise[DG_STATES]={[83]=3.0f+CNA_QUANT_CELLS2,[82]=1.0f+CNA_QUANT_CELLS2};
+    receiver_gain_table_measured(noise);
+    assert(stores==1 && disk.version==GTAB_VERSION && s_gain_th_new && s_cna_gain_dirty);
+    cna_apply_gain();assert(s_gain_rows_measured==2 && s_gain_th[83]==3 && !s_gain_th_new);
+    receiver_gain_table_measured(noise);assert(stores==1); /* unchanged data: no NVS wear */
+    puts("PASS: production gtab rejects pre-mode-0 data on VTX-on boot; fresh save/load retained");
+}
+'''
 
 
 class DigitalFilter(unittest.TestCase):
+    def test_noise_derived_gain_migration(self):
+        receiver = (ROOT / "main/receiver.c").read_text()
+        production = receiver[receiver.index("#define GTAB_VERSION"):receiver.index("static void cna_probe(")]
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            source, exe = base / "gain_migration.c", base / "gain_migration"
+            source.write_text(GAIN_PREFIX + production + GAIN_HARNESS)
+            subprocess.run(["cc", "-O2", "-std=c11", "-Wall", "-Wextra", "-Werror",
+                            "-I", str(ROOT / "main"), str(source), str(ROOT / "main/gain.c"),
+                            str(ROOT / "main/arc_phy.c"), "-lm", "-o", str(exe)], check=True)
+            subprocess.run([str(exe)], check=True)
+
     def test_production(self):
         phy = (ROOT / "main/phy.c").read_text()
         ownership = phy.split("#ifdef C5VRX_PHY_PINNED", 1)[0]
