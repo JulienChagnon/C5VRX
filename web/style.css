@@ -238,7 +238,11 @@ summary { cursor: pointer; color: #b0b7c1; min-height: 32px; }
 }
 
 /* Flight log (terminal view) */
-.flight-log { margin: 1rem 0; }
+.flight-log { margin: 16px; min-width: 0; }
+.flight-log > .hint { line-height: 1.6; }
+.flight-log .command-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.flight-log .action { white-space: normal; }
+#flightLogStatus:empty { display: none; }
 .flight-log h2 { font-size: 1rem; margin: 0 0 .4rem; }
 .flight-log-table-wrap { overflow-x: auto; }
 .flight-log-table { width: 100%; border-collapse: collapse; font-size: .85rem; margin: .5rem 0; }
@@ -254,6 +258,16 @@ summary { cursor: pointer; color: #b0b7c1; min-height: 32px; }
 .flight-log .lg.level::before { background: #c8463c; }
 .flight-log .lg.sync::before { background: #00a6a6; }
 .flight-log .lg.drop::before { background: rgba(220, 60, 60, .5); }
+
+@media (min-width: 1000px) {
+  .flight-log .command-buttons { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 540px) {
+  .flight-log { margin: 12px; }
+}
+@media (max-width: 360px) {
+  .flight-log .command-buttons { grid-template-columns: 1fr; }
+}
 
 /* Project information stays readable in the initial HTML, including without JavaScript. */
 .project-intro { margin-bottom: 22px; }
