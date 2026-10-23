@@ -59,7 +59,7 @@ typedef struct {
     int16_t origin_pm, clip_pm;
     int16_t offset_khz;     /* AFC tuning offset */
     int8_t kp_level;        /* verified kp ladder level (0 = kp 0.85), -1 unknown */
-    uint8_t lp;             /* U85Q-LP program running */
+    uint8_t lp;             /* reserved historical LP byte; current firmware writes zero */
     uint8_t flags;
 } diag_record_t;
 

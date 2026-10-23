@@ -11,8 +11,8 @@
  * Profiles: DEFAULT (normal >= 12 MHz class, kp 0.85), KP060 / KP050
  * (narrow >= 10 MHz class, calmer tracker) for low deviations, WIDE (wide
  * >= 16 MHz class, kp 0.85) for deviations >= 1.6. A profile sets the
- * filter and the kp level it starts from; with AUTO the kp/LP ladder then
- * owns kp and U85Q-LP on every profile (the KP060/KP050 LUTs are ladder
+ * filter and the kp level it starts from; with AUTO the kp ladder then
+ * owns kp on every U85Q profile (the KP060/KP050 LUTs are ladder
  * levels of the same program). */
 #pragma once
 #include <stdbool.h>

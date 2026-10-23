@@ -399,7 +399,7 @@ bool transport_set_output(unsigned level)
 
 /* Selected configuration stays separate from the last fully verified live
  * configuration. Publication waits for both DMA starts, including readback
- * of the complete program and LUT on boot/menu/rollback as well as P/k. */
+ * of the complete program and LUT on boot/menu/rollback as well as model/kp changes. */
 typedef struct {
     const uint8_t *program;
     int level;

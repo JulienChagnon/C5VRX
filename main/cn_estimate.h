@@ -1,7 +1,7 @@
 /* C5VRX-5 by Twotoz and the C5VRX contributors: carrier-to-noise models.
  * These correlation/envelope models are diagnostics and simulation
  * references. Runtime RF decisions use the input-referred power result in
- * cn_auto.h; an uncalibrated envelope must not actuate AFC/profile/kp/LP.
+ * cn_auto.h; an uncalibrated envelope must not actuate AFC/profile/kp.
  * The historical model uses phase coherence (share of
  * adjacent pairs with power >= 8 and a phase step within 45 degrees).
  *

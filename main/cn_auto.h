@@ -24,7 +24,7 @@
  *   Disagreement lowers the confidence; it never teaches an offset.
  * - The output carries confidence and source. Unknown is never low.
  * - Only an input-referred power result backed by a noise map may drive
- *   AFC/profile/kp/LP decisions. M2M4 and the envelope model remain useful
+ *   AFC/profile/kp decisions. M2M4 and the envelope model remain useful
  *   diagnostics, but amplitude fading can make either look like thermal
  *   noise without changing the RF C/N (issue #222).
  *
@@ -78,7 +78,7 @@ typedef struct {
 
 /* The control plane needs input-referred C/N, not merely a plausible number.
  * In particular CNA_SRC_ENVELOPE can read a strong amplitude-varying carrier
- * as a few dB C/N and select LP or an AFC gate. Keep non-power estimates in
+ * as a few dB C/N and select a kp level or an AFC gate. Keep non-power estimates in
  * telemetry until a per-context thermal-noise reference exists. */
 static inline int cna_control_x10(const cna_reading_t *r)
 {
@@ -232,7 +232,7 @@ static inline cna_reading_t cna_estimate(double m2, double m4, float noise, floa
     float cn_power = 0.0f, cn_m2m4 = 0.0f;
     if (noise > 0.0f && noise_uncert_db < 6.0f) {
         /* The carrier over the receiver's thermal noise, the C/N at the pin
-         * that the kp/LP curves, the gates and the dBm meter are defined on:
+         * that the kp curves, the gates and the dBm meter are defined on:
          * on rows near the 4-bit step the quantisation (part of the row's
          * noise) is no noise of the link, and dividing by it read up to ~2 dB
          * low there (walk 2026-10-20, A1). */

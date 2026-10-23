@@ -559,7 +559,7 @@ static bool sop_session_begin(uint32_t generation, bool (*live)(uint32_t), bool 
     s->enabled = REG_READ(GPIO_ENABLE_REG) & (1u << 8);
     /* PARLIO DATA4 index52, push-pull, no inversion. Either peripheral or
      * GPIO-controlled OE is valid: this input-only observer changes neither.
-     * The root caller additionally verifies LP and unscaled1x reference LUT. */
+     * The root caller separately verifies the decoder and output context. */
     bool pin_ok = (s->matrix & GPIO_FUNC8_OUT_SEL_M) == 52u &&
         !(s->matrix & (GPIO_FUNC8_OUT_INV_SEL_M | GPIO_FUNC8_OE_INV_SEL_M)) &&
         s->enabled &&

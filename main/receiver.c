@@ -335,7 +335,7 @@ void receiver_level_feed(const uint8_t *window, size_t bytes)
 }
 
 /* ---- C/N-AUTO (cn_auto.h) -------------------------------------------------
- * The C/N every consumer reads (AFC, kp/LP ladder, profile gates, flight
+ * The C/N every consumer reads (AFC, kp ladder, profile gates, flight
  * log), self-calibrating and with a confidence:
  * - noise per gain row for this channel and filter: measured at startup
  *   with no carrier (calibration.c), learned in service only on no-carrier

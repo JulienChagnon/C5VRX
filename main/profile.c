@@ -28,7 +28,7 @@
  * decision, narrowing after two agreeing decisions (profile_logic.h), via
  * a filter relock plus the guarded, verified kp restart (a few ms). A
  * profile sets the filter and the kp level it starts from; with AUTO the
- * kp/LP ladder takes over from there on every profile (control.c).
+ * kp ladder takes over from there on every profile (control.c).
  * In report-only mode a VTX that reads wide while a matched profile is
  * active is reported loudly and DEFAULT returns at the next boot, channel
  * change or CALIBRATE.
@@ -237,7 +237,7 @@ static void live_apply(void)
                f.code, f.skirt);
         return;
     }
-    /* Start level, LP off, in one guarded restart (none if both already hold). */
+    /* Apply the profile start level through the shared verified restart. */
     if (!transport_apply_auto(profile_base_level(p))) {
         (void)rf_set_filter(before);
         ++s_live_switch_fail;
