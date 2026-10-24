@@ -12,3 +12,7 @@ as research CI; none of these files is a firmware dependency.
 The original work is [C5VRX](https://github.com/Twotoz/C5VRX); its
 [official website](https://twotoz.github.io/C5VRX/) has the Discord invite.
 The repository's GPL-3.0-only license and attribution notices apply.
+
+`dc_center_lut.h` and `test_dc_center_lut.c` preserve the unused U85Q
+token-centering experiment and its worker-bit regression. Production DC
+measurement gates remain in `main/dc_live.h`; they do not rewrite the P64 LUT.

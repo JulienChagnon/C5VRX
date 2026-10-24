@@ -902,19 +902,16 @@ before allocating internal DMA descriptors in 384-byte chunks. Interlaced
 NTSC/PAL needs about 18/22 KiB; progressive fallback about 9/11 KiB.
 Keep the 6144-byte control stack reserved before RF/driver allocations.
 See [PR212](docs/PR212.md) for current behavior, evidence and board checks.
-LP is a rescue by predicted picture benefit since PR #230 (operator
-decision 2026-10-20, console `O`, NVS `lp_cn`, default on): in below the
-C/N where the bit-exact curves give LP +1 dB luma SINAD over the best U85Q,
-out above the 0 dB crossover, per deviation class and measured filter
-(`kp_ladder_want_lp_cn`); an unknown C/N holds, never counts as 0 dB; the
-gain no longer decides. Replay of three walks (`research/lp_policy_replay.py`):
-57-88 % less LP above the exit C/N, no missed rescue. The earlier
-gain-driven LP (G70/G65, PR #218 follow-up) stays selectable with `O`.
-Runtime C/N decisions require C/N-AUTO's noise-referenced power source;
-uncalibrated envelope/M2M4 estimates are telemetry only (issue #222). With
-no per-context noise reference, AFC/profile/kp/LP see UNKNOWN and hold or
-refuse the action; do not restore the envelope fallback without independent
-input-referred evidence.
+Historical kp/LP policy (retired by the 2026-10-23 single-model decision):
+PR #230 used predicted picture benefit and noise-referenced C/N to select
+U85Q-LP, with console `O` selecting the earlier gain-driven policy. Those
+controls, policies and `lp_cn` settings are no longer active firmware.
+The frozen implementations and replay evidence remain research under
+`research/legacy_demod/`; do not restore them as current receiver behavior.
+Current C/N decisions still require C/N-AUTO's noise-referenced power source;
+uncalibrated envelope/M2M4 estimates are telemetry only (issue #222). Without
+an exact-context noise reference, AFC/profile decisions see UNKNOWN and hold
+or refuse the action. Preserve that boundary independently of retired kp/LP.
 `SYNC_FLYWHEEL_LOAD` measures
 flywheel ISR occupancy; board numbers pending (`docs/FINDINGS.md`).
 

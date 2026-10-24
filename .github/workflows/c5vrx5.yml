@@ -110,6 +110,8 @@ jobs:
             cc -O2 -std=c11 -Wall -Wextra -Werror -Imain -Iresearch/legacy_demod "research/legacy_demod/kp_only_$t.c" -lm -o "/tmp/$t"
             "/tmp/$t" | tail -1
           done
+          cc -O2 -std=c11 -Wall -Wextra -Werror -Imain -Iresearch/legacy_demod research/legacy_demod/test_dc_center_lut.c -lm -o /tmp/test_dc_center_lut
+          /tmp/test_dc_center_lut
       - name: Diagnostic log semantics
         run: |
           python3 test/test_field_diag_compare.py
