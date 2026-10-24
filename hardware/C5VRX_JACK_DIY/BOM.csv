@@ -1,0 +1,13 @@
+Reference,Value upstream C5VRX-5,Value local Receiver Console,Footprint,Note
+U1,XIAO ESP32-C5,XIAO ESP32-C5,C5VRX:XIAO-ESP32-C5-DIP,Plug-in mounting on 2x7-pin 2.54mm female headers in top-left corner
+R1,8.2k,7.87k,Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal,1% recommended; axial through-hole 1/4W
+R2,3.9k,3.92k,Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal,1% recommended; axial through-hole 1/4W
+R3,2k,1.96k,Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal,1% recommended; axial through-hole 1/4W
+R4,1k,976,Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal,1% recommended; axial through-hole 1/4W
+R5,470,487,Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal,1% recommended; axial through-hole 1/4W
+R6,240,243,Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal,1% recommended; axial through-hole 1/4W
+R7,200,191,Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal,1% recommended; axial through-hole 1/4W
+J1,FATSHARK BAY,FATSHARK BAY,C5VRX:FatShark_Header_1x09,9-pin 2.54mm right-angle male header to goggle bay
+J2,PJ-320D 3.5mm AV,PJ-320D 3.5mm AV,Connector_Audio:Jack_3.5mm_PJ320D_Horizontal,4-pole TRRS SMD 3.5mm jack; facing LEFT; Tip & Ring 1 = VIDEO; Sleeve = GND
+SJ1,5V LINK,5V LINK,Jumper:SolderJumper-2_P1.3mm_Open_Pad1.0x1.5mm,Open Solder Jumper (bridge with solder blob to connect 5V bay supply)
+C1,470pF,470pF,Capacitor_THT:C_Disc_D3.0mm_W1.6mm_P2.50mm,OPTIONAL / DNP; ceramic C0G/NP0; 2.50mm lead pitch

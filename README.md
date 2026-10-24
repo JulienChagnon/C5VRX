@@ -88,6 +88,26 @@ GND ---------------+------> GND (goggle / monitor AV-in ground)
   a swapped, open or wrong resistor. See
   [Building and testing the resistor DAC](docs/hardware/dac-build-and-test.md).
 
+### DIY Carrier PCB: Fat Shark Module + 3.5 mm AV Jack
+
+If you prefer a clean PCB over perfboard, the open-source **[C5VRX_JACK_DIY](hardware/C5VRX_JACK_DIY)** carrier board is designed to drop directly into standard Fat Shark goggle bays while also including a 3.5 mm TRRS AV jack for universal bench testing and standalone monitor hookup.
+
+Getting the PCB manufactured (via JLCPCB, PCBWay, etc.) is extremely inexpensive—often even cheaper than buying a sheet of perfboard—and only requires soldering standard through-hole ¼W resistors and pin headers!
+
+<div align="center">
+  <img src="hardware/C5VRX_JACK_DIY/exports/C5VRX_JACK_DIY-3D-top-iso.png" alt="C5VRX_JACK_DIY 3D Top View" width="49%" />
+  <img src="hardware/C5VRX_JACK_DIY/exports/C5VRX_JACK_DIY-3D-top-straight.png" alt="C5VRX_JACK_DIY Straight Top View" width="49%" />
+</div>
+
+| Feature | Details | Benefit |
+| --- | --- | --- |
+| **Form factor** | 42.51 × 28.80 mm (r = 2.0 mm) | Fits standard Fat Shark Dominator module bays |
+| **AV output** | 3.5 mm TRRS jack (PJ-320D) + Bay Pin 1 | Universal: use in goggles, on external monitors, or for bench testing |
+| **Through-hole DAC** | Standard ¼W axial resistors (`DIN0207`) | Quick hand-soldering with labeled footprints (`8.2k`, `3.9k`, etc.) |
+| **Socketed MCU** | 2× 7-pin female pin headers | Reusable Seeed XIAO ESP32-C5 with USB-C accessible on the edge |
+| **Dual power** | 5V goggle rail (via SJ1 solder bridge) or USB-C | Powered from the goggles or directly via USB for bench testing |
+| **Fabrication files** | Gerber zip, Excellon drill, BOM, STEP/GLB | Ready to order immediately from [`hardware/C5VRX_JACK_DIY`](hardware/C5VRX_JACK_DIY) |
+
 ## Flashing
 
 - **Browser:** open the [web flasher](https://twotoz.github.io/C5VRX/) in
@@ -151,6 +171,7 @@ saves the displayed output; only the latest 120,000 characters are retained.
 ## Documentation and development
 
 - [DAC build and self-test guide](docs/hardware/dac-build-and-test.md)
+- [C5VRX_JACK_DIY Fat Shark carrier PCB](hardware/C5VRX_JACK_DIY)
 - [Receiver findings and hardware evidence](docs/FINDINGS.md)
 - [Field-test protocol](docs/FIELD_TEST.md)
 - [Current receiver changes and validation](docs/PR212.md)
@@ -196,10 +217,11 @@ The C5VRX name and logos have separate terms; see [assets/BRANDING.md](assets/BR
 
 ## Build components
 
-| Product | Photo | Link |
+| Product | Photo | Link / Source |
 | --- | --- | --- |
 | Seeed Studio XIAO ESP32-C5 | <img src="web/assets/xiao-esp32c5.png" alt="Seeed Studio XIAO ESP32-C5 board" width="96" height="72"> | [View on Amazon](https://link.amazon/B0gopCVDt) |
-| Perfboard | <img src="web/assets/perfboard.png" alt="Green perfboard" width="42" height="61"> | [View on Amazon](https://link.amazon/B0i2qqMeq) |
+| C5VRX_JACK_DIY Carrier PCB | <img src="hardware/C5VRX_JACK_DIY/exports/C5VRX_JACK_DIY-3D-top-straight.png" alt="C5VRX_JACK_DIY PCB render" width="96" height="65"> | [Gerbers & KiCad files](hardware/C5VRX_JACK_DIY) (often cheaper than perfboard!) |
+| Perfboard (alternative) | <img src="web/assets/perfboard.png" alt="Green perfboard" width="42" height="61"> | [View on Amazon](https://link.amazon/B0i2qqMeq) |
 | Resistor kit | <img src="web/assets/resistor-kit.png" alt="Resistor assortment in a storage case" width="72" height="72"> | [View on Amazon](https://link.amazon/B06XSBkln) |
 
 Affiliate links. As an Amazon Associate, I earn from qualifying purchases.
