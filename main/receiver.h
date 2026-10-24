@@ -1,7 +1,7 @@
 /* C5VRX-5 by Twotoz and the C5VRX contributors: receiver-wide state.
  *
  * Data plane (hardware only): MODEM_DIAG Q4/I4 (fixed ultrafine lane) ->
- * PARLIO RX 40 MS/s -> 32 KiB cyclic raw ring -> TX BitScrambler U85Q
+ * PARLIO RX 40 MS/s -> 32 KiB cyclic raw ring -> TX BitScrambler U80P64-R1
  * (50 ns span, two bundles, LUT16) -> PARLIO TX 40 MHz [D,D] -> 6-bit DAC.
  * The CPU only observes completed RX descriptors and owns gain, AFC, DC,
  * filter, menu and console. */
@@ -27,9 +27,9 @@
 #define PROBE_REGION_BYTES  64u
 #define PROBE_BYTES         (PROBE_REGIONS * PROBE_REGION_BYTES)
 #define MAX_RING_DESCRIPTORS 16
-/* AFC centres the VTX blanking level here. The U85Q window (-6..+9 MHz)
+/* AFC centres the VTX blanking level here. The -6..+9 MHz output window
  * holds more of the sync-to-white swing with the porch at -1.0 MHz than at
- * the -436 kHz that suited the trained trackers: held-out simulation,
+ * the -436 kHz that suited the trained trackers: historical U85Q simulation,
  * 400 cases, picture 0.969 vs 0.908, +0.85 dB SINAD, deviation 1.8 VTXs
  * 0.90 vs 0.64 (docs/FINDINGS.md). */
 #define AFC_PORCH_TARGET_KHZ (-1000)
@@ -59,25 +59,16 @@ extern int s_rx_node_count;
 esp_err_t transport_start(void);
 void transport_stop_tx(void);
 void transport_resume_live(void);
-bool transport_resume_raster(int level, bool lp); /* confirmed ladder target at raster exit */
 void transport_start_chain(dma_descriptor_t *first);
-/* One tracker topology (U85Q / U85Q-LP); a profile only picks the filter
- * and the kp level the pipeline starts from (kp_tables.h). */
-bool transport_set_base_level(int level);     /* not live: start level, LP off */
 uint32_t transport_switch_wait_ms(void);
-bool transport_kp_set(int level);          /* verified kp ladder level (kp_tables.h) */
-int transport_kp_level(void);
-int transport_kp_target(void);
-unsigned transport_kp_tick(void);
-bool transport_set_lp(bool lp);            /* U85Q <-> LP via a brief pipeline restart */
-bool transport_lp(void);
 const char *transport_program_name(void);
+bool transport_live(void);
+bool transport_restart_profile(void);
 bool transport_faulted(void);
 uint32_t transport_restart_errors(void);
 unsigned transport_output(void);
 const char *transport_output_name(void);
 bool transport_set_output(unsigned level);
-bool transport_apply_auto(int level, bool lp);
 void transport_stop_chain(void);
 void transport_poll_faults(void);
 uint32_t transport_fault_count(void);
@@ -85,7 +76,6 @@ void transport_print(void);
 void transport_sync_flywheel_toggle(void); /* U / menu FLYWHEEL: toggle and save */
 void transport_sync_flywheel_set(bool on, bool save);
 bool transport_sync_flywheel_enabled(void);
-void transport_live_lut_test(void);   /* bench: LUT writes while running (console H) */
 void transport_sync_flywheel_set_boot(bool on); /* settings_load: saved choice */
 void transport_sync_live_tick(void);   /* control loop; never holds a lifetime PHY lease */
 bool transport_sync_live_cancel(void); /* stop/restore before transport ownership changes */
@@ -98,8 +88,8 @@ bool transport_sync_live_release(void);
  * builds its chain from another task. */
 void transport_sync_live_hold(bool on);
 void transport_sync_live_print(void);
-/* Flight-log V1 output telemetry. Demod is 0 unknown, 1 verified U85Q
- * model 1a09f5c092e8, 2 the verified U85Q-LP variant of that model. Lock
+/* Flight-log V1 output telemetry. Demod is 0 unknown, 1 verified U85Q,
+ * 2 reserved for historical LP logs, 3 verified U80P64-R1. Lock
  * percentages are 0xff when the native observer had no fresh samples. */
 typedef struct {
     uint8_t flags, demod, standard, output_level;
@@ -268,7 +258,6 @@ int profile_active(void);
 int profile_deviation_x100(size_t channel);
 int profile_live_deviation_x100(void);     /* measured this channel session, -1 = not yet */
 int profile_for_deviation(int dev_x100);
-int profile_base_level(int profile);       /* kp_tables.h level a profile starts from */
 bool profile_set(int profile);
 void profile_load(void);
 void profile_boot(void);

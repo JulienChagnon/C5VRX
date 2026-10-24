@@ -7,7 +7,7 @@ Run inside the pinned espressif/idf:v6.0.2 environment, e.g.:
 Uses the real C output_entry()/kp_tables and actual SDK assembler. Loads the
 existing u85q_lp.py generic emulator through AST without importing numpy/numba;
 the only instrumentation records post-op counters, LUT address and mux output.
-Temporary variants are checked against the firmware's actual LP flag program
+Temporary variants are checked against the archived LP flag program
 and C comparator mapping before emulation.
 
 Normal U85Q already writes L0 into both output bytes. The LP variant replaces
@@ -78,10 +78,17 @@ def actual_luts(directory: Path, compiler: str) -> tuple[list[list[int]], list[l
     executable = directory / ("read_luts.exe" if os.name == "nt" else "read_luts")
     source.write_text(r'''#include <stdio.h>
 #include <stdint.h>
+#ifdef _WIN32
+#include <io.h>
+#include <fcntl.h>
+#endif
 #include "kp_tables.h"
 #include "output_level.h"
 #include "sync_flag.h"
 int main(void) {
+#ifdef _WIN32
+    if (_setmode(_fileno(stdout), _O_BINARY) == -1) return 5;
+#endif
     const uint32_t dimensions[2] = {KP_LEVELS, OUTPUT_LEVELS};
     if (fwrite(dimensions, sizeof(dimensions), 1, stdout) != 1) return 1;
     if (fwrite(kp_tables, sizeof(kp_tables), 1, stdout) != 1) return 2;
@@ -98,7 +105,7 @@ int main(void) {
 }
 ''')
     subprocess.run(shlex.split(compiler) + ["-O2", "-std=c11", "-Wall", "-Wextra", "-Werror",
-                   "-I", str(ROOT / "main"), str(source), "-o", str(executable)], check=True)
+                   "-I", str(ROOT / "main"), "-I", str(ROOT / "research/legacy_demod"), str(source), "-o", str(executable)], check=True)
     result = subprocess.run([str(executable)], capture_output=True, check=True).stdout
     if len(result) < 8:
         raise RuntimeError("C LUT exporter produced an incomplete header")
@@ -144,9 +151,9 @@ def prove(idf: Path, compiler: str, threshold: int, output_bytes: int, seed: int
     namespace = generic_emulator(idf)
     assemble = namespace["assemble"]
     emulate = namespace["emulate"]
-    normal_path = ROOT / "main/u85q.bsasm"
-    lp_path = ROOT / "main/u85q_lp.bsasm"
-    production_flag_path = ROOT / "main/u85q_lp_flag.bsasm"
+    normal_path = ROOT / "research/legacy_demod/u85q.bsasm"
+    lp_path = ROOT / "research/legacy_demod/u85q_lp.bsasm"
+    production_flag_path = ROOT / "research/legacy_demod/u85q_lp_flag.bsasm"
     normal = assemble(normal_path)
     lp = assemble(lp_path)
     if normal[1]["lut_width_bits"] != 16 or lp[1]["lut_width_bits"] != 16:
@@ -232,7 +239,7 @@ def prove(idf: Path, compiler: str, threshold: int, output_bytes: int, seed: int
     paths = {"normal_program": normal_path, "lp_program": lp_path,
              "production_flag_program": production_flag_path,
              "production_flag_mapping": ROOT / "main/sync_flag.h",
-             "kp_tables": ROOT / "main/kp_tables.h", "output_mapping": ROOT / "main/output_level.h",
+             "kp_tables": ROOT / "research/legacy_demod/kp_tables.h", "output_mapping": ROOT / "main/output_level.h",
              "generic_emulator": ROOT / "research/u85q_lp.py", "runner": Path(__file__),
              "sdk_assembler": idf / "tools/bsasm.py",
              "sdk_target": idf / "components/esp_driver_bitscrambler/bsasm_targets/esp32c5.json"}

@@ -1,6 +1,6 @@
 /* C5VRX by Twotoz and contributors: issue #200 manual DAC6 scaling.
  * 1x is bit-exact. High gains can clip; output impedance is not calibrated.
- * No phase/token bits may change, including when LP carries DAC through A. */
+ * No phase/token bits may change when scaling DAC output. */
 #pragma once
 #include <stdint.h>
 #include <stdbool.h>

@@ -1,7 +1,6 @@
-/* C5VRX by Twotoz/contributors: live-DC evidence gates and hardware LUT layout.
+/* C5VRX by Twotoz/contributors: live-DC evidence gates.
  * Uses the real archived VTX-off captures; not a physical sensitivity test. */
 #include "dc_live.h"
-#include "kp_tables.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -46,18 +45,6 @@ int main(int argc, char **argv)
     }
     dsp_circle_sums(raw, sizeof(raw), &c);
     assert(!dc_live_fit(&c, 0, NULL, NULL, NULL));
-    uint16_t shifted[1024];
-    const int offsets[][2] = {{0, 0}, {1500, -750}, {-500, 1250}, {4000, -2000}};
-    for (unsigned kp = 0; kp < KP_LEVELS; ++kp) {
-        for (unsigned d = 0; d < sizeof(offsets) / sizeof(offsets[0]); ++d) {
-            dc_live_center_lut(shifted, kp_tables[kp], offsets[d][0], offsets[d][1]);
-            for (unsigned a = 0; a < 1024; ++a) {
-                assert((shifted[a] & 2047u) == (kp_tables[kp][a] & 2047u));
-                assert((shifted[a] >> 11) == (shifted[a & 255u] >> 11));
-            }
-            if (d == 0) assert(!memcmp(shifted, kp_tables[kp], sizeof(shifted)));
-        }
-    }
-    puts("PASS: real false-circle captures rejected, qualified center recovered, all kp worker bits and zero-DC tables preserved");
+    puts("PASS: real false-circle captures rejected and qualified center recovered");
     return 0;
 }

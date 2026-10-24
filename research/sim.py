@@ -35,7 +35,7 @@ GOGGLE = sg.butter(4, 5e6, fs=FS, output='sos')
 SYNC_LP = sg.butter(2, 1e6, fs=FS, output='sos')
 
 
-def u85q_lut(path=HERE.parent / 'main' / 'u85q.bsasm'):
+def u85q_lut(path=HERE.parent / 'research' / 'legacy_demod' / 'u85q.bsasm'):
     text = Path(path).read_text()
     words = re.search(r'^lut ([0-9 ]+)$', text, re.M).group(1).split()
     return np.array([int(w) for w in words], np.uint16)

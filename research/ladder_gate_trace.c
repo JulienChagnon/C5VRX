@@ -1,6 +1,6 @@
 /* C5VRX by Twotoz and the C5VRX contributors: kp/LP ladder under the
- * control loop's window gate, driven by the real firmware headers
- * (main/kp_ladder.h, main/kp_switch_guard.h). Host model for
+ * control loop's window gate, driven by the frozen historical headers
+ * (legacy_demod/kp_ladder.h, legacy_demod/kp_switch_guard.h). Host model for
  * research/ladder_gate.py; not a hardware measurement.
  *
  * Every 50 ms control window follows control.c: the ladder update, the
@@ -24,8 +24,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "kp_ladder.h"
-#include "kp_switch_guard.h"
+#include "legacy_demod/kp_ladder.h"
+#include "legacy_demod/kp_switch_guard.h"
 
 #define TICK_US 50000LL
 #define SETTLE_TICKS 10

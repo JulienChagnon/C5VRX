@@ -41,7 +41,7 @@ def codes(raw,table):return sim._pair_codes(raw,table,sim.PAIR_BITS,4)
 
 def source(variant):
     import re
-    text=(MAIN/'u85q.bsasm').read_text()
+    text=(MAIN.parent/'research/legacy_demod/u85q.bsasm').read_text()
     text=re.sub(r'^lut .*$', 'lut '+' '.join(str(int(v)) for v in lut(*variant)),text,flags=re.M)
     text=text.replace('set 16..20 L11..L15','set 16..19 L12..L15').replace('set 21..25 O26..O30','set 20..25 O26..O31')
     return '# C5VRX by Twotoz/contributors: EXPERIMENTAL CVT64 '+str(variant)+'\n'+text

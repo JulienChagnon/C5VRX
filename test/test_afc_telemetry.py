@@ -67,7 +67,7 @@ class AfcTelemetryTest(unittest.TestCase):
     def test_actual_print(self):
         source = (ROOT / "main/control.c").read_text(encoding="utf8")
         start = source.index("typedef struct {", source.index("static unsigned s_afc_corrections"))
-        end = source.index("/* Verified kp ladder", start)
+        end = source.index("/* Learned offset sign", start)
         declarations = source[start:end]
         start = source.index("void control_print(void)")
         end = source.index('    printf("CONTROL channel=', start)

@@ -8,12 +8,9 @@
  * each other. A batch that fails restarts the count, so a burst of bad
  * windows can delay a decision but never shape it.
  *
- * Profiles: DEFAULT (normal >= 12 MHz class, kp 0.85), KP060 / KP050
- * (narrow >= 10 MHz class, calmer tracker) for low deviations, WIDE (wide
- * >= 16 MHz class, kp 0.85) for deviations >= 1.6. A profile sets the
- * filter and the kp level it starts from; with AUTO the kp/LP ladder then
- * owns kp and U85Q-LP on every profile (the KP060/KP050 LUTs are ladder
- * levels of the same program). */
+ * Profiles select only the analog filter. P64 always keeps its fixed LUT.
+ * Numeric profile 2 is reserved for historical kp0.5 logs; never selected.
+ */
 #pragma once
 #include <stdbool.h>
 #include <stdint.h>
@@ -27,8 +24,7 @@
 #define DEV_AGREE_PCT    5
 /* Profile boundaries (deviation x100) with margin below the simulated
  * break-even points 0.85 / 1.15 (research). */
-#define DEV_KP050_MAX    80
-#define DEV_KP060_MAX    105
+#define DEV_NARROW_MAX    105
 /* Wide VTXs: the 12 MHz default clips their FM spectrum. Range limit,
  * bit-exact U85Q (research/data/wide.txt): deviation 1.7 3.64 dB at
  * 12 MHz vs 3.26 at 16; deviation 2.0 8.03 vs 5.27; deviation 1.4 still
@@ -38,7 +34,7 @@
 #define DEV_WIDE_MIN     160
 
 /* Values are stable (NVS-independent, but logged and compared). */
-enum { PROFILE_DEFAULT, PROFILE_KP060, PROFILE_KP050, PROFILE_WIDE, PROFILES };
+enum { PROFILE_DEFAULT, PROFILE_NARROW, PROFILE_RETIRED_KP050, PROFILE_WIDE, PROFILES };
 
 typedef struct {
     int32_t span[DEV_BATCH], medians[DEV_BATCHES];
@@ -95,17 +91,8 @@ static inline int profile_class(int dev_x100, bool narrow_filter_known, bool wid
     if (dev_x100 <= 0) return PROFILE_DEFAULT;
     if (dev_x100 >= DEV_WIDE_MIN) return wide_filter_known ? PROFILE_WIDE : PROFILE_DEFAULT;
     if (!narrow_filter_known) return PROFILE_DEFAULT;
-    return dev_x100 <= DEV_KP050_MAX ? PROFILE_KP050 : dev_x100 <= DEV_KP060_MAX ? PROFILE_KP060 : PROFILE_DEFAULT;
+    return dev_x100 <= DEV_NARROW_MAX ? PROFILE_NARROW : PROFILE_DEFAULT;
 }
-
-/* kp (x100) a profile starts from, and the fixed kp with the ladder OFF. */
-static inline int profile_base_kp_x100(int p)
-{
-    return p == PROFILE_KP050 ? 50 : p == PROFILE_KP060 ? 60 : 85;
-}
-
-/* Its kp_tables.h level (0 = kp 0.85, 0.05 per level). */
-static inline int profile_base_level_for(int p) { return (85 - profile_base_kp_x100(p)) / 5; }
 
 /* ---- Continuous VTX matching: measure and report only -------------------
  * After startup, a passive measurement cycle starts every 30 s on live video
@@ -120,7 +107,7 @@ static inline int profile_base_level_for(int p) { return (85 - profile_base_kp_x
  * filter, deviation 0.69-1.7, C/N 8 and 12 dB: median span within 19 kHz
  * (1.4 %) of the centred carrier; test test_afc_measure.c). The lock gate kept every window out on the board
  * (2026-10-13 walks: observed=0 with sync 100 % close in; 2026-10-18:
- * 1499 of 2036 windows), so the deviation and the ladder class it sets
+ * 1499 of 2036 windows), so the deviation
  * stayed unknown. Only narrowing the filter needs a centred carrier
  * (profile_live_switch_wanted). A cycle that cannot decide within
  * DEV_MONITOR_TIMEOUT_US starts over, so batches never mix situations far
@@ -209,10 +196,10 @@ static inline bool dev_monitor_should_store(int stored_x100, int dev_x100, bool 
  * old behaviour (PENDING for the next boot). */
 #define DEV_NARROW_AGREE 2u
 
-/* Filter width order of the profiles: KP050 < KP060 < DEFAULT < WIDE. */
+/* Filter width order of the profiles: NARROW < DEFAULT < WIDE. */
 static inline int profile_width_rank(int p)
 {
-    return p == PROFILE_KP050 ? 0 : p == PROFILE_KP060 ? 1 : p == PROFILE_WIDE ? 3 : 2;
+    return p == PROFILE_RETIRED_KP050 || p == PROFILE_NARROW ? 1 : p == PROFILE_WIDE ? 3 : 2;
 }
 
 /* A narrow filter clips an off-centre carrier (research README section 3:
@@ -229,7 +216,7 @@ static inline bool profile_narrowing(int want, int active)
 static inline bool profile_live_switch_wanted(bool enabled, int want, int active, unsigned agree_streak,
                                               bool narrow_ok)
 {
-    if (!enabled || want < 0 || want >= PROFILES || want == active) return false;
+    if (!enabled || want < 0 || want >= PROFILES || want == active || want == PROFILE_RETIRED_KP050) return false;
     if (!profile_narrowing(want, active)) return true;   /* widen at once */
     return narrow_ok && agree_streak >= DEV_NARROW_AGREE;
 }

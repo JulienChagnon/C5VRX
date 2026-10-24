@@ -1,6 +1,9 @@
 """Does the kp/LP ladder reach the range edge? (C5VRX by Twotoz and the
 C5VRX contributors; extends best_combo.py and kp_ladder.h, README section 18.)
 
+Historical replay: uses the frozen policies in research/legacy_demod/.
+LP has been removed from the active firmware.
+
 control.c gated the ladder and its two-second target confirmation with the
 AFC window gate, which includes afc2_envelope_stationary(): every 32-sample
 block power within 2.5x of its neighbour. That test was written for the AFC.

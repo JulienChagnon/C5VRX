@@ -39,7 +39,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import sim  # noqa: E402
 
-HEADER = HERE.parent / 'main' / 'kp_tables.h'
+HEADER = HERE.parent / 'research' / 'legacy_demod' / 'kp_tables.h'
 KP_LADDER = (0.85, 0.80, 0.75, 0.70, 0.65, 0.60, 0.55, 0.50)   # level 0 = U85Q
 RANGE_MHZ = (-6.0, 9.0)
 QUAD_KP = 0.5
@@ -127,9 +127,10 @@ def check():
         ok &= same
         print(f'{name}: {"bit-exact" if same else "MISMATCH"} vs data/tracker_luts.json')
     for kp, f in ((0.85, 'u85q'), (0.6, 'u85q_kp060'), (0.5, 'u85q_kp050')):
-        same = np.array_equal(build_lut(kp), sim.u85q_lut(HERE.parent / 'main' / f'{f}.bsasm'))
+        path = HERE.parent / 'research/legacy_demod/u85q.bsasm' if kp == .85 else HERE / 'legacy_demod' / f'{f}.bsasm'
+        same = np.array_equal(build_lut(kp), sim.u85q_lut(path))
         ok &= same
-        print(f'kp {kp}: {"bit-exact" if same else "MISMATCH"} vs main/{f}.bsasm')
+        print(f'kp {kp}: {"bit-exact" if same else "MISMATCH"} vs {path.relative_to(HERE.parent)}')
     base = build_lut(KP_LADDER[0])
     for kp in KP_LADDER[1:]:
         lut = build_lut(kp)

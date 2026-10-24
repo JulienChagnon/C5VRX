@@ -28,12 +28,55 @@ and outputs composite PAL/NTSC through a passive 6-bit resistor DAC.
 It includes automatic gain control, startup calibration, a sync flywheel,
 an on-screen menu and browser-based flashing and controls.
 
+This branch builds and boots **U80P64-R1 only**. U85Q, kp/LP switching and
+`m/K/k/j/P/O/H` controls are retired; see [P64 integration and evidence](docs/P64.md).
+The fixed R1 table has one positive NTSC observation; PAL, weak-signal/range
+and the final cleanup still need hardware validation. This default is an
+operator choice, not a hardware qualification claim.
+
+The PR #254 **11p receive baseline** is now applied at startup and after
+channel/bandwidth/AFC restores, before measured analog profiles and digital
+mode 0. Upgrading discards earlier RF calibrations; let startup calibration
+finish (VTX off is best). The noise-only bench result is not a measured
+sensitivity/range gain; see [11p integration and limits](docs/FINDINGS.md#11p-receive-baseline-pr-254-integration-2026-10-24).
+
+## Experimental firmware — flight safety warning
+
 > [!WARNING]
-> Experimental receiver: video or sync can disappear without warning. Ground-test
-> each firmware and camera/goggles combination, complete calibration before takeoff,
-> and keep scanning, calibration, flashing and diagnostics on the ground.
-> Do not rely on C5VRX as your only means of maintaining safe aircraft control.
-> Passing CI or a versioned release does not establish flight safety.
+> **C5VRX is an experimental FPV receiver. Bugs, signal loss, automatic
+> receive-chain changes or incompatibility with your camera/goggles can cause
+> sudden loss of video or sync, even after an apparently successful test.
+> Loss of FPV video can lead to a crash, property damage or serious injury.**
+> Do not rely on C5VRX as your only means of maintaining safe control of an aircraft.
+
+- **Test every new firmware version and hardware/settings combination on the
+  ground first.** Remove propellers for bench tests. Check startup and
+  calibration, weak-signal behaviour, recovery after video loss, and your actual
+  camera/goggles. Complete calibration before takeoff.
+- **Keep disruptive controls on the ground:** calibration, scanning, channel
+  changes, menu entry/exit, DAC tests and diagnostics can interrupt or replace
+  the live picture. Do not flash firmware or run bench tests during flight.
+- **Automatic changes are experimental too.** Live filter/profile switching is
+  currently documented as enabled by default and awaiting board validation.
+  It restarts part of the receive chain and may interrupt video. Console
+  `A` disables live profile switching (report-only mode); confirm the state
+  with `T` on your build. Live OUTPUT, format and profile changes restart the pipeline. These settings do not establish flight safety.
+- If you proceed to flight testing, use a controlled area clear of people,
+  traffic and property, keep the aircraft close, and have a safe way to recover
+  control if video disappears. Follow applicable local rules, including visual
+  line-of-sight and observer requirements.
+- **A versioned release, a “Latest” label or passing CI is not flight
+  qualification.** Unmerged PR builds are development builds. Check the exact
+  build's documented hardware and flight-test evidence; a test of an earlier
+  build does not validate later changes.
+- Report unexpected video loss with the exact firmware version/commit, hardware,
+  settings, reproduction steps and any available logs/DVR footage. Preserve
+  evidence after an incident, and investigate on the ground before flying again.
+
+The firmware is provided under [GPL-3.0-only](LICENSE), including its warranty
+and liability provisions in sections 15–17, to the extent permitted by
+applicable law. This warning does not replace those terms or limit rights
+that cannot legally be excluded.
 
 ## Video
 
@@ -157,13 +200,16 @@ without Enter; `h` lists the commands supported by your firmware.
 | `F` / `Z` | Recalibrate / DAC self-test (ground only) |
 | `D` / `R` | Health report / per-second field diagnostics |
 | `I` / `M` / `L` | IQ snapshot / gain map / bench IQ lane test |
-| `K` / `k` / `j` / `P` | Automatic kp/LP mode / calmer kp / faster kp / LP toggle |
+| `A` | Live analog filter/profile switching on/off (saved) |
 | `` ` `` | USB download mode |
 
-Automatic kp/LP is enabled with fresh settings; manual `k`, `j` or `P`
-saves AUTO OFF. `A` toggles live profile switching (default on, experimental).
-These changes can restart the pipeline; live changes share a five-second
-cooldown. Check `T` after changing settings. Higher OUTPUT levels can clip.
+P64 always uses the same fixed program and LUT. Profiles select only the
+analog filter (DEFAULT, NARROW or WIDE); old `kp_auto` and `lp_cn` settings
+are ignored. `A` toggles experimental live profile switching (default on).
+Live OUTPUT, comparator-format and profile changes share a five-second
+cooldown and verified halted restart/rollback. Higher OUTPUT levels can clip.
+GAIN always starts AUTO at boot; OUTPUT and FLYWHEEL preferences are saved.
+Check `T` after changing settings. Retired models remain research only.
 
 The browser terminal and flasher use the port one at a time. **Download log**
 saves the displayed output; only the latest 120,000 characters are retained.

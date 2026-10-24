@@ -119,9 +119,9 @@ bool phy_filter_capture_base(void)
 #endif
 }
 
-/* The code is applied from the boot-captured bytes, so a retune that did or
- * did not rewrite them gives the same result; read-back verified, on a
- * mismatch the calibrated bytes go back. */
+/* Default bytes are the 11p baseline (60). Explicit code/skirt profiles
+ * retain the factory-byte reference so the sweep can still try wider
+ * filters. Verify every write; on mismatch return to the 11p baseline. */
 bool phy_filter_set_code(int code)
 {
 #ifdef C5VRX_PHY_PINNED
@@ -130,14 +130,14 @@ bool phy_filter_set_code(int code)
     bool ok = s_filter_base_valid;
     if(ok)phy_observation_changed();
     for (uint8_t i = 0; ok && i < 2; ++i) {
-        uint8_t v = code == PHY_FILTER_CALIBRATED ? s_filter_base[i] :
+        uint8_t v = code == PHY_FILTER_CALIBRATED ? 60u :
                     (uint8_t)((s_filter_base[i] & ~63u) | (unsigned)code);
         phy_i2c_writeReg(0x67, 1, 6 + i, v);
         ok = phy_i2c_readReg(0x67, 1, 6 + i) == v;
     }
     if (ok) s_filter_code = code;
     else if (s_filter_base_valid) {
-        for (uint8_t i = 0; i < 2; ++i) phy_i2c_writeReg(0x67, 1, 6 + i, s_filter_base[i]);
+        for (uint8_t i = 0; i < 2; ++i) phy_i2c_writeReg(0x67, 1, 6 + i, 60u);
         s_filter_code = PHY_FILTER_CALIBRATED;
     }
     lock_give();
@@ -156,13 +156,13 @@ bool phy_filter_set_skirt(int offset)
     bool ok = s_filter_base_valid;
     if(ok)phy_observation_changed();
     for (uint8_t i = 2; ok && i < 8; ++i) {
-        uint8_t v = offset ? dsp_filter_code(s_filter_base[i], offset) : s_filter_base[i];
+        uint8_t v = offset ? dsp_filter_code(s_filter_base[i], offset) : 60u;
         phy_i2c_writeReg(0x67, 1, 6 + i, v);
         ok = phy_i2c_readReg(0x67, 1, 6 + i) == v;
     }
     if (ok) s_filter_skirt = offset;
     else if (s_filter_base_valid) {
-        for (uint8_t i = 2; i < 8; ++i) phy_i2c_writeReg(0x67, 1, 6 + i, s_filter_base[i]);
+        for (uint8_t i = 2; i < 8; ++i) phy_i2c_writeReg(0x67, 1, 6 + i, 60u);
         s_filter_skirt = 0;
     }
     lock_give();
@@ -183,9 +183,9 @@ int phy_filter_hw_mismatch(uint8_t hw[8], uint8_t want[8])
     int bad = 0;
     lock_take();
     for (uint8_t i = 0; i < 8; ++i) {
-        uint8_t w = i < 2 ? (s_filter_code == PHY_FILTER_CALIBRATED ? s_filter_base[i] :
+        uint8_t w = i < 2 ? (s_filter_code == PHY_FILTER_CALIBRATED ? 60u :
                              (uint8_t)((s_filter_base[i] & ~63u) | (unsigned)s_filter_code)) :
-                    (s_filter_skirt ? dsp_filter_code(s_filter_base[i], s_filter_skirt) : s_filter_base[i]);
+                    (s_filter_skirt ? dsp_filter_code(s_filter_base[i], s_filter_skirt) : 60u);
         uint8_t h = phy_i2c_readReg(0x67, 1, 6 + i);
         if (hw) hw[i] = h;
         if (want) want[i] = w;
@@ -244,6 +244,72 @@ bool phy_dfilt_apply_default(void)
     return ok;
 #else
     return false;
+#endif
+}
+
+/* ---- 11p receive baseline -----------------------------------------------
+ * PR #254, extending the pinned legacy PHY lab (#150-155).
+ * Original 11p observation: SushiDude (@Ready4Sushi). The helper changes
+ * flags, eight analog bytes and four MMIO fields; (0,0) is NOT rollback.
+ * Calibrated analog profiles may override the bytes after this baseline. */
+#ifdef C5VRX_PHY_PINNED
+extern unsigned char phy_param[];
+extern void phy_11p_set(uint8_t enable, uint8_t mode);
+static const struct { uint32_t addr, mask, value; } s_11p_fields[] = {
+    {0x600A7CE4u, 0x1cu, 0x10u},
+    {0x600A7030u, 0x20u, 0},
+    {0x600A7048u, 0x7f00u, 0x4000u},
+    {0x600A71C4u, 0xfe0000u, 0x440000u},
+};
+#endif
+
+/* Only the persistent flags/MMIO: analog profile overrides are verified
+ * separately by phy_filter_hw_mismatch(). -1 means unsupported. */
+int phy_11p_hw_enabled(void)
+{
+#ifdef C5VRX_PHY_PINNED
+    lock_take();
+    bool ok = phy_param[0x26] == 1 && phy_param[0x27] == 0;
+    for (unsigned i = 0; i < 4; ++i)
+        ok &= (REG_READ(s_11p_fields[i].addr) & s_11p_fields[i].mask) == s_11p_fields[i].value;
+    lock_give();
+    return ok;
+#else
+    return -1;
+#endif
+}
+
+esp_err_t phy_11p_apply_default(void)
+{
+#ifndef C5VRX_PHY_PINNED
+    return ESP_ERR_NOT_SUPPORTED;
+#else
+    phy_begin();
+    uint32_t saved[4];
+    uint8_t analog[8], flags[2] = {phy_param[0x26], phy_param[0x27]};
+    for (unsigned i = 0; i < 4; ++i)
+        saved[i] = REG_READ(s_11p_fields[i].addr) & s_11p_fields[i].mask;
+    for (uint8_t i = 0; i < 8; ++i) analog[i] = phy_i2c_readReg(0x67, 1, 6 + i);
+    phy_11p_set(1, 0);
+    bool ok = phy_11p_hw_enabled() == 1;
+    for (uint8_t i = 0; i < 8; ++i) ok &= phy_i2c_readReg(0x67, 1, 6 + i) == 60;
+    esp_err_t result = ESP_OK;
+    if (!ok) {
+        phy_param[0x26] = flags[0]; phy_param[0x27] = flags[1];
+        for (uint8_t i = 0; i < 8; ++i) phy_i2c_writeReg(0x67, 1, 6 + i, analog[i]);
+        for (unsigned i = 0; i < 4; ++i) {
+            const uint32_t addr = s_11p_fields[i].addr, mask = s_11p_fields[i].mask;
+            REG_WRITE(addr, (REG_READ(addr) & ~mask) | saved[i]);
+        }
+        bool restored = phy_param[0x26] == flags[0] && phy_param[0x27] == flags[1];
+        for (uint8_t i = 0; i < 8; ++i)
+            restored &= phy_i2c_readReg(0x67, 1, 6 + i) == analog[i];
+        for (unsigned i = 0; i < 4; ++i)
+            restored &= (REG_READ(s_11p_fields[i].addr) & s_11p_fields[i].mask) == saved[i];
+        result = restored ? ESP_ERR_INVALID_RESPONSE : ESP_FAIL;
+    }
+    phy_end();
+    return result;
 #endif
 }
 

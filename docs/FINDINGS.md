@@ -7,6 +7,67 @@ scripts and data live in that branch under `v4/docs/PICTURE_CLIFF_STUDY.md`,
 Synthetic results are host simulations; board results are labelled as such.
 Measured range is not established.
 
+## P64 demodulator on mode 0 (PR #250 model, 2026-10-23)
+
+This branch repairs the P64 model from PR #250 on top of the digital-filter
+work in #248. U80P64-R1 is now the only firmware model by the explicit
+operator decision of 2026-10-23; U85Q, kp switching and LP are archived.
+The 7.2-degree number describes the 50-video-state grid, not measured phase
+precision. The full table and assembled output are host-checked; combined
+firmware timing and range remain unproven. The initial board comparison on
+2026-10-23 had the VTX off (operator clarification), so it does not establish
+picture quality. A separate host tone test found the original P64 latching
+porch/zero frequency into sync code 15. R1 corrects phase-advance output,
+exit behavior and token allocation; 588 clean-tone cases and 12 PAL/NTSC
+validation cases pass. The unchanged R1 table later had one positive VTX-on NTSC observation
+(build `d894bef`, detailed in P64.md). PAL, weak-signal/range and this final
+cleanup have not been hardware-qualified.
+See [P64 integration, source provenance and board checks](P64.md).
+
+## 11p receive baseline (PR #254 integration, 2026-10-24)
+
+Operator request: bring the 11p method from PR #254 into PR #251. This
+extends C5VRX by Twotoz and contributors' pinned PHY lab in
+`legacy/c5vrx4/main/phy_rx_lab.c` (#150-155); the original 11p observation
+is credited to SushiDude (@Ready4Sushi). Source implementation and noise-only
+measurements: [PR #254, commit 421c690](https://github.com/Twotoz/C5VRX/tree/421c690dd33d03d03efc0517aeedb46e0736308a).
+The reported paired 5865 MHz noise deltas were -0.291/-0.392/-0.223 dB;
+5805 MHz included an inconclusive long-dwell result. Those are VTX-off
+observations, not proof of improved sensitivity, preserved wanted signal,
+video SINAD or range. This integrated build has not been flashed or measured.
+
+The pinned `phy_11p_set(1,0)` is applied after vendor bandwidth/gain setup
+on every RF restore, then the measured analog profile, digital mode 0 and
+DC hook are replayed. Entry verifies both `phy_param` flags, all eight BBTOP
+0x67 bytes 6..13 (=60) and the four recovered MMIO masks. On entry failure,
+the exact saved flags, bytes and masked MMIO fields are restored and verified;
+any supported-PHY entry/rollback failure stops through `ESP_ERROR_CHECK`
+instead of continuing with an unknown receive context. Unsupported PHYs
+refuse the private helper without writes, as with the existing filter code.
+The realtime IQ/BitScrambler/DAC path is unchanged; the bench suites are not
+imported and no 11p menu/NVS toggle is added.
+
+The default analog bytes (`PHY_FILTER_CALIBRATED` code / zero skirt) now
+mean 60, matching the full 11p baseline. Explicit capacitor codes and nonzero
+skirts still use the original boot-captured factory bytes as their reference.
+This lets calibration measure wider candidates rather than saturating every
+skirt candidate at 60. Thus a selected calibrated profile may intentionally
+override part of 11p's analog bytes; the original noise-only delta cannot be
+assigned to that combined profile. `PHY11P` diagnostics verify persistent
+flags/MMIO; `FILTER_HW` separately checks the actual requested analog profile.
+Digital mode 0 is still verified and the vendor ADC-rate choice is retained.
+
+Migration: filter version 6, DC version 8, calibration generation 3, saved
+gain maps version 7, C/N noise/anchor maps version 4 and noise-derived `gtab`
+version 4 discard pre-11p measurements. Settings, OUTPUT and flywheel are
+preserved. A fresh quiet startup establishes new RF references; without one,
+C/N remains unknown. Software regression tests execute the production helper
+with fault injection at all 14 entry fields, exact rollback, failed rollback,
+unsupported PHY refusal, nested restores and default/explicit analog profiles.
+They do not establish physical signal quality. Bench acceptance still needs
+VTX-on PAL/NTSC, weak-signal attenuation, chroma/detail, retunes at 5805/5865 MHz
+and loaded CVBS comparisons for the final calibrated combination.
+
 ## Digital RX filter mode 0 (PR #244 follow-up, 2026-10-23)
 
 Source: [Twotoz's bench report on PR #244](https://github.com/Twotoz/C5VRX/pull/244#issuecomment-6345839653),

@@ -30,3 +30,7 @@ sdkconfig.*
 # Raw board logs and captures stay out of git; summarize results in docs/.
 research/data/board_*
 *.raw.log
+
+# Low-C/N research keeps its compressed trace and reproducible assembly.
+research/data/p64_lowcn*/trials.jsonl
+research/data/p64_lowcn*/*.bs

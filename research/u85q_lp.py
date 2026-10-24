@@ -45,7 +45,7 @@ from numba import njit
 
 HERE = Path(__file__).resolve().parent
 MAIN = HERE.parent / 'main'
-OUT = MAIN / 'u85q_lp.bsasm'
+OUT = HERE / 'legacy_demod/u85q_lp.bsasm'
 RAW_BITS = '4 5 6 7 0 1 2 3 15 11'.split()     # U85Q PAIR4411 address bits
 
 
@@ -74,7 +74,7 @@ def program():
 
 
 def generate(write=True):
-    src = (MAIN / 'u85q.bsasm').read_text()
+    src = (HERE / 'legacy_demod/u85q.bsasm').read_text()
     lut = next(line for line in src.splitlines() if line.startswith('lut '))
     text = f"""# C5VRX by Twotoz/contributors: U85Q-LP, U85Q plus a post-detection IIR
 # low-pass (pole 1/2) in counter A, same two bundles, same LUT.
@@ -197,7 +197,7 @@ def check_switch(n=12000, seed=197):
     import sim
     c = sim.make_case(seed, 6.0, 'PAL', 1.0, filter_hz=12e6, fields=1)
     raw = c['raw'][:2 * n].tobytes()
-    u, lp = MAIN / 'u85q.bsasm', OUT
+    u, lp = HERE / 'legacy_demod/u85q.bsasm', OUT
     ok = True
     for a, b, name in ((u, lp, 'U85Q -> LP'), (lp, u, 'LP -> U85Q')):
         steady = np.frombuffer(emulate(b, raw, 2 * n - 64), np.uint8) & 63
@@ -270,7 +270,7 @@ def check(n=20000, seed=196):
     ref = lp_codes(raw, lut)[:len(got)]
     bad = np.flatnonzero((got[:len(ref)] & 63) != ref)
     # U85Q itself under the same emulator, against sim.u85q_codes.
-    u = np.frombuffer(emulate(MAIN / 'u85q.bsasm', raw.tobytes(), len(raw) - 64), np.uint8)
+    u = np.frombuffer(emulate(HERE / 'legacy_demod/u85q.bsasm', raw.tobytes(), len(raw) - 64), np.uint8)
     uref = sim.u85q_codes(raw)
     shift = next(s for s in range(8) if np.array_equal(u[s:s + 4000] & 63, uref[:4000]))
     ubad = np.flatnonzero((u[shift:shift + len(uref) - 64] & 63) != uref[:len(uref) - 64][:len(u) - shift])

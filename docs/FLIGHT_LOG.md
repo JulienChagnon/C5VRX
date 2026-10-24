@@ -58,7 +58,7 @@ What the receiver was, how it was set and calibrated, and why it started.
 | reset reason (power-on, brownout, watchdog, panic, software) | a brownout in flight explains a black screen without any RF cause |
 | chip revision, board id (hash of the MAC, not the MAC) | unit-to-unit differences without identifying a person |
 | PHY context: gain table maximum, band5, IQ scale | the DC rows and the gain table the log refers to |
-| settings: channel, standard mode, output level, gain mode, flywheel, kp mode, live profile switch, AFC sign | user settings that cost range (fixed gain) are visible |
+| settings: channel, standard mode, output level, gain mode, flywheel, live profile switch, AFC sign | user settings that cost range (fixed gain) are visible |
 | calibration this boot: what ran (filter, DC rows per filter, sampling phase, deviation), result, duration | "this boot calibrated" vs "loaded" |
 | filter settings NORMAL/NARROW/WIDE (bw20, code, skirt, width, noise bandwidth) | calibration-to-calibration differences |
 | DC tables: rows, template rows, ready per filter; repair flags | a stale or partial table |
@@ -92,11 +92,11 @@ current 69-byte payload (less when rare events occupy blocks).
 | gain | min / median / max index, max clip (per mille / 4), gain writes, overloads |
 | DC | residual I and Q of the active row (0.05 cells, signed), offset I and Q of the active row (codes), servo corrections |
 | AFC | offset applied (kHz), porch residual (kHz), corrections |
-| demodulator | profile, kp level, LP (packed), sampling-phase state and last probe excess |
+| demodulator | analog filter profile, reserved historical kp/LP slots (P64 writes unknown kp and LP off), sampling-phase state and last probe excess |
 | received level | carrier at the chip pin (0.1 dBm), the noise it is measured against (dBm), flags: valid, above the noise, exact (G54+), noise learned (`main/rx_level.h`) |
 | gain write reasons | writes down (attack), writes up (release), fast-path overloads forwarded (sentinel), overloads within 5 ms of a write |
-| C/N-AUTO | decision C/N plus power, M2M4 and envelope estimates (0.1 dB, -990 unknown), confidence and source (+32: a small carrier on a 4-bit-limited row, not used for decisions), flags (`main/cn_auto.h`); only noise-referenced power may drive AFC/profile/kp/LP |
-| verified output | exact running program family (`U85Q` or `U85Q-LP`, model/instruction hash `1a09f5c092e8`), applied output level, flag format, guard standard, requested/active flywheel; identity is unknown unless the live transport state is verified |
+| C/N-AUTO | decision C/N plus power, M2M4 and envelope estimates (0.1 dB, -990 unknown), confidence and source (+32: a small carrier on a 4-bit-limited row, not used for decisions), flags (`main/cn_auto.h`); only noise-referenced power may drive AFC/profile decisions; kp/LP consumers are retired |
+| verified output | verified demodulator ID: 3 = `U80P64-R1`; historical IDs 1/2 = `U85Q`/`U85Q-LP` (instruction hash `1a09f5c092e8`), applied output level, flag format, guard standard, requested/active flywheel; identity is unknown unless the live transport state is verified |
 | output observer | task-side samples and fresh samples, native H/V trust (% of fresh samples), native in-phase H lines, repaired and suppressed sync tips, longest continuously observed native-H unlock (ms), observer gaps |
 | environment | temperature (degC) |
 | flags | menu, scan, calibrating, paused, fault latched, flywheel active, status screen |
@@ -118,7 +118,8 @@ false zero measurement.
 uptime (ms) and type, then:
 
 - channel change (from, to, why: menu, console, scan), profile switch (from,
-  to, reason, deviation), kp/LP switch (from, to, result, restart time);
+  to, reason, deviation); historical kp/LP switch records remain readable
+  but are no longer emitted;
 - calibration start/end (manual or startup, what, result), `DC CAL NEEDED`
   (reason, filter), gain mode change, menu open/close;
 - fault or latch (DC restore, transport rollback, live off);
@@ -133,7 +134,7 @@ uptime (ms) and type, then:
 8128 bytes of contiguous IQ (the console `I` format, Ihigh_Qlow, 40 MS/s; 62
 bytes shorter than `I` so a slot is exactly two sectors)
 with a header: session, uptime, trigger, gain, frequency, filter key,
-profile, kp/LP, DC offsets of the row, sampling-phase position, and the
+profile, reserved historical kp/LP slots, DC offsets of the row, sampling-phase position, and the
 verified output program/level/validity snapshot.
 
 When the record ring is full the oldest block is erased and reused: the most
@@ -153,8 +154,10 @@ a more important one replaces it, at equal priority the first one stays:
 - `VIDEO_Q` more than 6 dB below its 30-second median;
 - the first carrier of a session (reference), and one every 10 minutes.
 
-Every snapshot can be run through `research/sensitivity_model.py` and the
-bit-exact U85Q chain afterwards, and a bad one becomes a CI regression case.
+Snapshots can be replayed with the recorded demodulator identity: use the
+P64 reference in `research/p64_model.py` for U80P64-R1 and the archived
+U85Q/U85Q-LP references for historical logs. Keep the captured context and
+model identity with any regression case; do not decode P64 as U85Q.
 
 ## Deliberately not logged
 

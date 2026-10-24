@@ -89,7 +89,7 @@ class SlowGuard:
 
 
 def checks():
-    tables_text = (HERE.parent / 'main/kp_tables.h').read_text()
+    tables_text = (HERE.parent / 'research/legacy_demod/kp_tables.h').read_text()
     words = np.array([int(x, 16) for x in re.findall(r'0x([0-9a-f]{4})', tables_text)], np.uint16)
     assert len(words) == 8 * 1024
     for gain, pivot in ((1, 21), (1.5, 13), (2, 16), (2.5, 19), (.8, 3)):

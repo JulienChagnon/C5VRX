@@ -1,0 +1,36 @@
+{
+  "generation": 81,
+  "total_evals": 3888,
+  "elapsed_sec": 609.4670708179474,
+  "best_fitness": 201.57498952735938,
+  "best_metrics": {
+    "lock_m3": 0.9719012605042017,
+    "lock_4": 1.0,
+    "sinad_4": 4.150491452588449,
+    "unique_dac_levels": 55,
+    "demod_step_deg": 7.2,
+    "n_vid": 50,
+    "n_sync": 14
+  },
+  "best_candidate": {
+    "n_sync": 14,
+    "kp_sync": 0.5996436103559846,
+    "kp_vid": 0.6511704050595788,
+    "v_sync_prior": -0.9795408059370043,
+    "v_video_prior": 0.651659981386619,
+    "r_uncertainty": 1.334773862014103,
+    "w_uncertainty": 0.3912601459493753,
+    "err_pos_bound": 1.3253549555419375,
+    "err_neg_bound": -1.4752378695700792,
+    "err_scale": 0.11729215721955881,
+    "w_suppress_thresh": 0.6586194701115526,
+    "exit_sync_th": 0.3141592653589793,
+    "enter_sync_th": -1.0010771963716354,
+    "sync_weight_thresh": 0.4735229126996897,
+    "vid_weight_thresh": 0.3,
+    "code_quant_offset": -0.23906383131799172,
+    "video_gain_boost": 0.95,
+    "min_video_code": 14,
+    "max_sync_code": 15
+  }
+}
