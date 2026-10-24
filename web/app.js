@@ -812,6 +812,9 @@ function flightLogFeed(text) {
     const c = flightLog.completeness();
     if (c.blocks < Number(flightLog.info.blocks || 0) || c.snapshots < Number(flightLog.info.snapshots || 0))
       flightLogStatus.textContent += ` Some parts stayed damaged after ${flightLog.passes} passes; read again for the rest.`;
+    if (flightLog.dumpMs !== null) flightLogStatus.textContent += ` Read in ${(flightLog.dumpMs / 1000).toFixed(1)} s.`;
+    if (flightLog.slowPasses)
+      flightLogStatus.textContent += ' It used the slower USB path: the receiver was short of memory, usually because its on-screen menu was open. Close the menu for a faster read.';
   }
   syncFlightLogControls(serialConsole.state === 'connected');
 }
