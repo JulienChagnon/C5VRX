@@ -158,7 +158,7 @@ static void apply_filter(void)
 }
 
 /* Every tuning/filter transaction restores the same receive state: vendor
- * AGC off, digital filter, forced gain, analog filter, DC hold. */
+ * AGC off, forced gain, 11p baseline, analog profile, digital filter, DC hold. */
 static void restore_lock(void)
 {
     (void)phy_dco_release();          /* the restore must replay vendor rows */
@@ -168,6 +168,11 @@ static void restore_lock(void)
     phy_rfagc_disable();
     phy_wifi_fbw_sel(s_filter.bw20 ? 0u : 1u);
     phy_force_rx_gain(true, s_gain);
+    const esp_err_t p11 = phy_11p_apply_default();
+    if (p11 == ESP_ERR_NOT_SUPPORTED)
+        ESP_EARLY_LOGW(TAG, "11p baseline not applied (unsupported PHY)");
+    else
+        ESP_ERROR_CHECK(p11);        /* never resume after failed entry/rollback */
     apply_filter();
     if (!phy_dfilt_apply_default())
         ESP_EARLY_LOGW(TAG, "digital RX filter mode 0 not applied (unsupported PHY or readback mismatch)");
@@ -361,13 +366,14 @@ bool rf_set_filter(rf_filter_t filter)
 rf_filter_t rf_filter(void) { return s_filter; }
 
 /* Requested versus read back (phy.c verifies every register write and
- * falls back to the calibrated bytes). Without the pinned PHY nothing can
+ * falls back to the 11p baseline bytes). Without the pinned PHY nothing can
  * be written, so only the chip's own calibration counts as applied. */
 bool rf_filter_applied(void)
 {
     const int digital = phy_dfilt_hw_mode();
+    const int p11 = phy_11p_hw_enabled();
     return phy_filter_code() == s_filter.code && phy_filter_skirt() == (int)s_filter.skirt &&
-           (digital < 0 || digital == PHY_DFILT_MODE_DEFAULT);
+           (digital < 0 || digital == PHY_DFILT_MODE_DEFAULT) && p11 != 0;
 }
 
 /* 6 bands x 8 channels. */

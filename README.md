@@ -34,6 +34,12 @@ The fixed R1 table has one positive NTSC observation; PAL, weak-signal/range
 and the final cleanup still need hardware validation. This default is an
 operator choice, not a hardware qualification claim.
 
+The PR #254 **11p receive baseline** is now applied at startup and after
+channel/bandwidth/AFC restores, before measured analog profiles and digital
+mode 0. Upgrading discards earlier RF calibrations; let startup calibration
+finish (VTX off is best). The noise-only bench result is not a measured
+sensitivity/range gain; see [11p integration and limits](docs/FINDINGS.md#11p-receive-baseline-pr-254-integration-2026-10-24).
+
 ## Experimental firmware — flight safety warning
 
 > [!WARNING]

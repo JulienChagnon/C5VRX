@@ -26,7 +26,8 @@ void phy_observation_changed(void);
 /* Analog RX filter, after ESPARGOS esp-sdr (GPL-3.0, commit ac627b0b):
  * BBTOP 0x67 regs 6/7 hold the RX0 capacitor code (absolute low six bits),
  * regs 8..13 the second stage (calibrated bytes + skirt offset). The
- * calibrated bytes are captured once after PHY init. */
+ * factory bytes are captured once after PHY init for explicit profiles.
+ * CALIBRATED code / zero skirt now select the 11p baseline byte 60. */
 #define PHY_FILTER_CALIBRATED (-1)
 bool phy_filter_capture_base(void);
 bool phy_filter_set_code(int code);
@@ -35,8 +36,8 @@ int phy_filter_code(void);
 int phy_filter_skirt(void);
 int phy_filter_calibrated_code(void);
 /* Hardware read-back of BBTOP 0x67 regs 6..13 against the bytes the shadow
- * code/skirt imply. The write-time read-back alone cannot see a later
- * vendor write (gain force, channel setup) restoring other bytes. Returns
+ * code/skirt imply (60 for the 11p defaults). Write-time readback alone
+ * cannot see a later vendor write (gain force, channel setup) restoring other bytes. Returns
  * the number of mismatching registers (0 = live filter as set), -1 when
  * unsupported; hw[8]/want[8] receive the bytes when not NULL. */
 int phy_filter_hw_mismatch(uint8_t hw[8], uint8_t want[8]);
@@ -48,6 +49,13 @@ int phy_filter_hw_mismatch(uint8_t hw[8], uint8_t want[8]);
 #define PHY_DFILT_MODE_DEFAULT 0
 bool phy_dfilt_apply_default(void);
 int phy_dfilt_hw_mode(void);
+
+/* PR #254 11p baseline, pinned helper (1,0). Verified full entry and exact
+ * saved-state rollback; ESP_ERR_INVALID_RESPONSE = entry failed/restored,
+ * ESP_FAIL = rollback failed. Callers must stop on either failure.
+ * hw_enabled checks flags/MMIO; analog overrides have separate readback. */
+esp_err_t phy_11p_apply_default(void);
+int phy_11p_hw_enabled(void);
 
 /* RX DC DACs (PBUS blocks 2/3 bank 2). A hold forces one pair in PBUS
  * debug mode with every owned live word re-asserted; any gain write or PHY

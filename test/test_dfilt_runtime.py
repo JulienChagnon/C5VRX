@@ -68,6 +68,9 @@ static int s_offset_khz;
 typedef int esp_err_t;
 #define ESP_OK 0
 #define RF_OFFSET_MAX_KHZ 2500
+#define ESP_ERR_NOT_SUPPORTED 1
+static esp_err_t phy_11p_apply_default(void){assert(phy_busy());return ESP_OK;}
+static int phy_11p_hw_enabled(void){return 1;}
 static esp_err_t channel_setup(uint16_t mhz) {
     assert(phy_busy());vendor_mode(mhz>5830 ? 8 : 0);
     s_setup_bw20=s_filter.bw20;return ESP_OK;
@@ -162,23 +165,23 @@ int main(void) {
     arc_gain_table_from_bytes(&table,NULL,ARC_5G_GAIN_MAX);
     dg_reset(&s_gain,&table,83);
     const int16_t old_model=s_gain.model_db_q8[82];
-    disk=(gtab_blob_t){.version=2,.rows=2};
+    disk=(gtab_blob_t){.version=3,.rows=2};
     disk.th_x256[83]=1024;disk.th_x256[82]=512;
-    /* VTX-on boot: no fresh noise pass; old mode-8 data must be ignored. */
+    /* VTX-on boot: no fresh noise pass; pre-11p mode-0 data must be ignored. */
     cna_apply_gain();
     assert(!s_gain_rows_measured && s_gain.model_db_q8[82]==old_model);
     assert(s_gain_th[83]==0 && s_gain_th[82]==0 && !stores);
-    /* Existing mode-0 table remains usable on the next VTX-on boot. */
+    /* Existing 11p table remains usable on the next VTX-on boot. */
     disk.version=GTAB_VERSION;s_gain_th_loaded=false;
     cna_apply_gain();assert(s_gain_rows_measured==2 && s_gain_th[83]==4);
     /* A clean startup pass replaces an old blob and publishes new data. */
-    disk.version=2;
+    disk.version=3;
     const float noise[DG_STATES]={[83]=3.0f+CNA_QUANT_CELLS2,[82]=1.0f+CNA_QUANT_CELLS2};
     receiver_gain_table_measured(noise);
     assert(stores==1 && disk.version==GTAB_VERSION && s_gain_th_new && s_cna_gain_dirty);
     cna_apply_gain();assert(s_gain_rows_measured==2 && s_gain_th[83]==3 && !s_gain_th_new);
     receiver_gain_table_measured(noise);assert(stores==1); /* unchanged data: no NVS wear */
-    puts("PASS: production gtab rejects pre-mode-0 data on VTX-on boot; fresh save/load retained");
+    puts("PASS: production gtab rejects pre-11p data on VTX-on boot; fresh save/load retained");
 }
 '''
 
@@ -200,7 +203,7 @@ class DigitalFilter(unittest.TestCase):
         phy = (ROOT / "main/phy.c").read_text()
         ownership = phy.split("#ifdef C5VRX_PHY_PINNED", 1)[0]
         ownership = re.sub(r"^#include[^\n]*\n", "", ownership, flags=re.MULTILINE)
-        digital = phy[phy.index("/* ---- Digital RX filter"):phy.index("/* ---- RX DC DACs")]
+        digital = phy[phy.index("/* ---- Digital RX filter"):phy.index("/* ---- 11p receive baseline")]
         header = (ROOT / "main/phy.h").read_text()
         default = re.search(r"^#define PHY_DFILT_MODE_DEFAULT .+$", header, re.MULTILINE)[0]
         rf = (ROOT / "main/rf.c").read_text()

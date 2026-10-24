@@ -152,7 +152,7 @@ typedef struct {
 } direct_gain_t;
 
 /* Measured gain map, persisted so a boot does not explore blindly. */
-#define DG_MAP_VERSION 6u   /* 6: digital RX mode 0; discard vendor-mode maps */
+#define DG_MAP_VERSION 7u   /* 7: 11p; discard earlier RF-context maps */
 typedef struct {
     uint8_t version, max_index;
     uint16_t freq_mhz;            /* context: channel it was measured on */

@@ -120,6 +120,7 @@ jobs:
           python3 test/test_flight_log_tool.py
           python3 test/test_settings.py
           python3 test/test_phy_observation_hook.py
+          python3 test/test_11p_runtime.py
           python3 test/test_dfilt_runtime.py
           python3 test/test_gain_map_context.py
           python3 test/test_afc_telemetry.py

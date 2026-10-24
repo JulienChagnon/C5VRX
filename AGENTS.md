@@ -710,6 +710,14 @@ requirements by themselves**.
   in docs/P64.md. Preserve the raw32K/RX40/two-lookup/DAC20-at-TX40 cadence.
   The operator controls VTX power; use short announced measurement windows.
 
+- Operator request (2026-10-24): integrate PR #254's pinned 11p helper (1,0)
+  into PR #251. Reapply before analog profiles/mode 0 on every RF restore;
+  verify full entry and exact saved-state rollback, stop on supported-PHY
+  failure. Default analog bytes are 60; explicit profiles still use factory
+  references so calibration can measure wider settings. Invalidate all old
+  RF calibration/noise/gain maps. See docs/FINDINGS.md "11p receive baseline".
+  This is an operator-selected integration, not measured range acceptance.
+
 - Digital RX filter mode 0 is reapplied after every vendor restore on the
   pinned PHY (PR #244 bench follow-up). Preserve the vendor ADC-rate choice;
   other mode values and ADC-rate overrides are lab research. Readback and
