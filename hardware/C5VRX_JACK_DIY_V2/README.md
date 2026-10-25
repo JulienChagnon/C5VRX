@@ -28,10 +28,10 @@ A two-layer DIY carrier for the Seeed Studio XIAO ESP32-C5, with a Fat Shark mod
 | Jumper | Function | Default |
 | --- | --- | --- |
 | SJ1 / 5V | Connect Fat Shark bay 5 V to XIAO 5 V | Open; bridge for bay power |
-| SJ2 / BIT 7 | Connect D10 / GPIO10 through R8 (16 kΩ) to VIDEO | Open |
-| SJ3 / BIT 8 | Connect D3 / GPIO7 through R9 (32 kΩ) to VIDEO | Open |
+| SJ2 / BIT 7 | Connect D10 / GPIO10 through R8 (15 kΩ) to VIDEO | Open |
+| SJ3 / BIT 8 | Connect D3 / GPIO7 through R9 (33 kΩ) to VIDEO | Open |
 
-R8 and R9 are **DNP** with the current six-bit firmware. The jumpers only connect hardware branches; they do not select a firmware mode. These are new **low bits**: in a future seven-bit implementation D10 is bit 0; in an eight-bit implementation D10 is bit 1, D3 is bit 0, and the existing D4–D9 outputs are bits 2–7.
+R8 is **15 kΩ** and R9 is **33 kΩ** (changed from the earlier nominal 16 kΩ / 32 kΩ); R1–R7 and the 200 Ω load are unchanged. R8 and R9 are **DNP** with the current six-bit firmware. The jumpers only connect hardware branches; they do not select a firmware mode. These are new **low bits**: in a future seven-bit implementation D10 is bit 0; in an eight-bit implementation D10 is bit 1, D3 is bit 0, and the existing D4–D9 outputs are bits 2–7.
 
 | Output configuration | SJ2 | SJ3 | Additional resistors |
 | --- | --- | --- | --- |
@@ -60,6 +60,6 @@ Digital checks are not physical qualification. REV B has not yet been built or m
 
 ## Source and attribution
 
-This carrier adapts the existing `hardware/C5VRX_JACK_DIY` board and DAC design from **C5VRX by Twotoz and the C5VRX contributors**, at repository base `fa5b1de`, with reserved expansion-pin details from PR #259. REV B adds the extra branches/jumpers, revises the layout and artwork, and includes regenerated fabrication and visualization files from the latest locally edited PCB.
+This carrier adapts the existing `hardware/C5VRX_JACK_DIY` board and DAC design from **C5VRX by Twotoz and the C5VRX contributors**, at repository base `fa5b1de`, with reserved expansion-pin details from PR #259. REV B adds the extra branches/jumpers, revises the layout and artwork, and includes regenerated fabrication and visualization files from the latest locally edited PCB. The R8/R9 value change (15 kΩ / 33 kΩ) regenerated the Gerbers, drills, PDFs, SVGs, DRC/ERC reports and front renders with KiCad 10.0.7; copper, drills and mask are unchanged, and STEP/GLB carry no silkscreen and were left as they were.
 
 Canonical source: [Twotoz/C5VRX](https://github.com/Twotoz/C5VRX). Visit the [official C5VRX website](https://twotoz.github.io/C5VRX/) for the project and its Discord invite. Applicable source terms are in [LICENSE](../../LICENSE); separate name/logo terms remain in [BRANDING.md](../../assets/BRANDING.md). This proposed hardware revision is not a claim of an already released or physically validated product.
