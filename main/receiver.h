@@ -224,7 +224,12 @@ extern volatile int s_menu_cursor;
 bool menu_open(void);
 void menu_close(void);
 void menu_render(void);
-void menu_splash(unsigned ms);   /* boot logo, before the receiver tasks */
+/* Boot logo while the receiver tasks start (main.c); Direct Gain runs
+ * under it, the menu buttons and the startup phase wait for its end. */
+bool menu_splash_begin(void);
+void menu_splash_progress(int percent);
+void menu_splash_end(void);
+bool menu_splash_active(void);
 void menu_set_standard_mode(std_mode_t mode);
 /* DAC TEST item (dac_check.h): advance pattern -> one flat level per bit ->
  * all -> none -> pattern. Bench only: a flat level carries no sync. */

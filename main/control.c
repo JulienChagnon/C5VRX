@@ -341,8 +341,9 @@ static void control_task(void *arg)
 
         /* BOOT button: short = next channel (menu: next item); 0.6 s = menu
          * (menu: do the selected item). */
-        /* A calibration status screen owns the picture: no menu, no idle exit. */
-        if (menu_status_active()) {
+        /* A calibration status screen or the boot logo owns the picture: no
+         * menu, no idle exit. */
+        if (menu_status_active() || menu_splash_active()) {
             btn = 0; long_fired = false; menu_idle = 0; continue;
         }
         if (boot_grace) { --boot_grace; btn = 0; long_fired = false; }

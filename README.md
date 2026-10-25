@@ -207,7 +207,8 @@ The menu is one black-and-white settings list with every row in view:
 **CALIBRATE**, **OUTPUT** (0.5-5.0x), **GAIN** (AUTO/MAX/fixed),
 **DAC TEST** and **EXIT**, each with its current value. A card beside the
 list keeps the frequency, signal and level in view and names what a hold
-does. Every boot shows the C5VRX logo for 3 seconds before live video.
+does. Every boot shows the C5VRX logo while Direct Gain finds its first
+gain (3-4 s), so live video starts on a settled gain.
 It closes after 30 seconds of
 inactivity, or five minutes in DAC TEST. Menu transitions can interrupt video.
 GAIN starts in AUTO on every boot.

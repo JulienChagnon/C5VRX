@@ -90,22 +90,30 @@ static void render_splash(void)
     sync_dma_c2m(s_raster.ui, sizeof(s_raster.ui));
 }
 
-/* The logo on the menu raster for `ms`, before the receiver tasks start
- * (main.c). If the raster cannot take TX, boot goes on without it. */
-void menu_splash(unsigned ms)
+bool menu_splash_active(void) { return s_splash >= 0; }
+
+/* The logo on the menu raster while the receiver tasks start (main.c).
+ * RX keeps running under the raster. If the raster cannot take TX, boot
+ * goes on without it. */
+bool menu_splash_begin(void)
 {
     s_splash = 0;
-    if (!menu_open()) {
-        s_splash = -1;
-        printf("SPLASH skipped (menu raster could not take TX)\n");
-        return;
-    }
-    const unsigned steps = ms / 50u ? ms / 50u : 1u;
-    for (unsigned k = 1; k <= steps; ++k) {
-        vTaskDelay(pdMS_TO_TICKS(50));
-        s_splash = (int)(k * 100u / steps);
-        render_splash();
-    }
+    if (menu_open()) return true;
+    s_splash = -1;
+    printf("SPLASH skipped (menu raster could not take TX)\n");
+    return false;
+}
+
+void menu_splash_progress(int percent)
+{
+    if (s_splash < 0) return;
+    s_splash = percent < 0 ? 0 : percent > 100 ? 100 : percent;
+    render_splash();
+}
+
+void menu_splash_end(void)
+{
+    if (s_splash < 0) return;
     s_splash = -1;
     menu_close();
 }
