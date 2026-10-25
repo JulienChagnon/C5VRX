@@ -26,9 +26,10 @@ A two-layer DIY carrier for the Seeed Studio XIAO ESP32-C5, with a Fat Shark mod
 ## Changes from REV B
 
 - **D1 replaces SJ1.** A 1N5819 Schottky diode (1 A / 40 V, DO-41; a 1N5817 also fits) connects bay 5 V (anode) to XIAO 5 V (cathode). Bay power no longer needs a solder bridge, and there is no jumper to open before USB programming: the diode stops USB 5 V from feeding the goggle bay.
-- D1 lies flat on the front, between the AV jack and R9, like the resistors. Fit it with the **band (cathode) toward the K mark**, on the jack side.
+- D1 lies flat on the front, between the AV jack and the resistor bank, with its holes on the same row as R7 (y = 123 mm). Fit it with the **band (cathode) toward the K mark**, on the jack side.
 - D1 uses a project footprint (`C5VRX:D_DO-41_P7.62mm_Horizontal_Compact`): 7.62 mm lead pitch, 1.7 mm pads and 1.0 mm drills, so its courtyard fits between the jack and the resistor bank.
 - To make room, bay 5 V now runs on the front along the bottom edge, the BIT 8 trace (SJ3 to R9) runs on the back underneath D1, between its pads, and one redundant GND via next to R7 was removed (R7's ground pad connects to both ground pours).
+- The rear jumpers are symmetric: SJ2 (BIT 7) sits on the R5 row and SJ3 (BIT 8) on the R3 row, at the same position across, mirrored around the middle of the resistor bank, with their labels on the outside. The BIT 7 traces were rerouted for the new SJ2 position.
 - The rear marking reads REV C, and the SJ1 label is gone.
 
 The XIAO's 5 V rail is about 0.3 V lower on bay power (diode drop); the XIAO regulates its own 3.3 V from it. With USB and the bay connected at the same time, the higher of the two supplies feeds the XIAO.
