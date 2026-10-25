@@ -9,8 +9,8 @@ R4,1k,Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal,1,YES,
 R5,470,Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal,1,YES,
 R6,240,Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal,1,YES,
 R7,200,Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal,1,YES,
-R8,16k,Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal,1,DNP,Leave empty with PR259 firmware; future DAC branch
-R9,32k,Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal,1,DNP,Leave empty with PR259 firmware; future DAC branch
+R8,15k,Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal,1,DNP,Leave empty with PR259 firmware; future DAC branch
+R9,33k,Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal,1,DNP,Leave empty with PR259 firmware; future DAC branch
 SJ1,5V LINK,Jumper:SolderJumper-2_P1.3mm_Open_Pad1.0x1.5mm,1,OPEN,Rear PCB solder bridge; no purchased component; default OPEN
 SJ2,BIT 7,Jumper:SolderJumper-2_P1.3mm_Open_Pad1.0x1.5mm,1,OPEN,Rear PCB solder bridge; no purchased component; default OPEN
 SJ3,BIT 8,Jumper:SolderJumper-2_P1.3mm_Open_Pad1.0x1.5mm,1,OPEN,Rear PCB solder bridge; no purchased component; default OPEN

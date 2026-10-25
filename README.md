@@ -98,8 +98,8 @@ remains 6-bit and the extra resistor footprints must stay **unpopulated (DNP)**.
 
 | Reserved extra branch | XIAO pin / GPIO | Nominal resistor to CVBS | Future significance |
 | --- | --- | --- | --- |
-| Seventh branch | D10 / GPIO10 | 16 kOhm | 7-bit: bit 0; 8-bit: bit 1 |
-| Eighth branch | D3 / GPIO7 | 32 kOhm | 8-bit: bit 0 (LSB) |
+| Seventh branch | D10 / GPIO10 | 15 kOhm | 7-bit: bit 0; 8-bit: bit 1 |
+| Eighth branch | D3 / GPIO7 | 33 kOhm | 8-bit: bit 0 (LSB) |
 
 “Seventh/eighth” counts physical branches; these are added **low** bits,
 not new MSBs. Existing D4..D9 branches become bits 1..6 for 7-bit or 2..7
@@ -168,7 +168,7 @@ GND ---------------+------> GND (goggle / monitor AV-in ground)
 | **Form factor** | 42.51 × 28.80 mm; XIAO, AV jack and bay header keep their REV A positions |
 | **AV output** | VIDEO on Fat Shark J1 pin 6 and PJ-320D tip + ring 1; ground on the jack sleeve |
 | **Through-hole DAC** | DIN0207 axial ¼ W resistors; existing six branches and 200 Ω shunt retained |
-| **Reserved DAC expansion** | R8: 16 kΩ from D10/GPIO10 via SJ2; R9: 32 kΩ from D3/GPIO7 via SJ3 |
+| **Reserved DAC expansion** | R8: 15 kΩ from D10/GPIO10 via SJ2; R9: 33 kΩ from D3/GPIO7 via SJ3 |
 | **Rear solder jumpers** | SJ1 / 5V: bay power; SJ2 / BIT 7 and SJ3 / BIT 8: extra DAC branches |
 | **Artwork** | C5VRX logos on both sides; REV B and 6–8 BIT DAC markings on the back |
 
