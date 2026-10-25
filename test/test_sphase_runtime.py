@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
-"""C5VRX by Twotoz/contributors: compile actual live SPHASE monitor.
-
-Exercises production control flow with measurement/hardware boundaries
-mocked; does not infer phase correctness from a synthetic HF4 value.
+"""C5VRX by Twotoz/contributors: actual shared passive calibration monitor.
+No automatic phase/DC actuator, no warning from unknown or missing maps.
 """
 from pathlib import Path
 import os
 import subprocess
 import tempfile
 import unittest
-
 ROOT = Path(__file__).resolve().parents[1]
 PREFIX = r'''
 #include <assert.h>
@@ -18,83 +15,81 @@ PREFIX = r'''
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include "calibration_policy.h"
+#include "dc_health.h"
 #include "sphase_logic.h"
-typedef struct { int excess; } window_stats_t;
-static int s_sphase_excess, s_sphase_white;
+#define RF_LANE_ULTRAFINE 2
+static cal_watch_t s_basemap_watch;
+static uint32_t s_basemap_context;
+static unsigned s_health_blocks,s_health_rejected;
+static int64_t s_health_us,s_last_gain_write_us;
+static int s_drift_avg[2],s_sphase_excess;
 static const char *s_sphase_state="unverified";
-static sphase_scan_t s_sphase_last={.best=0x7fffffff,.worst=-1};
-static sphase_live_t s_sphase_live={.gap_us=SPHASE_LIVE_GAP_US};
-static unsigned s_current_gain=50;
-static bool owner=true, carrier=true, copied=true;
-static int measured;
-static int64_t now=1;
-static unsigned collections, scans, pauses, slips;
-static char logs[8192];
-static int64_t esp_timer_get_time(void) { return now; }
-static bool quiet_owner(void) { return owner; }
-static bool collect(unsigned windows, window_stats_t *w) {
-    assert(windows==16); ++collections; w->excess=measured; return copied;
+static bool s_dc_urgent,s_startup,s_scan_active,s_menu_active;
+static bool paused,busy,splash,copy_ok=true,qualified=true,video,circle,change_context;
+static int measured_i,measured_q,mismatch,phase=20;
+static unsigned env=100;
+static double m2=2,kurt=2;
+static int64_t now=100000;
+static unsigned context=1,collections,warnings;
+static int64_t esp_timer_get_time(void){return now;}
+static bool receiver_paused(void){return paused;}
+static bool phy_busy(void){return busy;}
+static bool menu_splash_active(void){return splash;}
+static unsigned rf_lane(void){return 2;}
+static uint32_t health_context(void){return context;}
+static int phy_filter_hw_mismatch(void *a,void *b){(void)a;(void)b;return mismatch;}
+static bool video_recent(void){return video;}
+static unsigned dsp_quiet_limit(int clip){(void)clip;return 115;}
+typedef struct {unsigned windows,envelope_x100;int dc_i,dc_q;bool dc_circle,dc_qualified;
+ double noise_m2,noise_m4;struct {int clip_pm;} m;} window_stats_t;
+static bool collect_stats(unsigned n,window_stats_t *w,bool noise){
+ assert(n==24 && noise);++collections;
+ *w=(window_stats_t){.windows=copy_ok?n:0,.dc_i=measured_i,.dc_q=measured_q,
+ .dc_circle=circle,.dc_qualified=qualified,.envelope_x100=env,.noise_m2=m2*n,.noise_m4=kurt*m2*m2*n};
+ if(change_context)++context;
+ return copy_ok;
 }
-static int sphase_record(const window_stats_t *w) { s_sphase_excess=w->excess; return w->excess; }
-static bool sphase_on_carrier(void) { return carrier; }
-/* Exported mock remains legal if production no longer references it; any
- * revival of the old disruptive live scan is observable to these assertions. */
-void sphase_carrier_scan(const char *stage, bool repair) {
-    (void)stage;(void)repair; ++scans; ++pauses; slips+=2;
-}
-static int recorded_printf(const char *format, ...) {
-    size_t n=strlen(logs); va_list ap; va_start(ap,format);
-    int written=vsnprintf(logs+n,sizeof(logs)-n,format,ap); va_end(ap);
-    assert(written>=0 && (size_t)written<sizeof(logs)-n); return written;
-}
-#define printf recorded_printf
+static int sphase_record(const window_stats_t *w){(void)w;s_sphase_excess=phase;return phase;}
+/* Any accidental addition of an actuator to production becomes observable. */
+unsigned actuations;
+void rx_clock_slip(unsigned n){actuations+=n;}
+void phy_dco_try_pair(void){++actuations;}
+static int log_printf(const char *format,...){if(strstr(format,"CAL_NEEDED"))++warnings;return 0;}
+#define printf log_printf
 '''
 SUFFIX = r'''
 #undef printf
-static void check_no_actuation(void) { assert(!scans && !pauses && !slips); }
-static void tick(int excess, bool has_carrier) {
-    now+=SPHASE_LIVE_CHECK_US+1; measured=excess;carrier=has_carrier;sphase_monitor();check_no_actuation();
-}
-int main(void) {
-    measured=20; sphase_monitor();
-    assert(collections==1 && !strcmp(s_sphase_state,"unverified"));
-    assert(!strstr(logs,"automatic_adjustment=deferred"));check_no_actuation();
-    tick(300,true);
-    assert(!strcmp(s_sphase_state,"drifted"));
-    assert(strstr(logs,"automatic_adjustment=deferred reason=live_actuator_unverified"));
-    unsigned previous=collections; logs[0]=0;
-    tick(320,true); assert(collections==previous+1);check_no_actuation();
-    assert(strstr(logs,"automatic_adjustment=deferred"));
-    logs[0]=0; tick(900,false);
-    assert(!strstr(logs,"automatic_adjustment=deferred"));check_no_actuation();
-    previous=collections;owner=false;tick(300,true);assert(collections==previous);owner=true;
-    logs[0]=0;copied=false;tick(300,true);assert(!strstr(logs,"automatic_adjustment=deferred"));copied=true;
-    /* A previously startup-qualified phase also stays passive on confirmed
-     * live excursions, while the existing diagnosis/confirmation runs. */
-    s_sphase_live.qualified=true;s_sphase_live.scanned_once=false;s_sphase_live.strikes=0;
-    logs[0]=0;tick(300,true);assert(!strstr(logs,"automatic_adjustment=deferred"));
-    tick(310,true);assert(strstr(logs,"automatic_adjustment=deferred"));
-    logs[0]=0;tick(30,true);assert(!strstr(logs,"automatic_adjustment=deferred"));
-    assert(!strcmp(s_sphase_state,"settled"));check_no_actuation();
-    puts("PASS: actual live SPHASE monitor is passive, noisy carrier reports deferred, no healthy-carrier scan/pause/slip");
+static void tick(void){now+=300000;drift_service();assert(!actuations);}
+int main(void){
+ tick();tick();tick();assert(s_basemap_watch.state==CAL_GOOD && !warnings);
+ measured_i=2000;tick();tick();assert(!warnings);tick();assert(warnings==1);
+ for(int k=0;k<8;++k){tick();}assert(warnings==1); /* no warning spam */
+ measured_i=0;tick();tick();tick();assert(s_basemap_watch.state==CAL_GOOD);
+ /* A single spike, ambiguous cloud, copy failure, and changing RF are not a bad map. */
+ measured_i=3000;tick();measured_i=0;tick();assert(warnings==1);
+ ++context;qualified=false;measured_i=3000;tick();tick();tick();assert(warnings==1);
+ qualified=true;copy_ok=false;tick();tick();assert(warnings==1);
+ copy_ok=true;change_context=true;tick();tick();assert(warnings==1);change_context=false;
+ ++context;measured_i=0;phase=900;tick();tick();tick();
+ assert(warnings==1 && !strcmp(s_sphase_state,"unverified")); /* high HF is not proof of bad map */
+ /* Hardware readback is independently qualified even without a valid DC cloud. */
+ ++context;copy_ok=false;mismatch=2;tick();tick();tick();assert(warnings==2);
+ mismatch=0;copy_ok=qualified=true;measured_i=0;tick();tick();tick();
+ unsigned prev=collections;s_menu_active=true;tick();assert(collections==prev);
+ splash=true;tick();assert(collections==prev+1); /* can use existing boot raster */
+ s_menu_active=splash=false;paused=true;prev=collections;tick();assert(collections==prev);
+ paused=false;s_startup=true;tick();assert(collections==prev);
+ puts("PASS: production monitor shares DC/noise/phase observations, warns only on sustained qualified bad evidence, no actuation");
 }
 '''
-
-
 class SamplingRuntimeTest(unittest.TestCase):
-    def test_actual_live_monitor(self):
-        source = (ROOT / "main/calibration.c").read_text(encoding="utf-8")
-        begin = source.index("static void sphase_monitor(void)")
-        end = source.index("const char *calibration_sphase_state(void)", begin)
-        with tempfile.TemporaryDirectory() as directory:
-            folder = Path(directory)
-            (folder / "sphase_logic.h").write_bytes((ROOT / "main/sphase_logic.h").read_bytes())
-            (folder / "monitor.c").write_text(PREFIX + source[begin:end] + SUFFIX, encoding="utf-8")
-            binary = folder / "runtime"
-            subprocess.run([os.environ.get("CC", "cc"), "-O2", "-std=c11", "-Wall", "-Wextra", "-Werror",
-                            "-I", str(folder), str(folder / "monitor.c"), "-o", str(binary)], check=True)
-            subprocess.run([str(binary)], check=True)
-
-
-if __name__ == "__main__":
-    unittest.main()
+ def test_actual_shared_monitor(self):
+  source=(ROOT/'main/calibration.c').read_text()
+  begin=source.index('static void drift_service(void)')
+  end=source.index('/* Persist the measured gain map',begin)
+  with tempfile.TemporaryDirectory() as d:
+   folder=Path(d);(folder/'monitor.c').write_text(PREFIX+source[begin:end]+SUFFIX)
+   subprocess.run([os.environ.get('CC','cc'),'-O2','-std=c11','-Wall','-Wextra','-Werror','-I',str(ROOT/'main'),str(folder/'monitor.c'),'-o',str(folder/'run')],check=True)
+   subprocess.run([str(folder/'run')],check=True)
+if __name__=='__main__':unittest.main()

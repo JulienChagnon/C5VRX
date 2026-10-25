@@ -422,7 +422,8 @@ esp_err_t phy_dco_search_verified(bool (*measure)(int dc[2]), bool (*verify)(int
         int dq = base[1] > 511 - DCO_PROBE ? -DCO_PROBE : DCO_PROBE;
         int mi[2] = {0, 0}, mq[2] = {0, 0};
         /* A centred seed needs confirmation, not two response probes. */
-        const bool centred = dco_cost(before) <= DCO_DONE_MCELLS * DCO_DONE_MCELLS;
+        const int centred_limit = verify != measure ? 300 : DCO_DONE_MCELLS;
+        const bool centred = dco_cost(before) <= centred_limit * centred_limit;
         bool ok = true;
         if (!centred) {
             dco_apply(base[0] + di, base[1]);

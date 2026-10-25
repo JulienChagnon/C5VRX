@@ -318,6 +318,11 @@ void menu_ui_render_status(menu_ui_rows_t ui, const menu_status_view_t *v)
 
 void menu_ui_render_splash(menu_ui_rows_t ui, int percent)
 {
+    menu_ui_render_splash_health(ui, percent, false);
+}
+
+void menu_ui_render_splash_health(menu_ui_rows_t ui, int percent, bool needs_calibration)
+{
     s_ui = ui;
     menu_ui_overflow = 0;
     memset(ui, MENU_INK_BLACK, sizeof(menu_ui_rows_t));
@@ -327,4 +332,6 @@ void menu_ui_render_splash(menu_ui_rows_t ui, int percent)
             if (s_menu_logo[y][x] != MENU_INK_BLACK) rect(x0 + x, y0 + y, 1, 1, s_menu_logo[y][x]);
     const int bw = 120;
     meter((W - bw) / 2, y0 + (int)MENU_LOGO_ROWS + 8, bw, percent);
+    if (needs_calibration)
+        text_box("CALIBRATION RECOMMENDED", 12, H - 7, W - 24, ALIGN_CENTER, FONT_TEXT, MENU_INK_WHITE);
 }

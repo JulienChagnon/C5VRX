@@ -157,6 +157,9 @@ void control_print_beat(void);   /* STATUS line every 2 s (console.c) */
 void calibration_start(void);
 bool filter_calibrate(bool automatic);
 void filter_request(void);
+void filter_request_full(void);
+void calibration_dump_request(void);
+bool receiver_export_noise(uint8_t row, float *cells2, uint16_t *samples, int64_t *measured_us);
 /* True until the startup calibration has finished: afterwards nothing
  * intrusive (searches, sweeps, slips, retunes) runs for the rest of the
  * boot. A manual calibration from the menu reopens it once. */

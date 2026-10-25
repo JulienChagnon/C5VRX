@@ -445,6 +445,20 @@ static void cna_key_check(void)
                 s_cna_map.anchor[CNA_STORE_LO + r] = s_cna_store.slot[k].anchor_x256[r] / 256.0f;
             }
 }
+/* Read-only export: never cna_key_check() here, since that can save/load
+ * maps. Return unknown when the current map belongs to another context. */
+bool receiver_export_noise(uint8_t row, float *cells2, uint16_t *samples, int64_t *measured_us)
+{
+    if (row >= CNA_ROWS || !s_cna_key_valid || s_cna_freq != rf_frequency_mhz() ||
+        !rf_filter_equal(s_cna_filter, rf_filter())) return false;
+    vTaskSuspendAll();
+    *cells2 = s_cna_map.noise[row];
+    *samples = s_cna_map.n[row];
+    *measured_us = s_cna_map.us[row];
+    (void)xTaskResumeAll();
+    return *samples >= CNA_MIN_SAMPLES && *cells2 > 0;
+}
+
 void receiver_cn_noise_store(uint8_t row, float cells2)
 {
     cna_key_check();

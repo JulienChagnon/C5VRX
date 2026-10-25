@@ -25,7 +25,7 @@
 
 C5VRX-5 receives analog 5.8 GHz FPV video using the ESP32-C5's own radio
 and outputs composite PAL/NTSC through a passive 6-bit resistor DAC.
-It includes automatic gain control, startup calibration, an on-screen menu
+It includes automatic gain control, quick baseline boot and manual calibration, an on-screen menu
 and browser-based flashing and controls. The sync flywheel was removed on
 2026-10-25 (it caused severe desyncs and poor range on the board).
 
@@ -37,8 +37,9 @@ operator choice, not a hardware qualification claim.
 
 The PR #254 **11p receive baseline** is now applied at startup and after
 channel/bandwidth/AFC restores, before measured analog profiles and digital
-mode 0. Upgrading discards earlier RF calibrations; let startup calibration
-finish (VTX off is best). The noise-only bench result is not a measured
+mode 0. In this branch calibration is manual; a quick boot phase check and
+passive health monitor may recommend CALIBRATE. Upgrades can invalidate older
+tables without starting an automatic calibration. The noise-only bench result is not a measured
 sensitivity/range gain; see [11p integration and limits](docs/FINDINGS.md#11p-receive-baseline-pr-254-integration-2026-10-24).
 
 ## Experimental firmware — flight safety warning
@@ -193,12 +194,16 @@ KiCad ERC/DRC and schematic/PCB parity checks are clean; REV C has not been buil
 
 ## First boot
 
-1. Power the receiver with the **VTX off** and let calibration finish.
-   The goggles show progress; the first run can take up to eight minutes.
-   Results are stored, so later boots skip completed measurements.
-   A firmware update may require a fresh calibration.
-2. Turn on the VTX and select its channel or use SCAN. Without a stored
-   channel, the receiver starts on A1 (5865 MHz).
+1. Power the receiver: it loads saved values or a fixed baseline. A bounded
+   sampling-phase check runs under the boot logo; no automatic RF/DC sweep.
+2. If repeated measurements show a poor baseline, the menu shows a calibration
+   recommendation. Use **CALIBRATE** on the ground, preferably with the VTX off.
+   Menu calibration measures the current normal filter; **Full RF optimization**
+   in the web controls is a separate, longer bench operation.
+3. Select the VTX channel or use SCAN. Without a saved channel it starts on A1.
+4. For multi-board testing, use **CALIBRATE → Download calibration report** in
+   the connected web controls. This reads data without changing settings.
+   See [measurement protocol and timing evidence](docs/FASTER_CALIBRATION.md).
 
 ## Controls (BOOT button)
 
@@ -231,7 +236,8 @@ without Enter; `h` lists the commands supported by your firmware.
 | `b` / `c` / `s` | Next band / next channel / scan |
 | `o` / `n` / `x` / `e` | Open menu / next item / select / exit |
 | `v` / `g` / `G` | Video standard / output level / gain |
-| `F` / `Z` | Recalibrate / DAC self-test (ground only) |
+| `F` / `B` / `C` | Calibrate current filter / full RF optimization / read-only calibration report |
+| `Z` | DAC self-test (ground only) |
 | `D` / `R` | Health report / per-second field diagnostics |
 | `I` / `M` / `L` | IQ snapshot / gain map / bench IQ lane test |
 | `A` | Live analog filter/profile switching on/off (saved) |

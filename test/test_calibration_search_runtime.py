@@ -167,6 +167,8 @@ int main(void) {
 #define pdMS_TO_TICKS(x) (x)
 typedef struct {unsigned windows;int excess;} window_stats_t;
 static sphase_scan_t s_sphase_last;
+static int64_t s_probe_deadline;
+static int64_t esp_timer_get_time(void) {return 1;}
 static unsigned position, pauses, resumes, copies;
 static int pattern[3]={900,1500,3000};
 static bool partial,unstable;
@@ -200,7 +202,7 @@ int main(void) {
 
     def test_actual_noise_cache(self):
         source = (ROOT / 'main/calibration.c').read_text()
-        body = source[source.index('static void noise_map_startup('):source.index('static void calib_record(bool manual', source.index('static void noise_map_startup('))]
+        body = source[source.index('static void noise_map_startup('):source.index('/* Manual F: characterize', source.index('static void noise_map_startup('))]
         run_c(r'''
 #include <assert.h>
 #include <stdio.h>

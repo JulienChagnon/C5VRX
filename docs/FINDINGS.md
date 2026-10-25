@@ -1715,3 +1715,19 @@ statistics can serve the startup gain map. Absent-VTX grace is 2 s instead of
 See [FASTER_CALIBRATION.md](FASTER_CALIBRATION.md) for bounds, tests and board
 comparison. This is host-tested search/control work, not a measured speedup,
 sensitivity gain or proof of unchanged filter selection on all C5 boards.
+
+## PR #272 policy update: baseline boot, manual calibration (2026-10-26)
+
+Operator requires a <=10-second boot target and calibration through the menu.
+The branch loads a fixed filter baseline/native or exact saved DC, removes
+RF/DC sweeps and automatic DC servo/adoption, and adds passive qualified health
+recommendations. Reset-dependent sampling alignment alone gets a bounded 600 ms
+opportunity under the existing splash. Menu F handles one filter; explicit B
+runs full optimization. Read-only C/web JSON export supports multi-board work.
+
+No measured population baseline has been invented; the gain-map preset still
+has zero contributing boards. Mock-PHY execution of actual main/PR DC searches
+shows 2.054x/1.407x/1.615x less scheduled waiting in three cases with equal final
+residuals. End-to-end board timing, residual distributions, standard-preset
+bandwidth and RF/video performance remain to be measured. This supersedes the
+initial PR #272 startup-policy note; docs/FASTER_CALIBRATION.md is current.

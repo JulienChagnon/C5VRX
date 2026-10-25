@@ -1,0 +1,67 @@
+{
+  "evidence": "deterministic mock PHY; scheduled waits only; not hardware timing or RF quality",
+  "base_commit": "dbfda2bdd193b85698d3349c084098af21abedd8",
+  "cases": [
+    {
+      "case": "centred_neighbour",
+      "main": {
+        "case": 0,
+        "observations": 3,
+        "wait_ms": 534,
+        "residual_i": 0,
+        "residual_q": 0
+      },
+      "pr": {
+        "case": 0,
+        "observations": 2,
+        "wait_ms": 260,
+        "residual_i": 0,
+        "residual_q": 0
+      },
+      "wait_speedup": 2.054
+    },
+    {
+      "case": "coupled_correction",
+      "main": {
+        "case": 1,
+        "observations": 4,
+        "wait_ms": 712,
+        "residual_i": 0,
+        "residual_q": 0
+      },
+      "pr": {
+        "case": 1,
+        "observations": 5,
+        "wait_ms": 506,
+        "residual_i": 0,
+        "residual_q": 0
+      },
+      "wait_speedup": 1.407
+    },
+    {
+      "case": "flat_local_bracket",
+      "main": {
+        "case": 2,
+        "observations": 42,
+        "wait_ms": 1092,
+        "residual_i": -500,
+        "residual_q": -500
+      },
+      "pr": {
+        "case": 2,
+        "observations": 26,
+        "wait_ms": 676,
+        "residual_i": -500,
+        "residual_q": -500
+      },
+      "wait_speedup": 1.615
+    }
+  ],
+  "boot_policy": {
+    "pr_automatic_sweeps": 0,
+    "pr_automatic_searches": 0,
+    "pr_automatic_slips": 0,
+    "pr_automatic_dc_trim": 0,
+    "note": "normal boot loads baseline/saved settings; shared passive checks run independently, not a blocking sweep"
+  }
+}

@@ -411,13 +411,13 @@ void diag_report(void)
     /* Verdicts: evidence, not a measured cause. */
     bool any = false;
 #define VERDICT(cond, text) do { if (cond) { printf("RANGE_DIAG verdict=%s\n", text); any = true; } } while (0)
-    VERDICT(!have_normal, "NOT_CALIBRATED filter (safe chip default in use; CALIBRATE or reboot with a quiet channel)");
+    VERDICT(!have_normal, "NOT_CALIBRATED filter (safe chip default in use; MENU CALIBRATE measures on request)");
     VERDICT(!rf_filter_applied(), "CALIBRATION_OR_PHY filter not read back as requested");
-    VERDICT(!calibration_sphase_settled(), "CALIBRATION_OR_PHY sampling phase not settled (repaired at boot only)");
-    VERDICT(!calibration_dc_ok(g), "NOT_CALIBRATED DC correction missing for this gain (VTX off at boot fills it)");
+    VERDICT(!calibration_sphase_settled(), "CALIBRATION_OR_PHY sampling phase unverified (manual CALIBRATE only)");
+    VERDICT(!calibration_dc_ok(g), "NOT_CALIBRATED DC row unmeasured (factory baseline; not evidence of a bad map)");
     char need[24];
     if (calibration_dc_needed(need, sizeof(need))) {
-        printf("RANGE_DIAG verdict=DC_CAL_NEEDED profile=%s (in-flight DC health; re-measured at the next boot, "
+        printf("RANGE_DIAG verdict=DC_CAL_NEEDED profile=%s (in-flight DC health; manual calibration only, "
                "or CALIBRATE now)\n", need);
         any = true;
     }

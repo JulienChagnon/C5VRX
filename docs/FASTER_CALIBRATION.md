@@ -1,101 +1,117 @@
-# Faster, verified startup calibration
+# Baseline boot and manual calibration
 
-C5VRX by Twotoz and the C5VRX contributors. Extends the startup-only
-calibration from PR #196, neighbouring-row DC repair from #228, and the
-per-filter DC context fixes. No change to the IQ/video dataplane, stored
-calibration meaning, live calibration policy or profile estimator thresholds.
+C5VRX by Twotoz and the C5VRX contributors. PR #272 extends the startup
+calibration, exact-context DC tables and phase diagnostics, with the operator's
+updated policy: boot quickly, warn on real poor performance, calibrate on request.
 
-## Changes
+## What happens at boot
 
-- DC: start the descending pass from an own, converged, unbanned neighbour
-  in the same channel/filter context. Search with 16 windows, then independently
-  measure the selected codes with all 64 windows. A centred start skips the two
-  response probes. A fast residual above 0.3 cell vector magnitude, or a failed
-  measurement, retries the full search. A failed/bad neighbour search retries
-  the chip's starting codes. Existing 1.2-cell per-axis row rejection remains.
-- Every matrix search, including the full fallback and carrier path, now
-  reapplies the chosen codes and measures their actual final residual before
-  restoring all owned PBUS words. No residual from another trial is stored.
-- Low-gain flat DC: start with a local +/-8-code bracket, expand through the
-  original +/-96 range if needed, and still bisect to adjacent codes on both
-  axes in both cross-coupling rounds. A failed neighbouring seed retries the
-  chip's codes. Original 8-window observations and final checks remain.
-- Filter: visit all 130 physical settings; make no monotonicity assumption
-  about the undocumented controls. Use 24 windows to screen only settings
-  clearly outside all three class contenders (2.5 MHz width and 25% NBW
-  guards). Extend contenders in place to all 96 windows. A screen/full
-  discrepancy outside those guards restarts the entire grid without screening,
-  including previously rejected settings. Recheck the baseline and independently
-  remeasure each distinct selected filter with 96 windows. A failed winner
-  recheck aborts storage and restores the old filter; exact channel/offset
-  restore and hardware/NVS checks remain mandatory.
-- Sampling phase: try three positions with the original 48-window precision.
-  Only a complete scan with contrast and two agreeing observations at the
-  selected position can finish early. Missing, ambiguous or drifting evidence
-  falls back to the original nine-position scan. No live phase actuation added.
-- Noise/gain map: reuse the noise statistics from accepted quiet DC verification
-  (64 windows instead of another 24) only for the exact frequency/filter, within
-  30 seconds, after the normal quiet/kurtosis gates. Missing/stale/foreign/noisy
-  entries are measured normally. Run the normal-filter noise map directly after
-  its DC pass, before visiting other profile filters. Cache is volatile, cleared
-  for each startup/manual run, and occupies 720 bytes in RTC_FAST on C5.
-- VTX deviation: shorten only the absent-VTX arrival grace from 20 to 2 seconds.
-  Keep the 15-second measurement budget, three batches of 32 estimates, spread,
-  agreement and fresh C/N gates. A later VTX is handled by the existing passive
-  live matcher and its normal profile-switch safeguards. This changes the grace
-  period; it does not make a deviation result require less evidence.
+- Load matching saved filter/DC values, otherwise use a fixed filter preset
+  (BW40, code 16, skirt 32) and the chip's native factory DC. This preset is a
+  starting configuration, not a claim of measured 12 MHz on every board.
+  Stored foreign/template DC rows never become an automatic hold or a good row.
+- Do not sweep filters, search DC, build a gain/noise map, wait for a VTX or
+  automatically trim/adopt DC. Existing gain control and AFC remain active.
+- Sampling alignment is the sole small boot exception: per-reset timing can
+  corrupt IQ, so two 24-window clean observations can qualify it; otherwise
+  try three positions with repeated confirmation. The collector has a 600 ms
+  deadline, no nine-position retry, and runs only under the existing splash,
+  at most once in the first five seconds. No late slips on live video. A result
+  that cannot be proved within the budget remains unknown for manual CALIBRATE.
+- Share passive DC/noise/phase measurements at no more than four blocks/second.
+  Three stable, independent, qualified blocks are required before recommending
+  calibration. Noise must look like noise; a carrier needs a qualified circle
+  and recent real video. Missing tables, insufficient samples, low-gain fixed
+  points, isolated spikes and a high phase metric alone do not prove a bad map.
+  Gaps and context changes reset evidence. DC above 1.5 cells or repeated filter
+  readback failure can warn; good evidence clears the warning.
+- Show the recommendation in the existing splash (no extra warning screen),
+  on the menu CALIBRATE item and in USB/web status. Never take over live video
+  merely to display an automatic warning. Unknown is not a pass or a fault.
 
-Board-proven 50 ms DC settling and two-tick collector yields are preserved.
-The filter collector retains its existing one-tick yield. The full
-8-minute startup budget remains a ceiling, not a promised duration. A difficult
-board can deliberately take the exhaustive fallback and be slower.
+The normal logo is still 3-4 seconds and can finish earlier near an overall
+9-second application deadline, leaving handover margin for a 10-second target.
+`BOOT_TIMING radio_ms=...` / `ready_ms=... target_ms=10000` measure the real
+application timing. Vendor radio initialization, a stalled driver and hardware
+failures cannot be made into a guaranteed sub-ten-second boot by this code;
+check the actual end-to-end timing on the boards. The bounded phase work runs
+inside the existing splash rather than adding a separate calibration phase.
 
-## Evidence and board comparison
+## Explicit controls
 
-Host runtime tests execute the production search functions with simulated
-hardware boundaries: coupled DC response, centred seeds, failed/noisy final
-verification, local and full flat brackets, rollback, filter screening and
-promotion, failed copies, carriers, phase ambiguity/scatter, exact noise-cache
-context and expiry, and VTX arrival timing. The spectrum test compares 24 and
-96 independent synthetic noise windows over 100 filter shapes; it checks that
-true improvements at all three width boundaries survive screening. These
-checks do not prove the guards for every physical chip or interference source.
+- Menu **CALIBRATE** / console **F**: measure/repair the default filter's gain
+  rows, characterize this one filter on noise, share DC verification windows
+  with its noise map, and do full phase qualification. No 130-setting grid or
+  other filter-profile DC tables. VTX off is needed to measure all gains.
+- Console **B** / web **Full RF optimization**: explicit exhaustive-option run,
+  including the filter grid, DC for all distinct filter profiles and VTX
+  measurement; allow up to eight minutes. Live video is interrupted.
+- A VTX-on DC run can qualify the actual current carrier row only. Never
+  label DC measured on another channel as this channel's own correction.
+- Live profile switching starts report-only on every boot; a saved preference
+  cannot enable it. Console A can explicitly opt in for that session, and
+  existing DC readiness/quality/transport guards still apply.
 
-Compare main and the PR on the same board, channel, temperature and VTX state:
-repeat manual CALIBRATE with VTX off, cold boots with existing tables, and
-VTX-on boots. Record `STARTUP done ms`, filter widths/NBW, per-row residuals,
-missing/template rows and `DCO_READY`. Inspect any `screen=fallback_full`,
-`fast_search=fallback_full` or winner-recheck failure. Confirm colour/detail,
-line lock, no watchdog, and matched profiles on narrow and wide VTXs.
-A controlled hardware comparison is still required for actual speedup,
-filter-choice equivalence, residual distributions and RF/video quality.
+Manual DC uses own/nearby starting values, short search probes, a full 64-window
+independent check and full-search fallback. A centred prediction avoids response
+probes. Flat rows grow local brackets but retain adjacent-code bisection and
+both cross-coupling rounds. One gain owner covers a DC batch, avoiding a pause
+and gain restore for every row. Board-proven settling and IDLE yields remain.
+F/B never relax existing row rejection or silently turn a template into own data.
 
-## Timing model (scheduled waits only, not measured wall time)
+## Read-only report for board testing
 
-At the configured 1 kHz tick, an old normal DC callback waits 50 + 64*2 =
-178 ms. A short callback waits 50 + 16*2 = 82 ms; its independent final
-verification still waits 178 ms. With K search observations the old search
-therefore waits 178*K and the new one 82*K + 178 ms. For K=3/4/7 this is
-534/712/1246 ms versus 424/506/752 ms (1.26/1.41/1.66x). A centred neighbour
-needs just one short observation plus verification: 260 ms versus the old
-minimum of three long observations, 534 ms (2.05x). Shared per-row overhead
-reduces those ratios; avoiding iterations or repair passes increases them.
-Flat DC uses about 42 observations for four full brackets versus about 26
-when all four local brackets succeed, at the same 26 ms scheduled delay per
-observation: about 1.62x for the search portion.
+Connect via USB in the web flasher, open **CALIBRATE**, optionally enter a board
+name, VTX state and notes, and click **Download calibration report**. Send the
+resulting JSON file to Leon. Console **C** requests the same firmware dump.
+No report request starts calibration, changes a channel/filter/gain, or captures
+raw IQ. It works before calibration as well: absent observations stay unknown.
 
-The old filter grid plus two baseline checks has 132*(20+96) = 15312 ms of
-scheduled waits. Screening costs 20+24 = 44 ms per setting; promoting to 96
-adds 72 ms. With P of 130 settings promoted and three independent winner
-checks, the new waits total 6300 + 72*P ms: 8.64 s for 25% promoted (1.77x),
-10.98 s for 50% (1.39x), 13.32 s for 75% (1.15x). No fallback is included;
-with many contenders or a fallback, the filter sweep can be slower.
+The report includes a stable pseudonymous board ID (same hash as the flight
+log, not the MAC), exact firmware/IDF/chip revision, current context and health,
+measured filter widths/NBW, active and stored per-channel/filter DC rows with
+valid/template flags, gain values/confidence/uncertainty, available noise rows,
+boot/manual timings and whether the live context changed during the read.
+Sequence numbers, total record count and FNV-1a verify transfer completeness;
+partial/corrupt/unsupported reports are never downloaded as valid data. Reading
+is paced, uses bounded records, and leaves the video dataplane running.
 
-A successful quick phase search uses 3 initial + 1..3 selection + 1
-confirmation observations versus 9 + 1..12 in the old scan. Failed quick
-paths add work before falling back. Cache hits avoid a 20 ms gain delay
-plus 24 one-tick observations; no-VTX grace saves exactly 18 seconds when
-neither run sees a VTX. CPU computation, scheduling, status rendering,
-failed probe copies, row count, filter winners and repairs are excluded.
-These formulas cannot establish a total-calibration multiplier without
-hardware logs and the actual path counts.
+For each labelled board, collect:
+
+1. VTX off, cold boot, download a **before F** report; record `BOOT_TIMING`.
+2. Run menu CALIBRATE/F, let it finish, download **after F**.
+3. Cold boot again and download **reboot after F**. Repeat several boots and
+   channels, keeping power supply and antenna documented.
+4. Optionally run B for filter optimization research and collect its report
+   separately. Do not mix B's optimized filter with the default preset group.
+5. Repeat with known VTX/camera and PAL/NTSC, recording actual video/weak-signal
+   behaviour separately. A report is not an RF-range or goggle compatibility test.
+
+When creating a population baseline, group by physical board, firmware/calibration
+generation, frequency, IQ scale and complete filter setting. Exclude invalid,
+template and unstable/unqualified rows. Active/saved duplicates and repeated
+captures of one board count as one board, not extra independent boards.
+Compare full filter presets; do not take independent medians of register fields.
+DC/gain priors require per-board validation and holdout boards before shipping.
+No fabricated multi-board median is included: `GAIN_MAP_PRESET_BOARDS` remains
+zero until real measured maps are supplied.
+
+## Speed comparison with main
+
+`python3 tools/calibration_benchmark.py --base origin/main` compiles and executes
+both revisions' actual DC search functions against a deterministic mock PHY.
+It reports scheduled waiting only, not C5 CPU time or RF quality. The checked-in
+result is `research/data/calibration_timing_model.json`:
+
+| Case | Main waits | PR waits | Ratio |
+| --- | ---: | ---: | ---: |
+| Already centred seed | 534 ms | 260 ms | 2.054x |
+| Coupled I/Q correction | 712 ms | 506 ms | 1.407x |
+| Flat local bracket | 1092 ms | 676 ms | 1.615x |
+
+Both versions reach identical residuals in these mock cases. Normal boot removes
+all automatic RF sweeps/DC searches and VTX arrival waits; these ratios describe
+manual search internals, not total boot. F also skips the 130-setting search and
+up to two extra DC tables compared with main's F, but actual total speedup needs
+hardware `BOOT_TIMING`, `CAL_MANUAL` and `CAL_STEP` logs. There is no numerical
+whole-calibration/range claim without those measurements.

@@ -18,7 +18,7 @@ volatile const char *s_boot_stage = "start";
 #define SPLASH_MIN_MS 3000
 #define SPLASH_MAX_MS 4000
 
-static void splash_wait_gain(int64_t t0, uint32_t holds)
+static void splash_wait_gain(int64_t t0, uint32_t holds, int64_t deadline)
 {
     int settled_ms = -1;
     for (;;) {
@@ -26,7 +26,7 @@ static void splash_wait_gain(int64_t t0, uint32_t holds)
         const int ms = (int)((esp_timer_get_time() - t0) / 1000);
         if (settled_ms < 0 && s_gain.state == DG_HOLD && s_gain.holds != holds) settled_ms = ms;
         menu_splash_progress(ms * 100 / SPLASH_MIN_MS);
-        if ((settled_ms >= 0 && ms >= SPLASH_MIN_MS) || ms >= SPLASH_MAX_MS) break;
+        if ((settled_ms >= 0 && ms >= SPLASH_MIN_MS) || ms >= SPLASH_MAX_MS || esp_timer_get_time() >= deadline) break;
     }
     if (settled_ms >= 0) printf("SPLASH gain G%u held after %d ms\n", s_current_gain, settled_ms);
     else printf("SPLASH ended at %d ms before a gain hold\n", SPLASH_MAX_MS);
@@ -34,6 +34,7 @@ static void splash_wait_gain(int64_t t0, uint32_t holds)
 
 void app_main(void)
 {
+    const int64_t app_t0 = esp_timer_get_time();
     /* USB output never blocks a task when no host is attached. */
     setvbuf(stdin, NULL, _IONBF, 0);
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -50,6 +51,7 @@ void app_main(void)
     }
     s_boot_stage = "rf";
     ESP_ERROR_CHECK(rf_start());
+    printf("BOOT_TIMING radio_ms=%lld\n", (esp_timer_get_time() - app_t0) / 1000);
     s_boot_stage = "settings";
     settings_load();
     s_boot_stage = "flightlog";
@@ -72,13 +74,17 @@ void app_main(void)
     s_boot_stage = "splash";
     const int64_t splash_t0 = esp_timer_get_time();
     const uint32_t splash_holds = s_gain.holds;
-    const bool splash = menu_splash_begin();
+    /* Leave one second of a ten-second target for final TX handover.
+     * Never add a fixed warning screen after the normal splash. */
+    const int64_t ready_deadline = app_t0 + 9000000;
+    const bool splash = esp_timer_get_time() < ready_deadline && menu_splash_begin();
     s_boot_stage = "tasks";
     receiver_start();
     control_start();
-    if (splash) splash_wait_gain(splash_t0, splash_holds);
+    if (splash) splash_wait_gain(splash_t0, splash_holds, ready_deadline);
     menu_splash_end();
     s_boot_stage = "ready";
+    printf("BOOT_TIMING ready_ms=%lld target_ms=10000\n", (esp_timer_get_time() - app_t0) / 1000);
     printf("C5VRX5 %s ready: %s %u MHz, %s, ultrafine IQ, KEEL-1 ('h' for keys) fw=%s\n",
            esp_app_get_description()->version, rf_channel()->name, rf_frequency_mhz(),
            transport_program_name(), firmware_id());
