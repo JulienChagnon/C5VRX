@@ -46,7 +46,7 @@ calibration meaning, live calibration policy or profile estimator thresholds.
   period; it does not make a deviation result require less evidence.
 
 Board-proven 50 ms DC settling and two-tick collector yields are preserved.
-Filter collection also yields two ticks to keep IDLE schedulable. The full
+The filter collector retains its existing one-tick yield. The full
 8-minute startup budget remains a ceiling, not a promised duration. A difficult
 board can deliberately take the exhaustive fallback and be slower.
 
@@ -69,3 +69,33 @@ missing/template rows and `DCO_READY`. Inspect any `screen=fallback_full`,
 line lock, no watchdog, and matched profiles on narrow and wide VTXs.
 A controlled hardware comparison is still required for actual speedup,
 filter-choice equivalence, residual distributions and RF/video quality.
+
+## Timing model (scheduled waits only, not measured wall time)
+
+At the configured 1 kHz tick, an old normal DC callback waits 50 + 64*2 =
+178 ms. A short callback waits 50 + 16*2 = 82 ms; its independent final
+verification still waits 178 ms. With K search observations the old search
+therefore waits 178*K and the new one 82*K + 178 ms. For K=3/4/7 this is
+534/712/1246 ms versus 424/506/752 ms (1.26/1.41/1.66x). A centred neighbour
+needs just one short observation plus verification: 260 ms versus the old
+minimum of three long observations, 534 ms (2.05x). Shared per-row overhead
+reduces those ratios; avoiding iterations or repair passes increases them.
+Flat DC uses about 42 observations for four full brackets versus about 26
+when all four local brackets succeed, at the same 26 ms scheduled delay per
+observation: about 1.62x for the search portion.
+
+The old filter grid plus two baseline checks has 132*(20+96) = 15312 ms of
+scheduled waits. Screening costs 20+24 = 44 ms per setting; promoting to 96
+adds 72 ms. With P of 130 settings promoted and three independent winner
+checks, the new waits total 6300 + 72*P ms: 8.64 s for 25% promoted (1.77x),
+10.98 s for 50% (1.39x), 13.32 s for 75% (1.15x). No fallback is included;
+with many contenders or a fallback, the filter sweep can be slower.
+
+A successful quick phase search uses 3 initial + 1..3 selection + 1
+confirmation observations versus 9 + 1..12 in the old scan. Failed quick
+paths add work before falling back. Cache hits avoid a 20 ms gain delay
+plus 24 one-tick observations; no-VTX grace saves exactly 18 seconds when
+neither run sees a VTX. CPU computation, scheduling, status rendering,
+failed probe copies, row count, filter winners and repairs are excluded.
+These formulas cannot establish a total-calibration multiplier without
+hardware logs and the actual path counts.

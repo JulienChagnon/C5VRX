@@ -362,7 +362,7 @@ static bool noise_collect(cal_noise_t *a, unsigned windows)
 {
     uint8_t sample[PROBE_BYTES];
     for (unsigned tries = 0; tries < windows * 3u && a->got < windows; ++tries) {
-        vTaskDelay(2);   /* leave IDLE time even during a long filtersweep */
+        vTaskDelay(1);   /* retain the existing filter collector cadence */
         if (!copy_probe_window(sample, NULL)) continue;
         cal_noise_add(a, sample, sizeof(sample), measure_window(sample, sizeof(sample)).clip_pm);
     }
