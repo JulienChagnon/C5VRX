@@ -9,6 +9,16 @@
 #include "esp_err.h"
 #include "arc_phy.h"
 
+/* Shared MODEM_DIAG output / PARLIO RX input order: Q low..high, I low..high.
+ * I's low bit uses the XIAO user-LED GPIO27 instead of D10/GPIO10, freeing
+ * D10 for a future seventh DAC branch. Q's sign bit moves from D3/GPIO7
+ * to GPIO2, reserving D3 for a future eighth branch. GPIO2 is exclusively
+ * IQ-owned and cannot export the optional sample clock (PR #257).
+ * GPIO27 is exclusively IQ-owned: do not drive it as a status LED. The LED/resistor remains connected; 40 MS/s capture and
+ * sampling-phase margin on an unmodified XIAO still need board validation.
+ * These are GPIO-matrix loopbacks; no external IQ wiring is required. */
+#define RF_IQ_GPIO_NUMS {1, 0, 25, 2, 27, 5, 3, 4}
+
 esp_err_t rf_start(void);
 /* Stop the dump writer and Wi-Fi, request a USB download boot and restart,
  * so esptool can flash with --before no-reset. Never returns. */

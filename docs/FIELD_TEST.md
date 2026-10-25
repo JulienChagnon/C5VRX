@@ -226,3 +226,16 @@ needs about 18/22 KiB, progressive fallback about 9/11 KiB; log heap/free
 block sizes and any deferred/refused entry. Verify the actual monitor picture.
 Board logs and host tests alone do not establish camera lock or range gain.
 See [PR212](PR212.md); final cleaned-build hardware validation is still pending.
+
+## Standalone GPIO-only comparison (2026-10-25)
+
+This build changes only IQ routing and reserves D10/D3 for future DAC bits.
+No TBC is present; active output remains six-bit and both new DAC resistor
+footprints must stay unpopulated. The LED-pin route previously gave the
+operator unsatisfactory results; reproduce and record rather than assuming
+it works. Compare main, TBC-only and GPIO-only builds with identical channel,
+VTX, manual OUTPUT and hardware. Record exact firmware IDs, cold boots,
+VTX-off noise, VTX-on PAL/NTSC, IQ snapshots (`I`), lane comparison (`L`),
+menu exit, retunes and weak-signal recovery. Check GPIO27 I-LSB and GPIO2
+Q-sign activity, phase margin, grain, sync loss and transport faults.
+Inspect D3 reset loading before any future DAC branch is populated.
