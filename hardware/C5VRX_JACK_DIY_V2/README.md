@@ -6,6 +6,11 @@ A two-layer DIY carrier for the Seeed Studio XIAO ESP32-C5, with a Fat Shark mod
   <img src="exports/renders/01-front-perspective.png" alt="REV B front" width="49%" />
   <img src="exports/renders/02-back-perspective.png" alt="REV B back and solder jumpers" width="49%" />
 </p>
+<p align="center">
+  <img src="exports/renders/03-front-straight.png" alt="REV B front, top view" width="32%" />
+  <img src="exports/renders/05-front-low-angle.png" alt="REV B front, low angle" width="32%" />
+  <img src="exports/renders/04-back-straight.png" alt="REV B back, top view" width="32%" />
+</p>
 
 ## Downloads
 
@@ -16,7 +21,7 @@ A two-layer DIY carrier for the Seeed Studio XIAO ESP32-C5, with a Fat Shark mod
 | Parts and assembly flags | [BOM](BOM.csv) |
 | Schematic and fit check | [Schematic PDF](exports/C5VRX_JACK_DIY_V2-schematic.pdf) · [1:1 PDF](exports/C5VRX_JACK_DIY_V2-fit-check-1to1.pdf) |
 | Mechanical models | [STEP](exports/C5VRX_JACK_DIY_V2.step) · [GLB](exports/C5VRX_JACK_DIY_V2.glb) |
-| High-resolution images | [Front](exports/renders/01-front-perspective.png) · [Back](exports/renders/02-back-perspective.png) · [All four as ZIP](exports/C5VRX_JACK_DIY_V2-renders.zip) |
+| High-resolution images | [Front](exports/renders/01-front-perspective.png) · [Back](exports/renders/02-back-perspective.png) · [Low angle](exports/renders/05-front-low-angle.png) · [All five as ZIP](exports/C5VRX_JACK_DIY_V2-renders.zip) |
 
 ## DAC branches and rear jumpers
 
@@ -42,13 +47,13 @@ Open SJ1 before USB programming, as for REV A. J2 tip and ring 1 carry VIDEO, sl
 
 ## Layout and files
 
-The resistor bank has 3.0 mm row spacing. The upper C1 hole aligns with the right R8 hole. C5VRX logos appear on both sides; the front logo uses the latest manually adjusted lower position. The back includes REV B, 6–8 BIT DAC, and individual jumper labels. The separate ground trace above the front logo has been removed. Ground pours on both copper layers provide the connection without that trace; the zones are refilled and DRC connectivity is clean.
+The resistor bank has 3.0 mm row spacing. The upper C1 hole aligns with the right R8 hole. C5VRX logos appear on both sides; the front logo uses the latest manually adjusted lower position. The front J1 labels (VID, GND, 5V) sit next to the header without overlapping its outline, and the revision marking is on the back only. The back includes REV B, 6–8 BIT DAC, and individual jumper labels. The separate ground trace above the front logo has been removed. Ground pours on both copper layers provide the connection without that trace; the zones are refilled and DRC connectivity is clean.
 
 - Open `C5VRX_JACK_DIY_V2.kicad_pro` in **KiCad 10**. Project symbol/footprint libraries and the PJ-320D STEP model are included.
 - [Fabrication ZIP](exports/C5VRX_JACK_DIY_V2-gerbers.zip): Gerber X2 plus plated/non-plated Excellon drills; [individual outputs](exports/gerbers/).
 - [BOM](BOM.csv): actual PCB values, DNP flags and open rear solder bridges (PCB features, not purchased components).
 - [Schematic PDF](exports/C5VRX_JACK_DIY_V2-schematic.pdf), [1:1 fit-check PDF](exports/C5VRX_JACK_DIY_V2-fit-check-1to1.pdf), top/bottom SVGs, STEP and GLB models are in `exports/`.
-- [2400 × 1800 renders](exports/renders/) and [render ZIP](exports/C5VRX_JACK_DIY_V2-renders.zip). The XIAO mounting outline is visible because no module 3D model is supplied; DNP parts are omitted.
+- [3200 × 2200 renders](exports/renders/) and [render ZIP](exports/C5VRX_JACK_DIY_V2-renders.zip). The XIAO mounting outline is visible because no module 3D model is supplied; DNP parts are omitted.
 - [DRC report](validation/drc.json) and [ERC report](validation/erc.json): zero violations, zero unrouted connections and zero schematic/PCB parity issues on the saved board used for these exports.
 
 Digital checks are not physical qualification. REV B has not yet been built or measured. REV A remains available in [C5VRX_JACK_DIY](../C5VRX_JACK_DIY/).

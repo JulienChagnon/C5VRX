@@ -1935,7 +1935,7 @@
 		(descr "Through hole straight pin header, 1x09, 2.54mm pitch, single row")
 		(tags "Through hole pin header THT 1x09 2.54mm single row")
 		(property "Reference" "J1"
-			(at 0.55 22.66 180)
+			(at -0.05 22.66 180)
 			(layer "F.SilkS")
 			(uuid "96c4b1a2-466d-4bdd-9802-e016a5dbc345")
 			(effects
@@ -4842,19 +4842,8 @@
 			)
 		)
 	)
-	(gr_text "REV B"
-		(at 137.7 109.6 0)
-		(layer "F.SilkS")
-		(uuid "f284ccee-486d-494b-82d5-2f5618520490")
-		(effects
-			(font
-				(size 0.8 0.8)
-				(thickness 0.12)
-			)
-		)
-	)
 	(gr_text "VID"
-		(at 137.8 113.56 0)
+		(at 138.5 113.56 0)
 		(layer "F.SilkS")
 		(uuid "76b79ab2-c3c1-428d-a8ed-9876f85c2756")
 		(effects
@@ -4865,7 +4854,7 @@
 		)
 	)
 	(gr_text "GND"
-		(at 137.8 121.18 0)
+		(at 138.2 121.18 0)
 		(layer "F.SilkS")
 		(uuid "1399526b-e9d9-4c99-a660-586b0fb01c88")
 		(effects
@@ -4876,7 +4865,7 @@
 		)
 	)
 	(gr_text "5V"
-		(at 137.8 126.26 0)
+		(at 139 126.26 0)
 		(layer "F.SilkS")
 		(uuid "f4519426-4e86-4f3b-88d2-6e113f701d89")
 		(effects
