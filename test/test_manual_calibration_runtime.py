@@ -9,7 +9,7 @@ ROOT=Path(__file__).resolve().parents[1]
 def run(source):
  with tempfile.TemporaryDirectory() as d:
   p=Path(d);(p/'t.c').write_text(source)
-  subprocess.run(['cc','-O2','-std=c11','-Wall','-Wextra','-Werror','-I',str(ROOT/'main'),str(p/'t.c'),'-o',str(p/'t')],check=True)
+  subprocess.run(['cc','-O2','-std=c11','-Wall','-Wextra','-Werror','-I',str(ROOT/'main'),str(p/'t.c'),'-lm','-o',str(p/'t')],check=True)
   return subprocess.check_output([str(p/'t')],text=True)
 
 class PolicyTest(unittest.TestCase):
@@ -151,6 +151,48 @@ int main(void){
  splash_wait_gain(0,0,1000000);assert(now==1000000); /* deadline overrides 3 s logo */
  now=0;splash_wait_gain(0,0,9000000);assert(now==3000000);
  now=0;s_gain.state=0;splash_wait_gain(0,0,9000000);assert(now==4000000);
+}
+''')
+
+ def test_actual_noise_dither_collection(self):
+  s=(ROOT/'main/calibration.c').read_text()
+  typedef=s[s.index('typedef struct {\n    uint32_t windows;'):s.index('static int64_t s_boot_policy_ms')]
+  body=s[s.index('static bool collect_stats('):s.index('static bool collect(unsigned windows')]
+  run(r'''
+#include <assert.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <string.h>
+#include "dsp.h"
+#include "cn_auto.h"
+#include "dc_live.h"
+#define PROBE_BYTES 256u
+#define PROBE_REGIONS 4u
+#define PROBE_REGION_BYTES 64u
+typedef struct {int clip_pm;} metrics_t;
+static int64_t s_probe_deadline;
+static int mode;
+static int64_t esp_timer_get_time(void){return 1;}
+static bool menu_splash_active(void){return true;}
+static void vTaskDelay(unsigned n){assert(n==2);}
+static metrics_t measure_window(const uint8_t *s,unsigned n){(void)s;(void)n;return (metrics_t){0};}
+static bool copy_probe_window(uint8_t *s,void *node){
+ (void)node;
+ for(unsigned k=0;k<256;++k){
+  int i=3,q=0;
+  if(mode==0){i+=(k%4==0?-1:k%4==3?1:0);q=(k/4%4==0?-1:k/4%4==3?1:0);}
+  if(mode==1){i+=(k%2?1:0);q=(k%2?1:0);}
+  if(mode==2){i+=(k<2?-1:k%2?1:0);q=(k/4%4==0?-1:k/4%4==3?1:0);}
+  s[k]=(uint8_t)(((i&15)<<4)|(q&15));
+ }
+ return true;
+}
+''' + typedef + body + r'''
+int main(void){window_stats_t w;
+ mode=0;assert(collect_stats(24,&w,true) && w.dc_noise_dither);
+ mode=1;assert(collect_stats(24,&w,true) && !w.dc_noise_dither);
+ mode=2;assert(collect_stats(24,&w,true) && !w.dc_noise_dither);
+ mode=0;assert(collect_stats(24,&w,false) && !w.dc_noise_dither);
 }
 ''')
 

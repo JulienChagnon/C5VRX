@@ -32,7 +32,7 @@ static int64_t s_health_us,s_last_gain_write_us;
 static int s_drift_avg[2],s_sphase_excess;
 static const char *s_sphase_state="unverified";
 static bool s_dc_urgent,s_startup,s_scan_active,s_menu_active;
-static bool paused,busy,splash,copy_ok=true,qualified=true,video,circle,change_context;
+static bool paused,busy,splash,copy_ok=true,qualified=true,dither=true,video,circle,change_context;
 static int measured_i,measured_q,mismatch,phase=20;
 static unsigned env=100;
 static double m2=2,kurt=2;
@@ -47,12 +47,12 @@ static uint32_t health_context(void){return context;}
 static int phy_filter_hw_mismatch(void *a,void *b){(void)a;(void)b;return mismatch;}
 static bool video_recent(void){return video;}
 static unsigned dsp_quiet_limit(int clip){(void)clip;return 115;}
-typedef struct {unsigned windows,envelope_x100;int dc_i,dc_q;bool dc_circle,dc_qualified;
+typedef struct {unsigned windows,envelope_x100;int dc_i,dc_q;bool dc_circle,dc_qualified,dc_noise_dither;
  double noise_m2,noise_m4;struct {int clip_pm;} m;} window_stats_t;
 static bool collect_stats(unsigned n,window_stats_t *w,bool noise){
  assert(n==24 && noise);++collections;
  *w=(window_stats_t){.windows=copy_ok?n:0,.dc_i=measured_i,.dc_q=measured_q,
- .dc_circle=circle,.dc_qualified=qualified,.envelope_x100=env,.noise_m2=m2*n,.noise_m4=kurt*m2*m2*n};
+ .dc_circle=circle,.dc_qualified=qualified,.dc_noise_dither=dither,.envelope_x100=env,.noise_m2=m2*n,.noise_m4=kurt*m2*m2*n};
  if(change_context)++context;
  return copy_ok;
 }
@@ -74,8 +74,8 @@ int main(void){
  measured_i=0;tick();tick();tick();assert(s_basemap_watch.state==CAL_GOOD);
  /* A single spike, ambiguous cloud, copy failure, and changing RF are not a bad map. */
  measured_i=3000;tick();measured_i=0;tick();assert(warnings==1);
- ++context;qualified=false;measured_i=3000;tick();tick();tick();assert(warnings==1);
- qualified=true;copy_ok=false;tick();tick();assert(warnings==1);
+ ++context;qualified=dither=false;measured_i=3000;tick();tick();tick();assert(warnings==1);
+ qualified=dither=true;copy_ok=false;tick();tick();assert(warnings==1);
  copy_ok=true;change_context=true;tick();tick();assert(warnings==1);change_context=false;
  ++context;measured_i=0;phase=900;tick();tick();tick();
  assert(warnings==1 && !strcmp(s_sphase_state,"unverified")); /* high HF is not proof of bad map */
@@ -86,6 +86,10 @@ int main(void){
  splash=true;tick();assert(collections==prev+1); /* can use existing boot raster */
  s_menu_active=splash=false;paused=true;prev=collections;tick();assert(collections==prev);
  paused=false;s_startup=true;tick();assert(collections==prev);
+ /* Real low-gain noise can be below the circle-fit variance threshold but
+  * still dither >=3 cells per axis; it must reveal a large DC park. */
+ s_startup=false;++context;qualified=false;dither=true;measured_i=2200;m2=.9;kurt=2;
+ tick();tick();tick();assert(warnings==3);
  puts("PASS: production monitor shares DC/noise/phase observations, warns only on sustained qualified bad evidence, no actuation");
 }
 '''

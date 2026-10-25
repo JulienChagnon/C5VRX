@@ -40,7 +40,7 @@ typedef struct {
     uint32_t windows;
     uint64_t hf4_d4, hf4_count, hf2_d2;
     int dc_i, dc_q;          /* milli-cells: circle centre or plain mean */
-    bool dc_circle, dc_qualified;
+    bool dc_circle, dc_qualified, dc_noise_dither;
     unsigned envelope_x100;
     metrics_t m;             /* last window */
     cna_sums_t noise_sums;   /* optional DC-verification reuse */
@@ -82,6 +82,7 @@ static bool collect_stats(unsigned windows, window_stats_t *out, bool noise)
     uint8_t sample[PROBE_BYTES];
     dsp_circle_t circle = {0};
     unsigned rail_sum = 0;
+    uint16_t hi[16] = {0}, hq[16] = {0};
     memset(out, 0, sizeof(*out));
     for (unsigned tries = 0; tries < windows * 3u && out->windows < windows; ++tries) {
         if (s_probe_deadline && (esp_timer_get_time() >= s_probe_deadline || !menu_splash_active())) break;
@@ -97,7 +98,10 @@ static bool collect_stats(unsigned windows, window_stats_t *out, bool noise)
         rail_sum += (unsigned)out->m.clip_pm;
         if (noise) {
             cna_sums_t p = {0};
-            for (unsigned k = 0; k < sizeof(sample); ++k) cna_sums_add(&p, sample[k]);
+            for (unsigned k = 0; k < sizeof(sample); ++k) {
+                cna_sums_add(&p, sample[k]);
+                ++hi[dsp_i(sample[k]) & 15]; ++hq[dsp_q(sample[k]) & 15];
+            }
             float mi, mq;
             double m2, m4;
             cna_mean(&p, &mi, &mq); cna_moments(&p, mi, mq, &m2, &m4);
@@ -109,6 +113,10 @@ static bool collect_stats(unsigned windows, window_stats_t *out, bool noise)
     if (!out->windows) return false;
     out->dc_circle = dc_live_measure(&circle, rail_sum / out->windows,
         &out->dc_i, &out->dc_q, &out->envelope_x100);
+    unsigned ci = 0, cq = 0;
+    const unsigned n = out->windows * PROBE_BYTES;
+    for (unsigned k = 0; k < 16u; ++k) { ci += hi[k] * 20u >= n; cq += hq[k] * 20u >= n; }
+    out->dc_noise_dither = noise && ci >= 3u && cq >= 3u;
     int ni, nq;
     out->dc_qualified = out->dc_circle || dc_live_noise_mean(&circle, rail_sum / out->windows, &ni, &nq);
     return out->windows * 2u >= windows;
@@ -1558,7 +1566,11 @@ static void drift_service(void)
     const double kurt = m2 > 0 && w.windows ? (w.noise_m4 / w.windows) / (m2 * m2) : 0;
     const bool noise = w.envelope_x100 <= dsp_quiet_limit(w.m.clip_pm) && kurt >= 1.85 && kurt <= 2.25;
     const bool carrier = w.dc_circle && video_recent();
-    const bool qualified = mismatch > 0 || (copied && w.windows == 24u && w.dc_qualified && (noise || carrier));
+    /* Noise needs the same >=3 cells/axis with >=5% occupancy as the
+     * quiet DC search. Requiring a full cell of variance would miss the
+     * known low-gain DC park (3.7-cell offset, 0.68-cell noise, #223). */
+    const bool qualified = mismatch > 0 || (copied && w.windows == 24u &&
+        ((noise && w.dc_noise_dither) || (carrier && w.dc_qualified)));
     if (qualified) { ++s_health_blocks; s_drift_avg[0] = w.dc_i; s_drift_avg[1] = w.dc_q; }
     else ++s_health_rejected;
     s_basemap_context = context;
