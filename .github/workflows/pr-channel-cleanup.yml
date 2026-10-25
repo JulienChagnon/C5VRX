@@ -1,0 +1,48 @@
+name: PR Channel Cleanup
+
+# Removes c5vrx5-pr-N prereleases whose PR is no longer open, then refreshes
+# the web flasher mirror. A sweep rather than a per-PR delete: pull_request
+# close events are not delivered for PRs with merge conflicts or outside the
+# build's path filter, so channels of closed PRs stayed in the flasher.
+on:
+  pull_request_target:   # base-repo context: runs on close even with conflicts; never checks out PR code
+    types: [closed]
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write   # delete releases and their tags
+  actions: write    # dispatch the web flasher deployment
+
+concurrency:
+  group: pr-channel-cleanup
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove channels of closed PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          repo="$GITHUB_REPOSITORY"
+          tags="$(gh api --paginate "repos/${repo}/releases?per_page=100" --jq '.[].tag_name' \
+            | grep -E '^c5vrx5-pr-[0-9]+$' || true)"
+          removed=0
+          for tag in $tags; do
+            pr="${tag#c5vrx5-pr-}"
+            # Ask per PR: a failed lookup aborts the sweep instead of deleting.
+            state="$(gh pr view "$pr" --repo "$repo" --json state --jq .state)"
+            if [[ "$state" != "OPEN" ]]; then
+              echo "Removing ${tag} (PR #${pr} is ${state})"
+              gh release delete "$tag" --repo "$repo" --yes --cleanup-tag
+              removed=$((removed + 1))
+            fi
+          done
+          echo "Removed ${removed} PR channel(s)."
+          if (( removed > 0 )); then
+            gh workflow run deploy-web.yml --repo "$repo" --ref main
+          fi
