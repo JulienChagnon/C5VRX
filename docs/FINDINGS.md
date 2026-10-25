@@ -7,6 +7,57 @@ scripts and data live in that branch under `v4/docs/PICTURE_CLIFF_STUDY.md`,
 Synthetic results are host simulations; board results are labelled as such.
 Measured range is not established.
 
+## GPIO27 IQ loopback experiment (2026-10-25)
+
+Operator request: a standalone GPIO-only PR directly on main, reserving
+D10 and D3 for future seventh/eighth DAC branches. No TBC is included.
+The operator reported unsatisfactory behavior with the LED-pin IQ route;
+this separate build isolates the reroute from TBC. The electrical cause is
+not established. This is an experimental comparison, not acceptance.
+Move the I-LSB MODEM_DIAG loopback from D10/GPIO10 to GPIO27, and the
+Q-sign loopback from D3/GPIO7 to GPIO2. This extends the existing C5VRX by Twotoz and
+contributors' GPIO-matrix/PARLIO loopback and shared-pin-map precedent in
+`legacy/c5vrx3/docs/custom-board.md`; it is not another RF sample source.
+`RF_IQ_GPIO_NUMS` in `main/rf.h` supplies both RF routing and PARLIO RX,
+including the bench coarse/fine/ultrafine routes and RF restores.
+
+| PARLIO RX bit | Component / ADC bit (ultrafine) | GPIO |
+| --- | --- | --- |
+| 0..3 | Q[4], Q[5], Q[6], Q[9] | 1, 0, 25, 2 |
+| 4..7 | I[4], I[5], I[6], I[9] | 27, 5, 3, 4 |
+
+D10/GPIO10 and D3/GPIO7 are reserved, not enabled DAC output lanes.
+Reserve a 16 kOhm D10-to-CVBS footprint for the seventh physical branch
+and a 32 kOhm D3-to-CVBS footprint for the eighth, both DNP in this build.
+The new branches are low bits: D10=bit0 for 7-bit; D10=bit1 and D3=bit0
+for 8-bit. The existing six branches shift up in logical significance.
+This records the future pin allocation; no PCB files or wider DAC firmware
+are changed. Wider output requires loaded voltage/linearity verification,
+including boot-strap loading on D3/GPIO7. The D4..D9
+six-bit resistor DAC, U80P64-R1, raw 32-KiB ring, RX40 capture, two-lookup
+hardware demodulator and unique DAC20 duplicated at TX40 are unchanged.
+No per-sample CPU work or runtime pin-switching control is introduced.
+GPIO27 is exclusively IQ-owned, including while menus own TX; no status-LED
+writer may reconfigure it. No active firmware LED writer was found.
+
+The [Seeed XIAO C5 schematic](https://files.seeedstudio.com/wiki/XIAO_ESP32C5/res/Seeed_Studio_XIAO_ESP32C5.pdf)
+connects GPIO27 to the user LED through R15 (1 kOhm). The LED may glow with
+IQ activity. It is not an unbonded or electrically unloaded virtual GPIO.
+GPIO6/26 remain assigned to the battery measurement circuit; USB, BOOT,
+flash/PSRAM are not repurposed. GPIO2 is now exclusively IQ-owned after
+main's sync flywheel removal. It cannot also carry PR #257's optional
+40 MHz sample clock; combining the features requires another clock pin.
+
+**Hardware validation pending:** compare the main baseline with this build
+on an unmodified XIAO at 5805 and 5865 MHz, using repeated cold boots, VTX-off
+noise and VTX-on PAL/NTSC. Check IQ snapshots (`I`), sampling-phase status,
+the lane comparison (`L`), menu exit, channel changes and weak-signal recovery.
+Confirm the moved I-LSB and Q-sign bits toggle normally, with no extra grain, phase faults,
+sync loss or transport errors. Compare under controlled attenuation before
+claiming unchanged sensitivity. If either new route reduces timing margin,
+revert the mapping; do not assume that a lit LED or passing build proves
+correct high-speed capture. No physical IQ/video/range result is claimed.
+
 ## Sync flywheel removed (operator decision, 2026-10-25)
 
 The C5VRX-5 sync flywheel (PR #212, witness fix PR #218, bounded sync-loss

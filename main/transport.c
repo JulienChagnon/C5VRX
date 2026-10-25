@@ -43,7 +43,9 @@ static bool s_started;
 static const void *tracker_program(void) { return s_p64; }
 
 /* 6-bit resistor DAC, LSB first (XIAO D4..D9; 8.2k/3.9k/2k/1k/470R/240R
- * plus 200R). Do not change the tested pin order. */
+ * plus 200R). Do not change the tested pin order. D10/GPIO10 and D3/GPIO7
+ * are reserved for future seventh/eighth branches; keep them disconnected
+ * here until a complete wider-DAC implementation is hardware-validated. */
 static const int s_dac_gpio[8] = {23, 24, 11, 12, 8, 9, -1, -1};
 
 DMA_ATTR __attribute__((aligned(64))) uint8_t s_raw_ring[RAW_RING_BYTES];
@@ -110,9 +112,8 @@ static esp_err_t prepare_rx(void)
         .clk_in_gpio_num = -1,
         .clk_out_gpio_num = -1,
         .valid_gpio_num = -1,
-        /* Same order as rf.c s_iq_pins: Q bits 0..3, I bits 4..7. */
-        .data_gpio_nums = {GPIO_NUM_1, GPIO_NUM_0, GPIO_NUM_25, GPIO_NUM_7,
-                           GPIO_NUM_10, GPIO_NUM_5, GPIO_NUM_3, GPIO_NUM_4},
+        /* Share MODEM_DIAG routing's GPIO27 I-LSB / GPIO2 Q-sign pin order. */
+        .data_gpio_nums = RF_IQ_GPIO_NUMS,
         .flags = {.free_clk = true, .clk_gate_en = false, .allow_pd = false},
     };
     esp_err_t err = parlio_new_rx_unit(&cfg, &s_rx);

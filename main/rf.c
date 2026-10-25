@@ -43,10 +43,7 @@
 static const char *TAG = "c5vrx5_rf";
 
 /* PARLIO RX data pins, in data-bit order: Q on bits 0..3, I on 4..7. */
-static const gpio_num_t s_iq_pins[8] = {
-    GPIO_NUM_1, GPIO_NUM_0, GPIO_NUM_25, GPIO_NUM_7,
-    GPIO_NUM_10, GPIO_NUM_5, GPIO_NUM_3, GPIO_NUM_4,
-};
+static const gpio_num_t s_iq_pins[8] = RF_IQ_GPIO_NUMS;
 /* Ultrafine lane: sign bit 9 plus ADC bits 6..4, i.e. 16-code steps in a
  * +-128 window (+12 dB over the coarse {9,8,7,6} slice, an exact
  * power-of-two scale inside the window). Q on DIAG[4,5,6,9], I on
