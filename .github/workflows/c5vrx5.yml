@@ -14,7 +14,8 @@ on:
       - '!**/*.md'
       - '.github/workflows/c5vrx5.yml'
   pull_request:
-    types: [opened, synchronize, reopened, closed]
+    # Closed PR channels are removed by pr-channel-cleanup.yml.
+    types: [opened, synchronize, reopened]
     paths:
       - 'main/**'
       - 'test/**'
@@ -32,7 +33,6 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
-    if: github.event_name != 'pull_request' || github.event.action != 'closed'
     runs-on: ubuntu-latest
     container: espressif/idf:v6.0.2
     outputs:
@@ -184,7 +184,7 @@ jobs:
     # Fork builds never get write-capable publication.
     if: >-
       (github.event_name != 'pull_request' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'pull_request' && github.event.action != 'closed' &&
+      (github.event_name == 'pull_request' &&
        github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     permissions:
@@ -205,6 +205,12 @@ jobs:
         run: |
           set -euo pipefail
           repo="$GITHUB_REPOSITORY"
+          # A PR closed during the build gets no channel (the cleanup sweep may already have run).
+          if [[ -n "$PR_NUMBER" ]] &&
+             [[ "$(gh pr view "$PR_NUMBER" --repo "$repo" --json state --jq .state)" != "OPEN" ]]; then
+            echo "PR #${PR_NUMBER} is no longer open; not publishing."
+            exit 0
+          fi
           # Unchanged firmware inputs keep the existing build.
           if [[ -n "$PR_NUMBER" ]]; then previous="$TAG"; else
             previous="$(gh release list --repo "$repo" --limit 100 --json tagName,isDraft \
@@ -234,19 +240,3 @@ jobs:
           gh release create "$TAG" release/* --repo "$repo" --target "$BUILD_SHA" --title "$title" \
             "${flags[@]}" \
             --notes "C5VRX-5 ${VERSION} at ${BUILD_SHA}. Use Full firmware when switching from another generation."
-  cleanup:
-    if: >-
-      github.event_name == 'pull_request' && github.event.action == 'closed' &&
-      github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Remove the closed PR channel
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          tag="c5vrx5-pr-${{ github.event.pull_request.number }}"
-          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release delete "$tag" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
-          fi

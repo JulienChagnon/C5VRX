@@ -1,0 +1,550 @@
+(kicad_sch (version 20260306) (generator "eeschema") (generator_version "10.0") (uuid 3f7e44b9-0d23-4154-a2e9-c50963f7f4c3) (paper "A4")
+(title_block (title "C5VRX_JACK_DIY_V2") (rev "B"))
+ (lib_symbols (symbol "C5VRX:XIAO_ESP32_C5" (pin_names (offset 0.8)) (in_bom yes) (on_board yes)
+      (property "Reference" "U" (at 0 17.78 0) (effects (font (size 1.0 1.0))))
+      (property "Value" "XIAO_ESP32_C5" (at 0 15.24 0) (effects (font (size 1.0 1.0))))
+      (symbol "XIAO_ESP32_C5_0_1" (rectangle (start -15.24 15.24) (end 15.24 -15.24) (stroke (width 0.254) (type default)) (fill (type background)))) (symbol "XIAO_ESP32_C5_1_1" (pin power_in line (at -20.32 12.7 0) (length 5.08) (name "5V" (effects (font (size 1.0 1.0)))) (number "14" (effects (font (size 1.0 1.0)))))(pin power_in line (at -20.32 7.62 0) (length 5.08) (name "GND" (effects (font (size 1.0 1.0)))) (number "13" (effects (font (size 1.0 1.0)))))(pin bidirectional line (at -20.32 0 0) (length 5.08) (name "D0 / GPIO1" (effects (font (size 1.0 1.0)))) (number "1" (effects (font (size 1.0 1.0)))))(pin bidirectional line (at -20.32 -2.54 0) (length 5.08) (name "D1 / GPIO0" (effects (font (size 1.0 1.0)))) (number "2" (effects (font (size 1.0 1.0)))))(pin bidirectional line (at -20.32 -5.08 0) (length 5.08) (name "D2 / GPIO25" (effects (font (size 1.0 1.0)))) (number "3" (effects (font (size 1.0 1.0)))))(pin bidirectional line (at -20.32 -7.62 0) (length 5.08) (name "D3 / GPIO7" (effects (font (size 1.0 1.0)))) (number "4" (effects (font (size 1.0 1.0)))))(pin bidirectional line (at -20.32 -10.16 0) (length 5.08) (name "D10 / GPIO10" (effects (font (size 1.0 1.0)))) (number "11" (effects (font (size 1.0 1.0)))))(pin power_out line (at -20.32 -12.7 0) (length 5.08) (name "3V3" (effects (font (size 1.0 1.0)))) (number "12" (effects (font (size 1.0 1.0)))))(pin bidirectional line (at 20.32 12.7 180) (length 5.08) (name "D4 / GPIO23" (effects (font (size 1.0 1.0)))) (number "5" (effects (font (size 1.0 1.0)))))(pin bidirectional line (at 20.32 7.62 180) (length 5.08) (name "D5 / GPIO24" (effects (font (size 1.0 1.0)))) (number "6" (effects (font (size 1.0 1.0)))))(pin bidirectional line (at 20.32 2.54 180) (length 5.08) (name "D6 / GPIO11" (effects (font (size 1.0 1.0)))) (number "7" (effects (font (size 1.0 1.0)))))(pin bidirectional line (at 20.32 -2.54 180) (length 5.08) (name "D7 / GPIO12" (effects (font (size 1.0 1.0)))) (number "8" (effects (font (size 1.0 1.0)))))(pin bidirectional line (at 20.32 -7.62 180) (length 5.08) (name "D8 / GPIO8" (effects (font (size 1.0 1.0)))) (number "9" (effects (font (size 1.0 1.0)))))(pin bidirectional line (at 20.32 -12.7 180) (length 5.08) (name "D9 / GPIO9" (effects (font (size 1.0 1.0)))) (number "10" (effects (font (size 1.0 1.0)))))))
+(symbol "C5VRX:R" (pin_names (offset 0.8)) (in_bom yes) (on_board yes)
+      (property "Reference" "R" (at 0 17.78 0) (effects (font (size 1.0 1.0))))
+      (property "Value" "R" (at 0 15.24 0) (effects (font (size 1.0 1.0))))
+      (symbol "R_0_1" (rectangle (start -2.54 1.016) (end 2.54 -1.016) (stroke (width 0.254) (type default)) (fill (type background)))) (symbol "R_1_1" (pin passive line (at -7.62 0 0) (length 5.08) (name "~" (effects (font (size 1.0 1.0)))) (number "1" (effects (font (size 1.0 1.0)))))(pin passive line (at 7.62 0 180) (length 5.08) (name "~" (effects (font (size 1.0 1.0)))) (number "2" (effects (font (size 1.0 1.0)))))))
+(symbol "C5VRX:C" (pin_names (offset 0.8)) (in_bom yes) (on_board yes)
+      (property "Reference" "C" (at 0 17.78 0) (effects (font (size 1.0 1.0))))
+      (property "Value" "C" (at 0 15.24 0) (effects (font (size 1.0 1.0))))
+      (symbol "C_0_1" (polyline (pts (xy -2.54 0.635) (xy 2.54 0.635)) (stroke (width 0.254) (type default)) (fill (type none))) (polyline (pts (xy -2.54 -0.635) (xy 2.54 -0.635)) (stroke (width 0.254) (type default)) (fill (type none)))) (symbol "C_1_1" (pin passive line (at 0 5.715 270) (length 5.08) (name "~" (effects (font (size 1.0 1.0)))) (number "1" (effects (font (size 1.0 1.0)))))(pin passive line (at 0 -5.715 90) (length 5.08) (name "~" (effects (font (size 1.0 1.0)))) (number "2" (effects (font (size 1.0 1.0)))))))
+(symbol "C5VRX:FatShark_9" (pin_names (offset 0.8)) (in_bom yes) (on_board yes)
+      (property "Reference" "J" (at 0 17.78 0) (effects (font (size 1.0 1.0))))
+      (property "Value" "FatShark_9" (at 0 15.24 0) (effects (font (size 1.0 1.0))))
+      (symbol "FatShark_9_0_1" (rectangle (start -2.54 12.7) (end 12.7 -12.7) (stroke (width 0.254) (type default)) (fill (type background)))) (symbol "FatShark_9_1_1" (pin passive line (at -7.62 -10.16 0) (length 5.08) (name "5V" (effects (font (size 1.0 1.0)))) (number "1" (effects (font (size 1.0 1.0)))))(pin passive line (at -7.62 -7.62 0) (length 5.08) (name "RSSI" (effects (font (size 1.0 1.0)))) (number "2" (effects (font (size 1.0 1.0)))))(pin passive line (at -7.62 -5.08 0) (length 5.08) (name "GND" (effects (font (size 1.0 1.0)))) (number "3" (effects (font (size 1.0 1.0)))))(pin passive line (at -7.62 -2.54 0) (length 5.08) (name "AUDIO_R" (effects (font (size 1.0 1.0)))) (number "4" (effects (font (size 1.0 1.0)))))(pin passive line (at -7.62 0.0 0) (length 5.08) (name "AUDIO_L" (effects (font (size 1.0 1.0)))) (number "5" (effects (font (size 1.0 1.0)))))(pin passive line (at -7.62 2.539999999999999 0) (length 5.08) (name "VIDEO" (effects (font (size 1.0 1.0)))) (number "6" (effects (font (size 1.0 1.0)))))(pin passive line (at -7.62 5.08 0) (length 5.08) (name "B2" (effects (font (size 1.0 1.0)))) (number "7" (effects (font (size 1.0 1.0)))))(pin passive line (at -7.62 7.620000000000001 0) (length 5.08) (name "B1" (effects (font (size 1.0 1.0)))) (number "8" (effects (font (size 1.0 1.0)))))(pin passive line (at -7.62 10.16 0) (length 5.08) (name "B0" (effects (font (size 1.0 1.0)))) (number "9" (effects (font (size 1.0 1.0)))))))
+(symbol "C5VRX:Supply" (pin_names (offset 0.8)) (in_bom yes) (on_board yes)
+      (property "Reference" "#FLG" (at 0 17.78 0) (effects (font (size 1.0 1.0))))
+      (property "Value" "Supply" (at 0 15.24 0) (effects (font (size 1.0 1.0))))
+      (symbol "Supply_0_1" (circle (center 0 0) (radius 1.016) (stroke (width 0.254) (type default)) (fill (type none)))) (symbol "Supply_1_1" (pin power_out line (at 0 -5.08 90) (length 5.08) (name "~" (effects (font (size 1.0 1.0)))) (number "1" (effects (font (size 1.0 1.0)))))))
+  (symbol "Connector_Audio:AudioJack4"
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "J"
+			(at 0 8.89 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "AudioJack4"
+			(at 0 6.35 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Audio Jack, 4 Poles (TRRS)"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "audio jack receptacle stereo headphones TRRS connector"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "Jack*"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(symbol "AudioJack4_0_1"
+			(rectangle
+				(start -6.35 -5.08)
+				(end -7.62 -7.62)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type outline)
+				)
+			)
+			(polyline
+				(pts
+					(xy -5.715 -5.08) (xy -5.08 -5.715) (xy -4.445 -5.08) (xy -4.445 2.54) (xy 2.54 2.54)
+				)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy -1.905 -5.08) (xy -1.27 -5.715) (xy -0.635 -5.08) (xy -0.635 -2.54) (xy 2.54 -2.54)
+				)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy 0 -5.08) (xy 0.635 -5.715) (xy 1.27 -5.08) (xy 2.54 -5.08)
+				)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(rectangle
+				(start 2.54 3.81)
+				(end -6.35 -7.62)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type background)
+				)
+			)
+			(polyline
+				(pts
+					(xy 2.54 0) (xy -2.54 0) (xy -2.54 -5.08) (xy -3.175 -5.715) (xy -3.81 -5.08)
+				)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(symbol "AudioJack4_1_1"
+			(pin passive line
+				(at 5.08 -2.54 180)
+				(length 2.54)
+				(name ""
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "R1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 5.08 0 180)
+				(length 2.54)
+				(name ""
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "R2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 5.08 2.54 180)
+				(length 2.54)
+				(name ""
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "S"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 5.08 -5.08 180)
+				(length 2.54)
+				(name ""
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "T"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+(symbol "Jumper:SolderJumper_2_Open"
+		(pin_numbers
+			(hide yes)
+		)
+		(pin_names
+			(offset 0)
+			(hide yes)
+		)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "JP"
+			(at 0 2.032 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "SolderJumper_2_Open"
+			(at 0 -2.54 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 0 -7.62 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Solder Jumper, 2-pole, open"
+			(at 0 -5.08 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "solder jumper SPST"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "SolderJumper*Open*"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(symbol "SolderJumper_2_Open_0_1"
+			(polyline
+				(pts
+					(xy -0.254 1.016) (xy -0.254 -1.016)
+				)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(arc
+				(start -0.254 -1.016)
+				(mid -1.2656 0)
+				(end -0.254 1.016)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type outline)
+				)
+			)
+			(arc
+				(start 0.254 1.016)
+				(mid 1.2656 0)
+				(end 0.254 -1.016)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type outline)
+				)
+			)
+			(polyline
+				(pts
+					(xy 0.254 1.016) (xy 0.254 -1.016)
+				)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(symbol "SolderJumper_2_Open_1_1"
+			(pin passive line
+				(at -5.08 0 0)
+				(length 3.81)
+				(name "A"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 5.08 0 180)
+				(length 3.81)
+				(name "B"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+) (symbol (lib_id "C5VRX:XIAO_ESP32_C5") (at 64.77 90.17 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid ae80e45b-f97b-42bd-b49c-a90d7520c7a3)
+       (property "Reference" "U1" (at 64.77 69.85 0) (effects (font (size 1.0 1.0))))
+       (property "Value" "XIAO ESP32-C5" (at 64.77 72.39 0) (effects (font (size 1.0 1.0))))
+       (property "Footprint" "C5VRX:XIAO-ESP32-C5-DIP" (at 64.77 90.17 0) (effects (font (size 1 1)) (hide yes)))
+       (instances (project "C5VRX_JACK_DIY_V2" (path "/3f7e44b9-0d23-4154-a2e9-c50963f7f4c3" (reference "U1") (unit 1))))) (symbol (lib_id "C5VRX:R") (at 110.49 77.47 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid 93f1f166-206d-460d-b5f8-26cd6a23bb98)
+       (property "Reference" "R1" (at 107.95 74.93 0) (effects (font (size 1.0 1.0))))
+       (property "Value" "8.2k" (at 114.3 74.93 0) (effects (font (size 1.0 1.0))))
+       (property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal" (at 110.49 77.47 0) (effects (font (size 1 1)) (hide yes)))
+       (instances (project "C5VRX_JACK_DIY_V2" (path "/3f7e44b9-0d23-4154-a2e9-c50963f7f4c3" (reference "R1") (unit 1))))) (wire (pts (xy 85.09 77.47) (xy 102.87 77.47)) (stroke (width 0) (type default)) (uuid 40361032-ee42-4e76-87a9-12050769412c)) (label "DAC0" (at 87.63 77.47 0) (effects (font (size 1.0 1.0))) (uuid 6f1fc79c-9a5c-4d23-9953-ea7593629b7f)) (wire (pts (xy 118.11 77.47) (xy 134.62 77.47)) (stroke (width 0) (type default)) (uuid b567d73c-3f1d-4584-adae-df1bcef4d360)) (label "VIDEO" (at 134.62 77.47 0) (effects (font (size 1.0 1.0))) (uuid 891c051d-7ac5-48c7-9680-348a0e224f62)) (symbol (lib_id "C5VRX:R") (at 110.49 82.55 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid af10aa43-98e1-4332-8630-8d011fa78887)
+       (property "Reference" "R2" (at 107.95 80.01 0) (effects (font (size 1.0 1.0))))
+       (property "Value" "3.9k" (at 114.3 80.01 0) (effects (font (size 1.0 1.0))))
+       (property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal" (at 110.49 82.55 0) (effects (font (size 1 1)) (hide yes)))
+       (instances (project "C5VRX_JACK_DIY_V2" (path "/3f7e44b9-0d23-4154-a2e9-c50963f7f4c3" (reference "R2") (unit 1))))) (wire (pts (xy 85.09 82.55) (xy 102.87 82.55)) (stroke (width 0) (type default)) (uuid 2c577a22-2001-4d85-8872-8b15f67a3d36)) (label "DAC1" (at 87.63 82.55 0) (effects (font (size 1.0 1.0))) (uuid 4cfccbda-f360-467b-bed2-6a36f1c2a796)) (wire (pts (xy 118.11 82.55) (xy 134.62 82.55)) (stroke (width 0) (type default)) (uuid 34c17acc-6be2-4bc7-a976-c6758abb9fc8)) (label "VIDEO" (at 134.62 82.55 0) (effects (font (size 1.0 1.0))) (uuid 5fc4e813-0f68-4b24-b27d-1377068038fe)) (symbol (lib_id "C5VRX:R") (at 110.49 87.63 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid a3dee0ec-f500-485a-bebc-e8e28a8ba953)
+       (property "Reference" "R3" (at 107.95 85.09 0) (effects (font (size 1.0 1.0))))
+       (property "Value" "2k" (at 114.3 85.09 0) (effects (font (size 1.0 1.0))))
+       (property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal" (at 110.49 87.63 0) (effects (font (size 1 1)) (hide yes)))
+       (instances (project "C5VRX_JACK_DIY_V2" (path "/3f7e44b9-0d23-4154-a2e9-c50963f7f4c3" (reference "R3") (unit 1))))) (wire (pts (xy 85.09 87.63) (xy 102.87 87.63)) (stroke (width 0) (type default)) (uuid 3c4e9f1e-7089-4ff2-8fd3-8982ea68d7cd)) (label "DAC2" (at 87.63 87.63 0) (effects (font (size 1.0 1.0))) (uuid f13705be-3b3d-413d-90c2-10b3a30f2fdd)) (wire (pts (xy 118.11 87.63) (xy 134.62 87.63)) (stroke (width 0) (type default)) (uuid 252886b9-a013-4daf-b5db-9adcad3dcfdf)) (label "VIDEO" (at 134.62 87.63 0) (effects (font (size 1.0 1.0))) (uuid bf068e22-cecd-4a09-9eeb-f74a26fae226)) (symbol (lib_id "C5VRX:R") (at 110.49 92.71 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid 64ce6f82-e377-4bab-8755-999e042f4fa0)
+       (property "Reference" "R4" (at 107.95 90.17 0) (effects (font (size 1.0 1.0))))
+       (property "Value" "1k" (at 114.3 90.17 0) (effects (font (size 1.0 1.0))))
+       (property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal" (at 110.49 92.71 0) (effects (font (size 1 1)) (hide yes)))
+       (instances (project "C5VRX_JACK_DIY_V2" (path "/3f7e44b9-0d23-4154-a2e9-c50963f7f4c3" (reference "R4") (unit 1))))) (wire (pts (xy 85.09 92.71) (xy 102.87 92.71)) (stroke (width 0) (type default)) (uuid 303111a9-1afb-432b-a4ac-03255d567a9c)) (label "DAC3" (at 87.63 92.71 0) (effects (font (size 1.0 1.0))) (uuid c0532056-20c9-4a2e-bdfb-789009172665)) (wire (pts (xy 118.11 92.71) (xy 134.62 92.71)) (stroke (width 0) (type default)) (uuid 63d03d62-465e-48c2-92ff-71d95a1507a9)) (label "VIDEO" (at 134.62 92.71 0) (effects (font (size 1.0 1.0))) (uuid 43ab0bfa-8d72-4e65-94b9-2353ca53ab29)) (symbol (lib_id "C5VRX:R") (at 110.49 97.79 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid cc29ecff-d050-46a7-8332-050baf0f9ef7)
+       (property "Reference" "R5" (at 107.95 95.25 0) (effects (font (size 1.0 1.0))))
+       (property "Value" "470" (at 114.3 95.25 0) (effects (font (size 1.0 1.0))))
+       (property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal" (at 110.49 97.79 0) (effects (font (size 1 1)) (hide yes)))
+       (instances (project "C5VRX_JACK_DIY_V2" (path "/3f7e44b9-0d23-4154-a2e9-c50963f7f4c3" (reference "R5") (unit 1))))) (wire (pts (xy 85.09 97.79) (xy 102.87 97.79)) (stroke (width 0) (type default)) (uuid 35c39f7b-9fbf-4530-9b13-b9384eb09e4d)) (label "DAC4" (at 87.63 97.79 0) (effects (font (size 1.0 1.0))) (uuid fa1d890f-e65e-4651-be92-53b307ed6bed)) (wire (pts (xy 118.11 97.79) (xy 134.62 97.79)) (stroke (width 0) (type default)) (uuid 371431da-4b33-47d9-bb28-ab5281c220e9)) (label "VIDEO" (at 134.62 97.79 0) (effects (font (size 1.0 1.0))) (uuid 8786ad63-7517-4f9f-94e1-b2fa5d95d675)) (symbol (lib_id "C5VRX:R") (at 110.49 102.87 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid 5856c000-6297-40b7-bffb-466b3a9a8ae3)
+       (property "Reference" "R6" (at 107.95 100.33 0) (effects (font (size 1.0 1.0))))
+       (property "Value" "240" (at 114.3 100.33 0) (effects (font (size 1.0 1.0))))
+       (property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal" (at 110.49 102.87 0) (effects (font (size 1 1)) (hide yes)))
+       (instances (project "C5VRX_JACK_DIY_V2" (path "/3f7e44b9-0d23-4154-a2e9-c50963f7f4c3" (reference "R6") (unit 1))))) (wire (pts (xy 85.09 102.87) (xy 102.87 102.87)) (stroke (width 0) (type default)) (uuid 22cfe368-de61-4e8a-a9b1-a9f2561a9a5b)) (label "DAC5" (at 87.63 102.87 0) (effects (font (size 1.0 1.0))) (uuid a92881f3-0d7b-4272-9ca6-003350235e67)) (wire (pts (xy 118.11 102.87) (xy 134.62 102.87)) (stroke (width 0) (type default)) (uuid 1329832f-09f2-4f28-b7b9-44a7fbe42b6f)) (label "VIDEO" (at 134.62 102.87 0) (effects (font (size 1.0 1.0))) (uuid 6e2e6e7b-9f34-4295-8330-140ec4347c2d)) (no_connect (at 44.45 90.17) (uuid 8c488052-0d63-4260-b13f-0297d37cf4a4)) (no_connect (at 44.45 92.71) (uuid 513411d4-ffdd-482e-9182-776338c8e9a0)) (no_connect (at 44.45 95.25) (uuid 105e49c9-f3cf-4893-8df1-20e1ed707dec))   (no_connect (at 44.45 102.87) (uuid e17d6b7e-af81-445c-87fd-b3c35097ee0d)) (wire (pts (xy 39.37 77.47) (xy 44.45 77.47)) (stroke (width 0) (type default)) (uuid 4cc69d78-9767-4458-9c3d-85b15298468a)) (label "5V_XIAO" (at 39.37 77.47 0) (effects (font (size 1.0 1.0))) (uuid d3b2b115-2def-4452-b3aa-ecfd477092c1)) (wire (pts (xy 39.37 82.55) (xy 44.45 82.55)) (stroke (width 0) (type default)) (uuid 1ea5fa06-7e47-4633-bc24-32be0978abaa)) (label "GND" (at 39.37 82.55 0) (effects (font (size 1.0 1.0))) (uuid 8c180718-f663-4019-a4a5-3ab1f0c87418)) (symbol (lib_id "C5VRX:R") (at 160.02 111.76 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid 4b3b4a33-b959-4a0e-8286-f2de228f2a50)
+       (property "Reference" "R7" (at 157.48 109.22 0) (effects (font (size 1.0 1.0))))
+       (property "Value" "200" (at 163.83 109.22 0) (effects (font (size 1.0 1.0))))
+       (property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal" (at 160.02 111.76 0) (effects (font (size 1 1)) (hide yes)))
+       (instances (project "C5VRX_JACK_DIY_V2" (path "/3f7e44b9-0d23-4154-a2e9-c50963f7f4c3" (reference "R7") (unit 1))))) (wire (pts (xy 147.32 111.76) (xy 152.4 111.76)) (stroke (width 0) (type default)) (uuid 588bec95-4390-45a6-b79e-ad3dbd1deaa9)) (label "GND" (at 147.32 111.76 0) (effects (font (size 1.0 1.0))) (uuid 4813e515-f909-40e3-a5f7-a7beb4bd4fc4)) (wire (pts (xy 167.64 111.76) (xy 172.72 111.76)) (stroke (width 0) (type default)) (uuid 7a57d687-49b8-4f82-a885-246c2319f28e)) (label "VIDEO" (at 172.72 111.76 0) (effects (font (size 1.0 1.0))) (uuid a9a296ae-5cf3-458d-a433-036fe2d5fbd9)) (symbol (lib_id "C5VRX:FatShark_9") (at 214.63 85.09 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid 56a74dda-412c-4cf2-aff2-1065b9ad04ae)
+       (property "Reference" "J1" (at 219.71 66.04 0) (effects (font (size 1.0 1.0))))
+       (property "Value" "FATSHARK BAY" (at 219.71 68.58 0) (effects (font (size 1.0 1.0))))
+       (property "Footprint" "C5VRX:FatShark_Header_1x09" (at 214.63 85.09 0) (effects (font (size 1 1)) (hide yes)))
+       (instances (project "C5VRX_JACK_DIY_V2" (path "/3f7e44b9-0d23-4154-a2e9-c50963f7f4c3" (reference "J1") (unit 1))))) (wire (pts (xy 199.39 95.25) (xy 207.01 95.25)) (stroke (width 0) (type default)) (uuid d2f3b0f2-5339-44ce-ad35-45c377240ef8)) (label "5V_BAY" (at 199.39 95.25 0) (effects (font (size 1.0 1.0))) (uuid bc00d839-5a2a-438f-a7cf-90aa10636fbc)) (wire (pts (xy 199.39 90.17) (xy 207.01 90.17)) (stroke (width 0) (type default)) (uuid cae22ef3-84ce-4d1d-a5e8-dedb600219d7)) (label "GND" (at 199.39 90.17 0) (effects (font (size 1.0 1.0))) (uuid e86c7b11-63f4-4feb-9bf7-814db04049d3)) (wire (pts (xy 199.39 82.55) (xy 207.01 82.55)) (stroke (width 0) (type default)) (uuid 6583b166-300b-4db5-84dd-2cda0b7d5f77)) (label "VIDEO" (at 199.39 82.55 0) (effects (font (size 1.0 1.0))) (uuid 8ecdf35a-b982-448a-9310-0828899e6b3e)) (no_connect (at 207.01 92.71) (uuid 55e4f14b-0c9a-42bf-b857-fcdff5e7f834)) (no_connect (at 207.01 87.63) (uuid a1fc2bb9-7d1b-4b9e-ae88-543fb2715b25)) (no_connect (at 207.01 85.09) (uuid 82738afd-abd1-4335-bf68-643ed09ae6e3)) (no_connect (at 207.01 80.01) (uuid 1dbfe221-bf68-406b-924a-fa5535e1f565)) (no_connect (at 207.01 77.47) (uuid 3df613da-7d07-48e4-bd5e-b41bbbe71ac7)) (no_connect (at 207.01 74.93) (uuid 637a9686-3afd-4719-882a-2b1c4ecddc0d)) (symbol (lib_id "C5VRX:R") (at 110.49 134.62 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid 926dea4f-295a-4300-ba05-0bb960a439de)
+       (property "Reference" "SJ1" (at 106.68 132.08 0) (effects (font (size 1.0 1.0))))
+       (property "Value" "5V LINK" (at 115.57 132.08 0) (effects (font (size 1.0 1.0))))
+       (property "Footprint" "Jumper:SolderJumper-2_P1.3mm_Open_Pad1.0x1.5mm" (at 110.49 134.62 0) (effects (font (size 1 1)) (hide yes)))
+       (instances (project "C5VRX_JACK_DIY_V2" (path "/3f7e44b9-0d23-4154-a2e9-c50963f7f4c3" (reference "SJ1") (unit 1))))) (wire (pts (xy 95.25 134.62) (xy 102.87 134.62)) (stroke (width 0) (type default)) (uuid 908b0841-6fb7-4ad0-823a-d54918ab83b3)) (label "5V_BAY" (at 95.25 134.62 0) (effects (font (size 1.0 1.0))) (uuid d14fd536-5dee-49b4-94b1-48d46479215f)) (wire (pts (xy 118.11 134.62) (xy 125.73 134.62)) (stroke (width 0) (type default)) (uuid 85ec6c1e-7cef-4e46-9b03-46016b836ce9)) (label "5V_XIAO" (at 125.73 134.62 0) (effects (font (size 1.0 1.0))) (uuid 4e1c7f05-7411-4473-b378-372da3186fb4)) (symbol (lib_id "C5VRX:Supply") (at 40.64 134.62 0) (unit 1) (in_bom no) (on_board no) (dnp no) (uuid 496bbd8b-f4d3-4d12-8966-6ee2e851bba7)
+       (property "Reference" "#FLG01" (at 40.64 129.54 0) (effects (font (size 1.0 1.0))))
+       (property "Value" "SUPPLY" (at 40.64 132.08 0) (effects (font (size 1.0 1.0))))
+       (property "Footprint" "" (at 40.64 134.62 0) (effects (font (size 1 1)) (hide yes)))
+       (instances (project "C5VRX_JACK_DIY_V2" (path "/3f7e44b9-0d23-4154-a2e9-c50963f7f4c3" (reference "#FLG01") (unit 1))))) (label "5V_BAY" (at 40.64 139.7 0) (effects (font (size 1.0 1.0))) (uuid b7a26776-f4d6-40ab-a056-7924bbc6c8ce)) (symbol (lib_id "C5VRX:Supply") (at 40.64 152.4 0) (unit 1) (in_bom no) (on_board no) (dnp no) (uuid 0d055f49-1b43-4188-a549-7e239c5ac9f8)
+       (property "Reference" "#FLG02" (at 40.64 147.32 0) (effects (font (size 1.0 1.0))))
+       (property "Value" "SUPPLY" (at 40.64 149.86 0) (effects (font (size 1.0 1.0))))
+       (property "Footprint" "" (at 40.64 152.4 0) (effects (font (size 1 1)) (hide yes)))
+       (instances (project "C5VRX_JACK_DIY_V2" (path "/3f7e44b9-0d23-4154-a2e9-c50963f7f4c3" (reference "#FLG02") (unit 1))))) (label "5V_XIAO" (at 40.64 157.48 0) (effects (font (size 1.0 1.0))) (uuid abbdc58a-305b-4e1a-9d5e-7dd76c369dcc)) (symbol (lib_id "C5VRX:Supply") (at 64.77 152.4 0) (unit 1) (in_bom no) (on_board no) (dnp no) (uuid de10be08-6309-4716-b8d7-996aacadccfd)
+       (property "Reference" "#FLG03" (at 64.77 147.32 0) (effects (font (size 1.0 1.0))))
+       (property "Value" "SUPPLY" (at 64.77 149.86 0) (effects (font (size 1.0 1.0))))
+       (property "Footprint" "" (at 64.77 152.4 0) (effects (font (size 1 1)) (hide yes)))
+       (instances (project "C5VRX_JACK_DIY_V2" (path "/3f7e44b9-0d23-4154-a2e9-c50963f7f4c3" (reference "#FLG03") (unit 1))))) (label "GND" (at 64.77 157.48 0) (effects (font (size 1.0 1.0))) (uuid d8263277-b3c2-4291-a790-56459e79497b)) (text "C5VRX_JACK_DIY_V2 / FAT SHARK DOMINATOR + 3.5MM AV - XIAO THT CARRIER" (at 30.48 30.48 0) (effects (font (size 2 2)) (justify left top)) (uuid 17ed94c9-770b-4215-8d14-afd63b45e7db)) (text "Only 5V, GND and VIDEO connected at the goggle bay.\nD4..D9 = DAC bit 0..5. Use XIAO firmware pin mapping.\nR1..R7: upstream C5VRX-5 values, 1% recommended." (at 30.48 39.37 0) (effects (font (size 1.1 1.1)) (justify left top)) (uuid aabf9a93-ce5c-4bd8-93e1-8ec35215d17a)) (text "J1: pin 1 = bottom / 5V; pin 9 = top.\nComponent side: header RIGHT, USB LEFT.\nUnused bay pins intentionally unconnected." (at 190.5 107.95 0) (effects (font (size 1.1 1.1)) (justify left top)) (uuid 616d5db6-38a4-40a1-8913-f7b7ac51f7cb)) (text "SJ1: solder bridge for bay power.\nOpen SJ1 before USB programming.\nXIAO BOOT button controls the firmware menu." (at 83.82 146.05 0) (effects (font (size 1.1 1.1)) (justify left top)) (uuid 4b86ecf7-a45d-4b5e-9b15-f040d24798b6)) (text "R1..R7: axial through-hole, DIN0207 / 0.25W, 10.16 mm lead pitch.\nXIAO: plug-in mounting on 2 x 7-pin headers.\nDecoupling is provided on the XIAO module." (at 30.48 166.37 0) (effects (font (size 1.1 1.1)) (justify left top)) (uuid f719152d-e4bb-4fb8-9c79-b5c3385384d1)) (text "LOCAL FIRMWARE BOM OPTION (same PCB):\nR1 7.87k, R2 3.92k, R3 1.96k, R4 976, R5 487, R6 243, R7 191.\nChoose one complete DAC set to match the firmware. No extra 75-ohm shunt." (at 30.48 179.07 0) (effects (font (size 1.1 1.1)) (justify left top)) (uuid 2c355071-3d50-4fb7-b98a-2cc396a7b4a5)) (sheet_instances (path "/" (page "1"))) (embedded_fonts no)
+(symbol (lib_id "C5VRX:C") (at 160.02 132.715 0) (unit 1)
+      (in_bom yes) (on_board yes) (dnp yes) (uuid f7d0515c-22f2-401a-a35a-3323bbbca0b8)
+      (property "Reference" "C1" (at 165.1 130.81 0) (effects (font (size 1 1))))
+      (property "Value" "470pF" (at 167.64 133.35 0) (effects (font (size 1 1))))
+      (property "Footprint" "Capacitor_THT:C_Disc_D3.0mm_W1.6mm_P2.50mm" (at 160.02 132.715 0) (effects (font (size 1 1)) (hide yes)))
+      (instances (project "C5VRX_JACK_DIY_V2" (path "/3f7e44b9-0d23-4154-a2e9-c50963f7f4c3" (reference "C1") (unit 1)))))
+    (label "VIDEO" (at 160.02 127 0) (effects (font (size 1 1))) (uuid 3a658b4c-057a-4e6a-83f8-a72fdca837d4))
+    (label "GND" (at 160.02 138.43 0) (effects (font (size 1 1))) (uuid 0e90527e-4a6d-4b6b-b50f-058d11911fba))
+    (text "C1: OPTIONAL / DNP.\n470 pF C0G/NP0, only if needed.\nCheck loaded video before fitting."
+      (at 144.78 146.05 0) (effects (font (size 1 1)) (justify left top)) (uuid 692c7f04-375b-4326-a21f-d988d99d63d2))
+    
+  (symbol (lib_id "Connector_Audio:AudioJack4") (at 215.9 132.08 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no) (uuid 2cd57ad2-1eda-491e-85c4-e71307c3f517)
+    (property "Reference" "J2" (at 215.9 123.19 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "PJ-320D" (at 215.9 125.73 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Connector_Audio:Jack_3.5mm_PJ320D_Horizontal" (at 215.9 132.08 0) (effects (font (size 1 1)) (hide yes)))
+    (instances (project "C5VRX_JACK_DIY_V2" (path "/3f7e44b9-0d23-4154-a2e9-c50963f7f4c3" (reference "J2") (unit 1))))
+  )
+  (wire (pts (xy 220.98 129.54) (xy 226.06 129.54)) (stroke (width 0) (type default)) (uuid 1e63dd9c-d82c-465d-b958-1c1e6ea60c06))
+  (label "GND" (at 226.06 129.54 0) (effects (font (size 1.0 1.0))) (uuid 8786dbab-114b-44cd-ae26-869aafccf8c1))
+  (no_connect (at 220.98 132.08) (uuid 3719f4e6-81ab-4279-b647-f41e23d1d792))
+  (wire (pts (xy 220.98 134.62) (xy 226.06 134.62)) (stroke (width 0) (type default)) (uuid b0734d50-005c-4c42-9dec-1328a47406f2))
+  (label "VIDEO" (at 226.06 134.62 0) (effects (font (size 1.0 1.0))) (uuid 768dac5c-a916-445d-9576-0e0474441a61))
+  (wire (pts (xy 220.98 137.16) (xy 226.06 137.16)) (stroke (width 0) (type default)) (uuid 16dc8147-38bd-4e40-bd6f-f56e2f5c0273))
+  (label "VIDEO" (at 226.06 137.16 0) (effects (font (size 1.0 1.0))) (uuid fbbb2794-273e-4b7e-a34f-c5fdabd7708c))
+  (text "PJ-320D / 3.5 mm AV (TRS / TRRS)\nTip + Ring 1 = VIDEO\nSleeve = GND; Ring 2 = N/C"
+    (at 205.74 146.05 0) (effects (font (size 1.1 1.1)) (justify left top)) (uuid 58032199-bfb4-4e01-801c-3840fb0b36b6))
+
+(symbol (lib_id "C5VRX:R") (at 110.49 55.88 0) (unit 1) (in_bom yes) (on_board yes) (dnp yes) (uuid 6be574e5-f721-4693-88db-239be257eeb8)
+       (property "Reference" "R8" (at 107.95 53.34 0) (effects (font (size 1.0 1.0))))
+       (property "Value" "15k" (at 114.3 53.34 0) (effects (font (size 1.0 1.0))))
+       (property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal" (at 110.49 55.88 0) (effects (font (size 1 1)) (hide yes)))
+       (instances (project "C5VRX_JACK_DIY_V2" (path "/3f7e44b9-0d23-4154-a2e9-c50963f7f4c3" (reference "R8") (unit 1)))))
+(wire (pts (xy 95.25 55.88) (xy 102.87 55.88)) (stroke (width 0) (type default)) (uuid 5423b227-82fe-48d3-aa05-37ec0dfdb15b))
+(label "DAC_EXT7_SW" (at 95.25 55.88 0) (effects (font (size 1 1))) (uuid f3f213e0-f509-45bf-aa2f-3acc10cadf82))
+(wire (pts (xy 118.11 55.88) (xy 134.62 55.88)) (stroke (width 0) (type default)) (uuid 60370eb5-1a59-4888-9fd3-5b0ce0bc5353))
+(label "VIDEO" (at 134.62 55.88 0) (effects (font (size 1 1))) (uuid 5b414b9f-72c7-48e4-a5b8-adca91c42add))
+(wire (pts (xy 39.37 100.33) (xy 44.45 100.33)) (stroke (width 0) (type default)) (uuid e998c5d3-7de5-474e-bb79-c5766e7ab6a7))
+(label "DAC_EXT7" (at 39.37 100.33 0) (effects (font (size 1 1))) (uuid 0d016bd0-0929-44de-b1f6-c7bff1774773))
+(symbol (lib_id "Jumper:SolderJumper_2_Open") (at 160.02 55.88 0) (unit 1)
+      (in_bom no) (on_board yes) (dnp no) (uuid 3f8503fe-0b2c-443e-8aea-a42bdce2b1e3)
+      (property "Reference" "SJ2" (at 160.02 53.34 0) (effects (font (size 1 1))))
+      (property "Value" "BIT 7" (at 160.02 58.42 0) (effects (font (size 1 1))))
+      (property "Footprint" "Jumper:SolderJumper-2_P1.3mm_Open_Pad1.0x1.5mm" (at 160.02 55.88 0) (effects (font (size 1 1)) (hide yes)))
+      (instances (project "C5VRX_JACK_DIY_V2" (path "/3f7e44b9-0d23-4154-a2e9-c50963f7f4c3" (reference "SJ2") (unit 1)))))
+    (label "DAC_EXT7" (at 154.94 55.88 0) (effects (font (size 1 1))) (uuid 51182dbd-eb6a-4c50-958c-5ea32e47cee8))
+(label "DAC_EXT7_SW" (at 165.1 55.88 0) (effects (font (size 1 1))) (uuid f6900ef9-36a3-4542-869d-e016c818cc28))
+(symbol (lib_id "C5VRX:R") (at 110.49 63.5 0) (unit 1) (in_bom yes) (on_board yes) (dnp yes) (uuid b754a527-d493-417b-b1ea-61e130c9fbb6)
+       (property "Reference" "R9" (at 107.95 60.96 0) (effects (font (size 1.0 1.0))))
+       (property "Value" "33k" (at 114.3 60.96 0) (effects (font (size 1.0 1.0))))
+       (property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal" (at 110.49 63.5 0) (effects (font (size 1 1)) (hide yes)))
+       (instances (project "C5VRX_JACK_DIY_V2" (path "/3f7e44b9-0d23-4154-a2e9-c50963f7f4c3" (reference "R9") (unit 1)))))
+(wire (pts (xy 95.25 63.5) (xy 102.87 63.5)) (stroke (width 0) (type default)) (uuid 0164f198-ccff-420e-ae6f-f6e30873e4e3))
+(label "DAC_EXT8_SW" (at 95.25 63.5 0) (effects (font (size 1 1))) (uuid fb8ec0b5-9d73-4bb9-ab94-f2bb5a49de3c))
+(wire (pts (xy 118.11 63.5) (xy 134.62 63.5)) (stroke (width 0) (type default)) (uuid fd97c021-d481-43f5-8b22-679c32e9e6cf))
+(label "VIDEO" (at 134.62 63.5 0) (effects (font (size 1 1))) (uuid c03950e1-bc69-446f-8bf8-ad39cf75c285))
+(wire (pts (xy 39.37 97.79) (xy 44.45 97.79)) (stroke (width 0) (type default)) (uuid 786d9d53-d9e0-4032-a257-9c7ecea1a642))
+(label "DAC_EXT8" (at 39.37 97.79 0) (effects (font (size 1 1))) (uuid ebdcd8c1-3e2d-4507-9542-7fffa94afa2e))
+(symbol (lib_id "Jumper:SolderJumper_2_Open") (at 160.02 63.5 0) (unit 1)
+      (in_bom no) (on_board yes) (dnp no) (uuid b8d91b5c-09bf-4e26-913e-27c396903ff4)
+      (property "Reference" "SJ3" (at 160.02 60.96 0) (effects (font (size 1 1))))
+      (property "Value" "BIT 8" (at 160.02 66.04 0) (effects (font (size 1 1))))
+      (property "Footprint" "Jumper:SolderJumper-2_P1.3mm_Open_Pad1.0x1.5mm" (at 160.02 63.5 0) (effects (font (size 1 1)) (hide yes)))
+      (instances (project "C5VRX_JACK_DIY_V2" (path "/3f7e44b9-0d23-4154-a2e9-c50963f7f4c3" (reference "SJ3") (unit 1)))))
+    (label "DAC_EXT8" (at 154.94 63.5 0) (effects (font (size 1 1))) (uuid 6053f3c5-7a6c-430d-9b72-117cb62c8874))
+(label "DAC_EXT8_SW" (at 165.1 63.5 0) (effects (font (size 1 1))) (uuid 87ffffc3-7fdf-4a59-b1e7-c53cde37b2b4))
+(text "REV B: R8 15k / D10 and R9 33k / D3 are DNP.\nPR259 remains 6-bit. 8-bit: D9..D4 = bits 7..2, D10 = bit 1, D3 = bit 0.\nPopulate only with wider DAC firmware and loaded CVBS / D3 boot validation." (at 144.78 45.72 0) (effects (font (size 1 1)) (justify left top)) (uuid c4b4dd71-bbc3-4119-b1ae-22e2f3fb9e01))(text "SJ2 / SJ3: rear, normally OPEN.\n6-bit: both open. 7-bit: close SJ2 only.\n8-bit: close SJ2 + SJ3.\nFit R8/R9 and use matching DAC firmware." (at 144.78 76.2 0) (effects (font (size 1 1)) (justify left top)) (uuid c5f1d9d4-6770-46b5-a39a-2bfcfd960c9b))
+)

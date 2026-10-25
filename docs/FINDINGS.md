@@ -29,6 +29,9 @@ including the bench coarse/fine/ultrafine routes and RF restores.
 D10/GPIO10 and D3/GPIO7 are reserved, not enabled DAC output lanes.
 Reserve a 16 kOhm D10-to-CVBS footprint for the seventh physical branch
 and a 32 kOhm D3-to-CVBS footprint for the eighth, both DNP in this build.
+Update 2026-10-25 (operator decision, DIY REV B PCB): the nominal values
+are now 15 kOhm (D10, R8) and 33 kOhm (D3, R9); the six existing branches
+and the 200 Ohm load are unchanged. Not built or measured.
 The new branches are low bits: D10=bit0 for 7-bit; D10=bit1 and D3=bit0
 for 8-bit. The existing six branches shift up in logical significance.
 This records the future pin allocation; no PCB files or wider DAC firmware
