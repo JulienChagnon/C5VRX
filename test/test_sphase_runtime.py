@@ -21,6 +21,12 @@ PREFIX = r'''
 #define RF_LANE_ULTRAFINE 2
 static cal_watch_t s_basemap_watch;
 static uint32_t s_basemap_context;
+static bool s_cal_notice;
+static uint16_t s_cal_notice_freq,s_cal_notice_key;
+static uint8_t s_cal_notice_gain;
+static unsigned s_current_gain=83;
+static unsigned rf_frequency_mhz(void){return 5865;}
+static unsigned live_filter_key(void){return 42;}
 static unsigned s_health_blocks,s_health_rejected;
 static int64_t s_health_us,s_last_gain_write_us;
 static int s_drift_avg[2],s_sphase_excess;

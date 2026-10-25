@@ -83,6 +83,29 @@ int main(void){
   s=(ROOT/'main/calibration.c').read_text();body=s[s.index('static void calibration_dump(void)'):s.index('static void calibration_boot(void)')]
   for name in ['rf_set_filter(', 'rf_set_channel(', 'receiver_set_gain(', 'phy_dco_search(', 'rx_clock_slip(', 'status_screen(', 'blob_store(']:
    self.assertNotIn(name,body)
+ def test_menu_recommendation_is_latched_until_recovery(self):
+  s=(ROOT/'main/calibration.c').read_text()
+  body=s[s.index('unsigned calibration_dc_needed('):s.index('static void dc_health_print(')]
+  run(r'''
+#include <assert.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+static bool s_cal_notice;
+static uint16_t s_cal_notice_freq=5865,s_cal_notice_key=42;
+static unsigned frequency=5865,key=42;
+static unsigned rf_frequency_mhz(void){return frequency;}
+static unsigned live_filter_key(void){return key;}
+''' + body + r'''
+int main(void){char label[24];
+ assert(!calibration_dc_needed(label,sizeof(label))); /* missing data alone */
+ s_cal_notice=true;assert(calibration_dc_needed(label,sizeof(label)));
+ assert(calibration_dc_needed(NULL,0)); /* menu may stay open indefinitely */
+ frequency=5805;assert(!calibration_dc_needed(NULL,0));
+ frequency=5865;key=43;assert(!calibration_dc_needed(NULL,0));
+ key=42;s_cal_notice=false;assert(!calibration_dc_needed(NULL,0));
+}
+''')
  def test_actual_boot_phase_guard(self):
   s=(ROOT/'main/calibration.c').read_text()
   body=s[s.index('static bool phase_slip(void)'):s.index('static sphase_verdict_t sphase_scan_n(')]

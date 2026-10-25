@@ -114,10 +114,8 @@ static void carrier_record(int dev_x100)
 bool profile_live_mode(void) { return s_live_switch; }
 void profile_set_live_mode(bool on)
 {
-    uint8_t v = on;
     s_live_switch = on;
     if (!on) s_switch_pending = -1;
-    (void)blob_store("prof_live", &v, 1);
 }
 
 void profile_load(void)

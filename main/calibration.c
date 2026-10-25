@@ -57,6 +57,9 @@ void calibration_dump_request(void) { s_dump_requested = true; }
 static cal_watch_t s_basemap_watch;
 static uint32_t s_basemap_context;
 static unsigned s_health_blocks, s_health_rejected;
+static bool s_cal_notice;
+static uint16_t s_cal_notice_freq, s_cal_notice_key;
+static uint8_t s_cal_notice_gain;
 static int64_t s_health_us;
 
 static volatile bool s_startup = true;
@@ -1304,8 +1307,9 @@ static const char *dc_key_profile(uint16_t key)
  * repair flags may guide an explicit manual run, never normal boot. */
 unsigned calibration_dc_needed(char *buf, size_t size)
 {
-    const bool bad = s_basemap_watch.state == CAL_BAD &&
-        esp_timer_get_time() - s_basemap_watch.last_us <= CAL_EVIDENCE_GAP_US;
+    /* Keep a proven recommendation visible while the user navigates the
+     * menu (where passive measurement is intentionally suspended). */
+    const bool bad = s_cal_notice && s_cal_notice_freq == rf_frequency_mhz() && s_cal_notice_key == live_filter_key();
     if (size) snprintf(buf, size, "%s", bad ? "BASEMAP" : "");
     return bad;
 }
@@ -1314,7 +1318,7 @@ static void dc_health_print(void)
 {
     printf("CAL_HEALTH state=%s qualified=%u rejected=%u dc_mcells=%d/%d reason=%u "
            "auto_cal=0 auto_dc_trim=0 boot_phase_budget_ms=600 last_us=%lld\n",
-           s_basemap_watch.state == CAL_BAD ? "bad" : s_basemap_watch.state == CAL_GOOD ? "good" : "unknown",
+           calibration_dc_needed(NULL, 0) ? "bad" : s_basemap_watch.state == CAL_GOOD ? "good" : "unknown",
            s_health_blocks, s_health_rejected, s_basemap_watch.last_i, s_basemap_watch.last_q,
            s_basemap_watch.reason, s_basemap_watch.last_us);
 }
@@ -1561,8 +1565,17 @@ static void drift_service(void)
     s_health_us += esp_timer_get_time() - now;
     const bool warn = cal_watch_add(&s_basemap_watch, context, now, qualified,
                                    mismatch > 0 ? DC_HEALTH_FILTER : 0u, w.dc_i, w.dc_q);
-    if (warn) printf("CAL_NEEDED reason=%s dc_mcells=%d/%d action=MENU_CALIBRATE auto_cal=0\n",
-                     mismatch > 0 ? "filter_readback" : "dc_offset", w.dc_i, w.dc_q);
+    if (warn) {
+        const bool already = s_cal_notice && s_cal_notice_freq == rf_frequency_mhz() && s_cal_notice_key == live_filter_key();
+        s_cal_notice = true;
+        s_cal_notice_freq = rf_frequency_mhz(); s_cal_notice_key = live_filter_key(); s_cal_notice_gain = s_current_gain;
+        if (!already) printf("CAL_NEEDED reason=%s dc_mcells=%d/%d action=MENU_CALIBRATE auto_cal=0\n",
+                             mismatch > 0 ? "filter_readback" : "dc_offset", w.dc_i, w.dc_q);
+    } else if (s_basemap_watch.state == CAL_GOOD && s_cal_notice && s_cal_notice_gain == s_current_gain &&
+               s_cal_notice_freq == rf_frequency_mhz() && s_cal_notice_key == live_filter_key()) {
+        s_cal_notice = false;
+        printf("CAL_HEALTH state=good recommendation=cleared auto_cal=0\n");
+    }
     /* A high absolute HF statistic alone is intrinsic noise or phase mixing,
      * not enough evidence to label the base map bad. No automatic slips. */
     if (copied && w.windows == 24u && !menu_splash_active()) {
@@ -2017,10 +2030,11 @@ static void calibration_dump(void)
     cal_dump_line(&d, "{\"type\":\"active\",\"freq_mhz\":%u,\"offset_khz\":%d,\"gain\":%u,\"lane\":%u,"
         "\"filter_code\":%d,\"filter_skirt\":%u,\"filter_bw20\":%s,\"filter_measured\":%s,"
         "\"filter_nbw_khz\":%u,\"dc_held\":%s,\"health\":%u,\"dc_i_mcells\":%d,\"dc_q_mcells\":%d,"
-        "\"qualified_blocks\":%u,\"rejected_blocks\":%u}", rf_frequency_mhz(), rf_offset_khz(), s_current_gain,
+        "\"qualified_blocks\":%u,\"rejected_blocks\":%u,\"calibration_recommended\":%s}", rf_frequency_mhz(), rf_offset_khz(), s_current_gain,
         rf_lane(), f.code, f.skirt, f.bw20 ? "true" : "false", s_filter_cal.normal.valid ? "true" : "false",
         calibration_filter_nbw_khz(), phy_dco_held() ? "true" : "false", s_basemap_watch.state,
-        s_basemap_watch.last_i, s_basemap_watch.last_q, s_health_blocks, s_health_rejected);
+        s_basemap_watch.last_i, s_basemap_watch.last_q, s_health_blocks, s_health_rejected,
+        calibration_dc_needed(NULL, 0) ? "true" : "false");
     int64_t radio_ms, ready_ms;
     firmware_boot_timing(&radio_ms, &ready_ms);
     cal_dump_line(&d, "{\"type\":\"boot_timing\",\"radio_ms\":%lld,\"ready_ms\":%lld,\"target_ms\":10000}",
@@ -2136,6 +2150,7 @@ static void calibration_task(void *arg)
             const bool full = s_full_requested;
             s_manual_requested = s_full_requested = false;
             startup_phase(full);
+            if (dco_current_complete()) s_cal_notice = false;
             memset(&s_basemap_watch, 0, sizeof(s_basemap_watch));
             continue;
         }
