@@ -6,9 +6,31 @@
 #include <unistd.h>
 #include "driver/usb_serial_jtag_vfs.h"
 #include "esp_app_desc.h"
+#include "esp_timer.h"
 #include "rf.h"
 
 volatile const char *s_boot_stage = "start";
+
+/* The boot logo while the receiver tasks start and Direct Gain makes its
+ * first decision (a hold, also without a carrier). The bar fills evenly
+ * over SPLASH_MIN_MS; the logo stays longer, up to SPLASH_MAX_MS, only
+ * while the gain has not held yet, so live video starts on a found gain. */
+#define SPLASH_MIN_MS 3000
+#define SPLASH_MAX_MS 4000
+
+static void splash_wait_gain(int64_t t0, uint32_t holds)
+{
+    int settled_ms = -1;
+    for (;;) {
+        vTaskDelay(pdMS_TO_TICKS(50));
+        const int ms = (int)((esp_timer_get_time() - t0) / 1000);
+        if (settled_ms < 0 && s_gain.state == DG_HOLD && s_gain.holds != holds) settled_ms = ms;
+        menu_splash_progress(ms * 100 / SPLASH_MIN_MS);
+        if ((settled_ms >= 0 && ms >= SPLASH_MIN_MS) || ms >= SPLASH_MAX_MS) break;
+    }
+    if (settled_ms >= 0) printf("SPLASH gain G%u held after %d ms\n", s_current_gain, settled_ms);
+    else printf("SPLASH ended at %d ms before a gain hold\n", SPLASH_MAX_MS);
+}
 
 void app_main(void)
 {
@@ -47,9 +69,15 @@ void app_main(void)
         printf("TRANSPORT boot failed: live OFF; USB status/download remain available\n");
         return;
     }
+    s_boot_stage = "splash";
+    const int64_t splash_t0 = esp_timer_get_time();
+    const uint32_t splash_holds = s_gain.holds;
+    const bool splash = menu_splash_begin();
     s_boot_stage = "tasks";
     receiver_start();
     control_start();
+    if (splash) splash_wait_gain(splash_t0, splash_holds);
+    menu_splash_end();
     s_boot_stage = "ready";
     printf("C5VRX5 %s ready: %s %u MHz, %s, ultrafine IQ, KEEL-1 ('h' for keys) fw=%s\n",
            esp_app_get_description()->version, rf_channel()->name, rf_frequency_mhz(),

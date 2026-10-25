@@ -16,6 +16,7 @@
 #include "hal/dma_types.h"
 #include "gain.h"
 #include "menu_raster.h"
+#include "menu_ui.h"   /* MENU_* items */
 #include "rf.h"
 
 #define IQ_RATE_HZ          40000000u
@@ -219,12 +220,16 @@ void lane_compare_request(void);
 void self_noise_request(void);   /* bench: noise floor with the video output on vs off (console N) */
 
 /* ---- menu.c ---- */
-enum { MENU_BAND, MENU_CHANNEL, MENU_SCAN, MENU_VIDEO, MENU_CALIBRATE, MENU_OUTPUT, MENU_GAIN, MENU_DAC,
-       MENU_EXIT, MENU_ITEMS };
 extern volatile int s_menu_cursor;
 bool menu_open(void);
 void menu_close(void);
 void menu_render(void);
+/* Boot logo while the receiver tasks start (main.c); Direct Gain runs
+ * under it, the menu buttons and the startup phase wait for its end. */
+bool menu_splash_begin(void);
+void menu_splash_progress(int percent);
+void menu_splash_end(void);
+bool menu_splash_active(void);
 void menu_set_standard_mode(std_mode_t mode);
 /* DAC TEST item (dac_check.h): advance pattern -> one flat level per bit ->
  * all -> none -> pattern. Bench only: a flat level carries no sync. */

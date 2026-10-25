@@ -1,0 +1,82 @@
+/* C5VRX-5 by Twotoz and the C5VRX contributors: menu picture.
+ *
+ * Draws the menu and status screens into the menu raster's UI rows from a
+ * plain snapshot of receiver state, so the layout builds and is tested on
+ * the host (test/test_menu_ui.c) exactly as the firmware draws it.
+ *
+ * Black and white: black (blanking, code 20) paper, white (60) ink, two
+ * greys for hierarchy. The 384 x 56 grid has pixels about six times
+ * taller than wide, so strokes are three pixels wide per row of height
+ * and the fonts (menu_font.h) are drawn for that aspect. */
+#pragma once
+#include <stdbool.h>
+#include <stdint.h>
+#include "menu_raster.h"
+
+enum { MENU_BAND, MENU_CHANNEL, MENU_SCAN, MENU_VIDEO, MENU_CALIBRATE, MENU_OUTPUT, MENU_GAIN, MENU_DAC,
+       MENU_EXIT, MENU_ITEMS };
+
+/* DAC codes (blanking 20, sync 0 never appears in the UI rows). */
+enum {
+    MENU_INK_BLACK = 20,
+    MENU_INK_PANEL = 23,    /* the live card's surface */
+    MENU_INK_TRACK = 28,    /* empty meter track and signal bars */
+    MENU_INK_RULE = 24,     /* hairlines */
+    MENU_INK_DIM = 37,      /* notes, units */
+    MENU_INK_GREY = 44,     /* secondary text */
+    MENU_INK_WHITE = 60,
+};
+
+typedef struct {
+    int cursor;                     /* MENU_* */
+    /* Tuning. */
+    const char *channel;            /* "R1" */
+    unsigned freq_mhz;
+    unsigned band;                  /* 0..5, the order of band_letters */
+    unsigned channel_in_band;       /* 0..7 */
+    const char *band_name;          /* "RACEBAND R" */
+    const char *band_letters;       /* one letter per band, "RABEFL" */
+    unsigned band_count;
+    /* Link. */
+    int signal;                     /* 0..100 */
+    bool video;                     /* AFC locked on video */
+    bool level_valid, level_above_noise;
+    int level_dbm;
+    /* Range warnings, shown in place of the link state. */
+    bool dc_cal;
+    const char *dc_need;            /* "NORMAL+WIDE" */
+    bool gain_fixed;
+    /* Scan. */
+    bool scan_active;
+    unsigned scan_progress;         /* 0..100 */
+    /* Video standard. */
+    int std_mode;                   /* 0 AUTO, 1 NTSC, 2 PAL (std_mode_t) */
+    bool std_out_pal;               /* standard the menu itself emits */
+    bool detected_valid, detected_pal;
+    /* Output level. */
+    unsigned output;                /* transport_output() index */
+    const char *output_name;        /* "1.5x" */
+    /* Gain. */
+    const char *gain_mode;          /* "AUTO", "MAX", "G42" */
+    bool gain_auto;
+    unsigned gain;                  /* active gain index */
+    unsigned gain_max;              /* table maximum */
+} menu_view_t;
+
+typedef struct {
+    const char *title, *line1, *line2;
+    int percent;                    /* < 0: no bar */
+    const char *channel;
+    unsigned freq_mhz;
+} menu_status_view_t;
+
+typedef uint8_t menu_ui_rows_t[MENU_UI_LINES][MENU_UI_BYTES];
+
+void menu_ui_render(menu_ui_rows_t ui, const menu_view_t *v);
+void menu_ui_render_status(menu_ui_rows_t ui, const menu_status_view_t *v);
+/* Boot screen: the C5VRX logo (menu_logo.h) over a loading bar, 0..100. */
+void menu_ui_render_splash(menu_ui_rows_t ui, int percent);
+
+/* Text that did not fit its box (clipped or shortened), since the last
+ * render. The host test requires zero for every page. */
+extern unsigned menu_ui_overflow;

@@ -202,9 +202,15 @@ Getting the PCB manufactured (via JLCPCB, PCBWay, etc.) is extremely inexpensive
 | Short press | Next channel | Next item |
 | Hold 0.6 s | Open menu | Select item |
 
-The menu provides **BAND**, **CHANNEL**, **SCAN**, **VIDEO** (AUTO/NTSC/PAL),
+The menu is one black-and-white settings list with every row in view:
+**BAND**, **CHANNEL**, **SCAN**, **VIDEO** (AUTO/NTSC/PAL),
 **CALIBRATE**, **OUTPUT** (0.5-5.0x), **GAIN** (AUTO/MAX/fixed),
-**DAC TEST** and **EXIT**. It closes after 30 seconds of
+**DAC TEST** and **EXIT**, each with its current value. A card beside the
+list keeps the frequency, signal and level in view and names what a hold
+does. Every boot shows the C5VRX logo while Direct Gain finds its first
+gain: the bar fills over 3 s (up to 4 s while the gain has not
+held yet), so live video starts on a settled gain.
+It closes after 30 seconds of
 inactivity, or five minutes in DAC TEST. Menu transitions can interrupt video.
 GAIN starts in AUTO on every boot.
 

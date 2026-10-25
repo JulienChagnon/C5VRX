@@ -11,6 +11,7 @@
 #include "esp_log.h"
 #include "rf.h"
 #include "dac_check.h"
+#include "menu_ui.h"
 
 void transport_start_chain(dma_descriptor_t *first);
 void transport_stop_chain(void);
@@ -22,12 +23,6 @@ void transport_stop_chain(void);
  * and sync_dma_c2m rounds itself, so cache-line alignment buys nothing. */
 #define NODE_CHUNK  32u
 #define NODE_CHUNKS ((MENU_MAX_NODES + NODE_CHUNK - 1u) / NODE_CHUNK)
-
-enum {
-    UI_ROOT = 22, UI_HEADER = 24, UI_PANEL = 26, UI_PANEL_2 = 29, UI_DIVIDER = 33,
-    UI_MUTED = 39, UI_SELECTED = 43, UI_SELECTED_EDGE = 48, UI_STRONG = 54, UI_WHITE = 60,
-};
-#include "menu_font.h"
 
 static DMA_ATTR __attribute__((aligned(64))) menu_raster_t s_raster;
 static dma_descriptor_t *s_chunks[NODE_CHUNKS];
@@ -42,74 +37,6 @@ static volatile int s_status_percent;
 static dac_step_t s_dac_step = DAC_STEP_PATTERN;
 static bool s_raster_flat;
 static uint8_t s_flat_code;
-
-static const uint8_t s_icons[MENU_ITEMS][8] = {
-    {0x10, 0x38, 0x54, 0x10, 0x10, 0x38, 0x7c, 0x00},   /* band */
-    {0x7e, 0x42, 0x5a, 0x5a, 0x5a, 0x42, 0x7e, 0x00},   /* channel */
-    {0x00, 0x40, 0x50, 0x54, 0x55, 0x55, 0x55, 0x00},   /* scan */
-    {0x7e, 0x42, 0x42, 0x42, 0x7e, 0x18, 0x3c, 0x00},   /* video */
-    {0x08, 0x08, 0x1c, 0x7f, 0x1c, 0x08, 0x08, 0x00},   /* calibrate */
-    {0x00, 0x08, 0x18, 0x38, 0x78, 0x38, 0x18, 0x08},   /* output */
-    {0x00, 0x02, 0x06, 0x0e, 0x1e, 0x3e, 0x7e, 0x00},   /* gain */
-    {0x00, 0x03, 0x03, 0x0f, 0x0f, 0x3f, 0x3f, 0x00},   /* dac test */
-    {0x7c, 0x44, 0x04, 0x1f, 0x04, 0x44, 0x7c, 0x00},   /* exit */
-};
-static const char *const s_items[MENU_ITEMS] = {"BAND", "CHANNEL", "SCAN", "VIDEO", "CALIBRATE", "OUTPUT", "GAIN", "DAC TEST",
-                                                "EXIT"};
-
-static void rect(int x, int y, int w, int h, uint8_t code)
-{
-    int x0 = x < 0 ? 0 : x, y0 = y < 0 ? 0 : y;
-    int x1 = x + w > (int)MENU_UI_WIDTH ? (int)MENU_UI_WIDTH : x + w;
-    int y1 = y + h > (int)MENU_UI_LINES ? (int)MENU_UI_LINES : y + h;
-    if (x1 <= x0 || y1 <= y0) return;
-    unsigned sx0 = (unsigned)x0 * MENU_UI_X_SCALE_NUM / MENU_UI_X_SCALE_DEN;
-    unsigned sx1 = (unsigned)x1 * MENU_UI_X_SCALE_NUM / MENU_UI_X_SCALE_DEN;
-    for (int yy = y0; yy < y1; ++yy) memset(&s_raster.ui[yy][sx0], code, sx1 - sx0);
-}
-
-static void glyph(char ch, int x, int y, uint8_t code, int scale)
-{
-    unsigned index = (ch >= 32 && ch <= 126) ? (unsigned)ch - 32u : 0u;
-    for (int gy = 0; gy < 8; ++gy)
-        for (int gx = 0; gx < 8; ++gx)
-            if (s_font8x8[index][gy] & (0x80u >> gx)) rect(x + gx * scale, y + gy * scale, scale, scale, code);
-}
-
-static void text(const char *s, int x, int y, uint8_t code, int scale)
-{
-    for (; s && *s && x < (int)MENU_UI_WIDTH; ++s, x += 8 * scale) glyph(*s, x, y, code, scale);
-}
-
-static void text_right(const char *s, int right, int y, uint8_t code)
-{
-    text(s, right - 8 * (int)strlen(s), y, code, 1);
-}
-
-static void value_box(int x, int y, int w, const char *label, const char *value)
-{
-    rect(x, y, w, 10, UI_PANEL_2);
-    rect(x, y, w, 1, UI_DIVIDER);
-    text(label, x + 3, y + 1, UI_MUTED, 1);
-    text_right(value, x + w - 3, y + 1, UI_WHITE);
-}
-
-static void meter(int x, int y, int w, int value)
-{
-    value = value < 0 ? 0 : value > 100 ? 100 : value;
-    rect(x, y, w, 5, UI_ROOT);
-    rect(x + 1, y + 1, w - 2, 3, UI_PANEL_2);
-    if (value) rect(x + 1, y + 1, (w - 2) * value / 100, 3, UI_STRONG);
-}
-
-static const char *std_name(video_standard_t s) { return s == VIDEO_STD_PAL ? "PAL" : "NTSC"; }
-
-static void title(const char *t, const char *hint)
-{
-    text(t, 100, 10, UI_WHITE, 1);
-    if (hint) text_right(hint, 376, 10, UI_MUTED);
-    rect(100, 19, 276, 1, UI_DIVIDER);
-}
 
 static bool s_interlaced = true;
 
@@ -153,35 +80,53 @@ void menu_dac_step(void)
     if (s_menu_active) menu_render();
 }
 
-/* DAC TEST page, in the content pane like every other item: a ramp over
- * every level from blanking to the top code, then one bar per bit whose
- * halves differ in that bit alone. */
-static void render_dac_pattern(void)
+/* Boot screen: -1 off, else the loading bar in percent. */
+static volatile int s_splash = -1;
+
+static void render_splash(void)
 {
-    /* Ramp, written per sample: 44 levels of ~26 samples (0.65 us). */
-    const unsigned x0 = 100u * MENU_UI_X_SCALE_NUM / MENU_UI_X_SCALE_DEN;
-    const unsigned x1 = 376u * MENU_UI_X_SCALE_NUM / MENU_UI_X_SCALE_DEN;
-    for (unsigned y = 21; y < 33; ++y)
-        for (unsigned x = x0; x < x1; ++x) s_raster.ui[y][x] = dac_check_ramp_code(x - x0, x1 - x0);
-    for (unsigned k = 0; k < DAC_CHECK_BITS; ++k) {
-        const int x = 100 + (int)k * 46;
-        rect(x, 36, 21, 10, dac_check_bar_base(k));
-        rect(x + 21, 36, 21, 10, dac_check_bar_top(k));
-        text(dac_check_pins[k], x + 13, 48, UI_WHITE, 1);
-    }
+    raster_restore();
+    menu_ui_render_splash(s_raster.ui, s_splash);
+    sync_dma_c2m(s_raster.ui, sizeof(s_raster.ui));
+}
+
+bool menu_splash_active(void) { return s_splash >= 0; }
+
+/* The logo on the menu raster while the receiver tasks start (main.c).
+ * RX keeps running under the raster. If the raster cannot take TX, boot
+ * goes on without it. */
+bool menu_splash_begin(void)
+{
+    s_splash = 0;
+    if (menu_open()) return true;
+    s_splash = -1;
+    printf("SPLASH skipped (menu raster could not take TX)\n");
+    return false;
+}
+
+void menu_splash_progress(int percent)
+{
+    if (s_splash < 0) return;
+    s_splash = percent < 0 ? 0 : percent > 100 ? 100 : percent;
+    render_splash();
+}
+
+void menu_splash_end(void)
+{
+    if (s_splash < 0) return;
+    s_splash = -1;
+    menu_close();
 }
 
 static void render_status(void)
 {
     raster_restore();
-    memset(s_raster.ui, UI_ROOT, sizeof(s_raster.ui));
-    rect(0, 0, MENU_UI_WIDTH, 8, UI_HEADER);
-    text("C5VRX-5", 6, 0, UI_WHITE, 1);
-    text(rf_channel()->name, 96, 0, UI_MUTED, 1);
-    text(s_status_title, (MENU_UI_WIDTH - 16 * (int)strlen(s_status_title)) / 2, 12, UI_WHITE, 2);
-    text(s_status_line1, (MENU_UI_WIDTH - 8 * (int)strlen(s_status_line1)) / 2, 31, UI_WHITE, 1);
-    text(s_status_line2, (MENU_UI_WIDTH - 8 * (int)strlen(s_status_line2)) / 2, 40, UI_MUTED, 1);
-    if (s_status_percent >= 0) meter(40, 50, MENU_UI_WIDTH - 80, s_status_percent);
+    const fpv_channel_t *ch = rf_channel();
+    const menu_status_view_t v = {
+        .title = s_status_title, .line1 = s_status_line1, .line2 = s_status_line2,
+        .percent = s_status_percent, .channel = ch->name, .freq_mhz = ch->freq_mhz,
+    };
+    menu_ui_render_status(s_raster.ui, &v);
     sync_dma_c2m(s_raster.ui, sizeof(s_raster.ui));
 }
 
@@ -215,139 +160,35 @@ void status_screen_end(void)
 
 void menu_render(void)
 {
-    char buf[32];
-    const fpv_channel_t *ch = rf_channel();
+    char gain_mode[16], dc_need[24];
+    if (s_splash >= 0) { render_splash(); return; }
     if (s_status) { render_status(); return; }
     if (s_menu_cursor != MENU_DAC) s_dac_step = DAC_STEP_PATTERN;   /* leaving the item ends the meter */
     if (s_dac_step != DAC_STEP_PATTERN) { raster_flat(dac_check_code(s_dac_step)); return; }
     raster_restore();
-    memset(s_raster.ui, UI_ROOT, sizeof(s_raster.ui));
-    rect(0, 0, MENU_UI_WIDTH, MENU_UI_LINES, UI_PANEL);
-    /* Header: name, channel, frequency, gain, signal, standard. */
-    rect(0, 0, MENU_UI_WIDTH, 8, UI_HEADER);
-    text("C5VRX-5", 6, 0, UI_WHITE, 1);
-    text(ch->name, 96, 0, UI_WHITE, 1);
-    snprintf(buf, sizeof(buf), "%uM", ch->freq_mhz);
-    text(buf, 128, 0, UI_MUTED, 1);
-    snprintf(buf, sizeof(buf), "G%u", s_current_gain);
-    text(buf, 208, 0, UI_WHITE, 1);
+    const fpv_channel_t *ch = rf_channel();
+    const unsigned index = (unsigned)rf_channel_index();
+    const rx_level_t lv = receiver_level();   /* the level at the chip pin (rx_level.h) */
+    const uint8_t mode = receiver_gain_mode();
     /* Range warnings take the place of the link state: they cost range
      * without any sign in the picture. */
-    char dc_need[24];
     const bool dc_cal = calibration_dc_needed(dc_need, sizeof(dc_need)) != 0;
-    const bool gain_fixed = receiver_gain_mode() != GAIN_MODE_AUTO;
-    if (dc_cal || gain_fixed) text(dc_cal ? "DC CAL!" : "GAIN!", 248, 0, UI_WHITE, 1);
-    else text(s_afc_locked ? "VIDEO" : "SEARCH", 248, 0, UI_MUTED, 1);
-    int bars = s_signal_strength <= 0 ? 0 : s_signal_strength >= 100 ? 5 : (s_signal_strength + 19) / 20;
-    for (int i = 0; i < 5; ++i) rect(320 + i * 3, 7 - (2 + i), 2, 2 + i, i < bars ? UI_WHITE : UI_DIVIDER);
-    text(std_name(s_video_std), 344, 0, UI_WHITE, 1);
-    /* Navigation. */
-    rect(0, 8, 92, MENU_UI_LINES - 8, UI_ROOT);
-    rect(91, 8, 1, MENU_UI_LINES - 8, UI_DIVIDER);
-    /* 56 lines: an 8-line header leaves room for six 8-line items, so the
-     * list scrolls with the cursor (seven items put EXIT below the screen). */
-    const int NAV_ROWS = ((int)MENU_UI_LINES - 8) / 8;
-    int first = s_menu_cursor - (NAV_ROWS - 1);
-    if (first < 0) first = 0;
-    if (first > MENU_ITEMS - NAV_ROWS) first = MENU_ITEMS - NAV_ROWS > 0 ? MENU_ITEMS - NAV_ROWS : 0;
-    for (int i = first; i < MENU_ITEMS && i < first + NAV_ROWS; ++i) {
-        int y = 8 + (i - first) * 8;
-        bool on = i == s_menu_cursor;
-        if (on) { rect(0, y, 91, 8, UI_SELECTED); rect(0, y, 3, 8, UI_WHITE); rect(3, y, 88, 1, UI_SELECTED_EDGE); }
-        uint8_t ink = on ? UI_WHITE : UI_MUTED;
-        for (int gy = 0; gy < 8; ++gy)
-            for (int gx = 0; gx < 8; ++gx)
-                if (s_icons[i][gy] & (0x80u >> gx)) rect(5 + gx, y + gy, 1, 1, ink);
-        text(s_items[i], 18, y, ink, 1);
-    }
-    if ((int)MENU_ITEMS > NAV_ROWS) {   /* 1-pixel scroll thumb next to the divider: part of the list shown */
-        const int track = (int)MENU_UI_LINES - 8;
-        rect(90, 8 + first * track / MENU_ITEMS, 1, NAV_ROWS * track / MENU_ITEMS, UI_STRONG);
-    }
-    switch (s_menu_cursor) {
-    case MENU_BAND:
-        title("BAND", "HOLD: NEXT BAND");
-        value_box(100, 22, 276, "ACTIVE BAND", rf_band_name((unsigned)(rf_channel_index() / 8u)));
-        value_box(100, 34, 276, "CHANNEL", ch->name);
-        text("PRESS: NEXT ITEM", 100, 47, UI_MUTED, 1);
-        break;
-    case MENU_CHANNEL:
-        title("CHANNEL", "HOLD: NEXT CHANNEL");
-        rect(100, 22, 108, 23, UI_PANEL_2);
-        rect(100, 22, 1, 23, UI_WHITE);
-        text("ACTIVE", 108, 23, UI_MUTED, 1);
-        text(ch->name, 108, 29, UI_WHITE, 2);
-        rect(216, 22, 160, 23, UI_ROOT);
-        text("CENTER MHZ", 224, 23, UI_MUTED, 1);
-        snprintf(buf, sizeof(buf), "%u", ch->freq_mhz);
-        text(buf, 224, 29, UI_WHITE, 2);
-        text("SIGNAL", 100, 47, UI_MUTED, 1);
-        meter(156, 48, 120, s_signal_strength);
-        {   /* the level at the chip pin (rx_level.h) */
-            const rx_level_t lv = receiver_level();
-            if (lv.valid && lv.above_noise) snprintf(buf, sizeof(buf), "%d DBM", (lv.carrier_dbm_x10 - 5) / 10);
-            else snprintf(buf, sizeof(buf), lv.valid ? "NOISE" : "--");
-        }
-        text_right(buf, 376, 47, UI_WHITE);
-        break;
-    case MENU_SCAN:
-        title("SCAN", s_scan_active ? "SCANNING" : "HOLD: SCAN 48 CHANNELS");
-        text("FINDS THE STRONGEST VIDEO", 100, 24, UI_WHITE, 1);
-        text("CENTRED ON A CHANNEL", 100, 33, UI_MUTED, 1);
-        meter(100, 47, 216, s_scan_active ? (int)s_scan_progress : 0);
-        snprintf(buf, sizeof(buf), "%u%%", s_scan_active ? s_scan_progress : 0u);
-        text_right(buf, 376, 45, UI_WHITE);
-        break;
-    case MENU_VIDEO:
-        title("VIDEO STANDARD", "HOLD: CHANGE");
-        value_box(100, 22, 276, "STANDARD", s_std_mode == STD_MODE_AUTO ? "AUTO" :
-                                            s_std_mode == STD_MODE_PAL ? "PAL" : "NTSC");
-        value_box(100, 34, 276, "DETECTED", s_detected_std_valid ? std_name(s_detected_std) : "NO VIDEO");
-        text("AUTO FOLLOWS THE CAMERA", 100, 47, UI_MUTED, 1);
-        break;
-    case MENU_OUTPUT:
-        title("OUTPUT LEVEL", "HOLD: CHANGE");
-        value_box(100, 22, 276, "LEVEL", transport_output_name());
-        text("SAVED ON EXIT   LOAD: 75 OHM", 100, 38, UI_MUTED, 1);
-        text(transport_output() == 9 ? "LOW SWING REDUCES CLIPPING" :
-             (transport_output() ? "HIGH LEVEL MAY CLIP VIDEO" : "INCREASE FOR WEAK SYNC"), 100, 47, UI_WHITE, 1);
-        break;
-    case MENU_GAIN: {
-        char mode[16];
-        title("RX GAIN", "HOLD: CHANGE");
-        value_box(100, 22, 276, "MODE", receiver_gain_mode_name(receiver_gain_mode(), mode, sizeof(mode)));
-        snprintf(buf, sizeof(buf), "G%u", s_current_gain);
-        value_box(100, 34, 276, "ACTIVE GAIN", buf);
-        text(receiver_gain_mode() == GAIN_MODE_AUTO ? "AUTO FOLLOWS THE SIGNAL (KEEL-1)" : "FIXED: COSTS RANGE, USE AUTO",
-             100, 47, UI_WHITE, 1);
-        break;
-    }
-    case MENU_DAC:
-        title("DAC TEST", "HOLD: METER STEPS");
-        render_dac_pattern();
-        break;
-    case MENU_CALIBRATE:
-        title("CALIBRATE", "HOLD: CALIBRATE NOW");
-        if (dc_cal) {
-            char line[48];
-            snprintf(line, sizeof(line), "DC CAL NEEDED: %s", dc_need);
-            text(line, 100, 24, UI_WHITE, 1);
-            text("REPAIRED AT NEXT BOOT, OR HOLD", 100, 33, UI_MUTED, 1);
-        } else {
-            text("ON THE GROUND ONLY: VIDEO STOPS", 100, 24, UI_WHITE, 1);
-            text("FOR A FEW MIN. VTX OFF IS BEST", 100, 33, UI_MUTED, 1);
-        }
-        text("NEVER RUNS BY ITSELF IN FLIGHT", 100, 47, UI_MUTED, 1);
-        break;
-    default:
-        title("EXIT", NULL);
-        rect(100, 23, 276, 20, UI_PANEL_2);
-        rect(100, 23, 1, 20, UI_WHITE);
-        text("BACK TO LIVE VIDEO", 116, 25, UI_WHITE, 1);
-        text("HOLD TO EXIT", 116, 34, UI_MUTED, 1);
-        text("CLOSES BY ITSELF AFTER 30 S", 100, 47, UI_MUTED, 1);
-        break;
-    }
+    const menu_view_t v = {
+        .cursor = s_menu_cursor,
+        .channel = ch->name, .freq_mhz = ch->freq_mhz,
+        .band = index / 8u, .channel_in_band = index % 8u, .band_name = rf_band_name(index / 8u),
+        .band_letters = "RABEFL", .band_count = FPV_BANDS,
+        .signal = s_signal_strength, .video = s_afc_locked,
+        .level_valid = lv.valid, .level_above_noise = lv.above_noise, .level_dbm = (lv.carrier_dbm_x10 - 5) / 10,
+        .dc_cal = dc_cal, .dc_need = dc_need, .gain_fixed = mode != GAIN_MODE_AUTO,
+        .scan_active = s_scan_active, .scan_progress = s_scan_progress,
+        .std_mode = (int)s_std_mode, .std_out_pal = s_video_std == VIDEO_STD_PAL,
+        .detected_valid = s_detected_std_valid, .detected_pal = s_detected_std == VIDEO_STD_PAL,
+        .output = transport_output(), .output_name = transport_output_name(),
+        .gain_mode = receiver_gain_mode_name(mode, gain_mode, sizeof(gain_mode)), .gain_auto = mode == GAIN_MODE_AUTO,
+        .gain = s_current_gain, .gain_max = rf_gain_table()->max_index,
+    };
+    menu_ui_render(s_raster.ui, &v);
     sync_dma_c2m(s_raster.ui, sizeof(s_raster.ui));
 }
 

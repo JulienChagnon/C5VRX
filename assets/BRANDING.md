@@ -1,7 +1,8 @@
 # C5VRX branding
 
 The C5VRX name, logo, `assets/c5vrx-logo.jpg`,
-`assets/c5vrx-phase8-logo.png`, distinctive visual identity and other project
+`assets/c5vrx-phase8-logo.png`, `assets/c5vrx-white-logo.png` (and the boot
+logo `main/menu_logo.h` generated from it), distinctive visual identity and other project
 branding are not licensed under the GNU General Public License.
 The `GPL-3.0-only` grant applies to the repository-authored software and other
 covered material, not to trademark or branding rights.

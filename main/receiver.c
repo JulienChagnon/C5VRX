@@ -207,7 +207,7 @@ static uint32_t s_cn_windows;
 
 bool receiver_active(void)
 {
-    return !s_paused && !s_menu_active && !phy_busy();
+    return !s_paused && (!s_menu_active || menu_splash_active()) && !phy_busy();
 }
 
 bool receiver_paused(void) { return s_paused; }
