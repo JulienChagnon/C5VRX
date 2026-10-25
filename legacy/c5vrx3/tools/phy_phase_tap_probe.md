@@ -89,10 +89,10 @@ Per-lane transition sensitivity analysis revealed the physical nature of the bus
    correlation against aligned modem SRAM dump data. The decisive follow-up experiment is to
    perform the same aligned comparison between `DIAG[4:5]` and dump `Q[4:5]` with the VTX ON.
 3. **Architectural Implications:**
-   Als `Q[4:9]` bevestigd wordt, krijg je viermaal zoveel Q-codewaarden als met `Q[6:9]`.
-   Dat is nog geen bewezen viervoudige nuttige resolutie of winst voor Phase5-360: I heeft
-   ook extra precisie nodig, en de huidige live ingang gebruikt acht lijnen voor Q4/I4.
-   Daarmee weten we of deze ontdekking echt nieuwe IQ-informatie oplevert.
+   If `Q[4:9]` is confirmed, it provides four times as many Q code values as `Q[6:9]`.
+   This does not prove four times the useful resolution or a benefit for Phase5-360: I
+   also needs extra precision, and the current live input uses eight lines for Q4/I4.
+   The comparison will establish whether this finding provides new IQ information.
 
 ---
 

@@ -772,7 +772,7 @@ repository through #71.
 | [#88](https://github.com/Twotoz/C5VRX/pull/88) | Exact endpoint-conditioned one-bit middle reduction; proved half-plane condition resolves >180° wrapping after endpoints are set. |
 | [#90](https://github.com/Twotoz/C5VRX/pull/90) | Merged Counter-A hardware subtraction (ADDCTIAL); executes modulo-32 subtraction in 1 cycle, freeing 960 words in LUT RAM. |
 | [#91](https://github.com/Twotoz/C5VRX/pull/91) | Compact Phase5-360 winding model; proved that non-linear 2D table compression introduces DAC deviations on normal pixels. |
-| [#92](https://github.com/Twotoz/C5VRX/pull/92) | Live Q2 adjacent-50 demodulator; 5-bit learned token resolved synthetic edge wraps but added ~5% quantization grain to clean video ("niet echt clean"). |
+| [#92](https://github.com/Twotoz/C5VRX/pull/92) | Live Q2 adjacent-50 demodulator; 5-bit learned token resolved synthetic edge wraps but added ~5% quantization grain to clean video ("not really clean" (translated from Dutch)). |
 | [#94](https://github.com/Twotoz/C5VRX/pull/94) | Q[6:3]/I[6:3] tap & max gain lock; proved Q[6:3] drops true sign bits, causing modulo-16 magnitude wrapping, permanent AGC clip-veto, and desync. Q[9:6] is mandatory. |
 
 ### Non-PR branch & Phase5-360 production coverage

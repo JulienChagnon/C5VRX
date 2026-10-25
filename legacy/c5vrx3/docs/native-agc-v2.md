@@ -630,7 +630,7 @@ and no reported RX/TX/GDMA errors. VTX was requested on only after this
 verification. Picture improvement and actual step-duration reduction are
 still unproven. `}` restores vendor in the normal firmware without a dump.
 
-**Live result:** the user reported "nope niks beter" for `7034_5` on
+**Live result:** the user reported "nope, no better" (translated from Dutch) for `7034_5` on
 2026-09-30. No visible grain/noise improvement was observed with native AGC,
 P8 FULL and offset disabled. This session has no valid matched full-word
 timing comparison, so it does not establish the actual gain-step spacing or
@@ -645,7 +645,7 @@ confirms `[30:24] = 10` again. The independent watchdog/reset audit in
 Serial `!` selected guard mode on A1 with a carrier. `E` confirmed
 `demod=AGC_RAIL_GUARD`, coarse IQ, native AGC, vendor acquisition index 0,
 offset disabled, and zero reported RX/TX/GDMA errors. The user reported:
-"het is schoner, maar wel veel meer glitches en static". Cleaner appearance
+"it is cleaner, but with far more glitches and static" (translated from Dutch). Cleaner appearance
 does **not** make this version a usable improvement: the added artifacts
 outweigh it. Serial `d` restored P8 FULL immediately.
 

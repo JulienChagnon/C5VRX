@@ -42,7 +42,7 @@ separately before tuning the route cost or settle interval.
 The first PR #96 image was flashed to the XIAO ESP32-C5 on COM10 with
 bootloader, partition table and application SHA verification. It booted in
 profile 10, Direct Gain V2. The operator reported that the live picture
-"werkt echt top" and requested V2 as the automatic default. This is positive
+"works really well" (translated from Dutch) and requested V2 as the automatic default. This is positive
 live video evidence, but no time-aligned gain-write/static trace was captured
 with the carrier on: a later ten-row USB snapshot captured P=1/Q=0 at G62,
 indicating the VTX was off or no carrier was present during that capture.

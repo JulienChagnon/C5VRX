@@ -16,7 +16,7 @@ their statements about immutable algorithms or universal video phase bounds
 are not design requirements.
 
 Operator evidence: the initial 1000 us / 20 us paced-native build was reported
-as "een stuk beter". This establishes a subjective stationary-picture
+as "a lot better" (translated from Dutch). This establishes a subjective stationary-picture
 improvement, not extra RF sensitivity, reliable gain reacquisition or an
 optimal period. The requested 5 ms switch was not confirmed during this
 research because COM10 was occupied. Subsequent worktree commits do not prove

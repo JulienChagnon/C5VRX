@@ -4,9 +4,9 @@
 
 In PR #18, an initial attempt was made to solve Issue #17 ("True 40 MS/s DAC Cadence") by transitioning from the baseline 20 MS/s Phase5 core (which emitted 50 ns flat holds `[A, A]`) to an adjacent 25 ns differentiator (`adjacent25`: $s_n - s_{n-1}$).
 
-Live hardware testing immediately revealed a severe video quality regression ("het is echt VEEL erger geworden"):
+Live hardware testing immediately revealed a severe video quality regression ("it has become MUCH worse" (translated from Dutch)):
 - Extreme video static and rail-to-rail "color bursts" / clicks.
-- Jagged edge artifacts ("grotere kartels") were enlarged rather than smoothed.
+- Jagged edge artifacts ("larger jagged edges", translated from Dutch) were enlarged rather than smoothed.
 - Benchmark verification demonstrated that hard error tail spikes ($\ge 16$ codes) increased from 11.28% to 14.44% (with $\ge 8$ codes reaching 22.0%), despite apparent in-sample MAE improvements.
 
 This document details the root-cause physics of the regression, the digital firmware fixes applied, the strict physical laws governing the BitScrambler pipeline, and the mathematical roadmap for 40 MS/s WBFM demodulation.
@@ -108,15 +108,15 @@ Benchmarking on 16,384 bytes of physical RF capture (`vtx_real_capture_v3.bin`) 
 
 ---
 
-## 6. Empirical Hardware Observation: Sporadic Large Tears ("Enorme Kartels")
+## 6. Empirical Hardware Observation: Sporadic Large Tears ("huge jagged edges", translated from Dutch)
 
 Live analog hardware testing of the soft-saturated True40 build on the ESP32-C5 confirmed:
 1. **White/Black Rail Static Eliminated**: The previous full-scale 0/63 static flashes and "color bombs" are completely gone due to the soft-saturation LUT clamp [4..60] and 0.00% rail clipping.
-2. **Fine Cadence Texture ("Kleine Kartels")**: The 40 MS/s DAC cadence produces distinct 25 ns analog updates ("kleine kartels") instead of the 50 ns flat holds of Phase5.
-3. **Sporadic Large Tears ("Enorme Kartel door de kleine kartels heen")**:
+2. **Fine Cadence Texture ("small jagged edges", translated from Dutch)**: The 40 MS/s DAC cadence produces distinct 25 ns analog updates ("small jagged edges", translated from Dutch) instead of the 50 ns flat holds of Phase5.
+3. **Sporadic Large Tears ("a huge jagged edge cutting through the small ones", translated from Dutch)**:
    - Despite eliminating catastrophic rail clipping ($\ge 32$ codes down to 0.08%), sporadic large horizontal tears and spikes periodically cut through the fine 25 ns edge texture.
    - **Root Cause**: This is the direct visual manifestation of the **15.10% tail of jumps $\ge 16$ codes** (and 27.20% jumps $\ge 8$ codes) measured in the benchmark.
-   - **Physical Mechanism**: In adjacent 25 ns differentiation with 5-wire Cartesian compression ($Q[3:1], I[3:2]$), discarding the lower bits ($Q_0, I_0, I_1$) causes the measured phase to jump by up to $\pm 40.4^\circ$ whenever the RF phasor crosses quadrant boundaries or approaches the origin under noise. When adjacent 25 ns samples straddle such a boundary, the evaluated frequency deviation spikes by 15–25 DAC codes. On an analog video monitor, this single-sample 25 ns impulse appears as an isolated horizontal spike ("enorme kartel") protruding well beyond the edge.
+   - **Physical Mechanism**: In adjacent 25 ns differentiation with 5-wire Cartesian compression ($Q[3:1], I[3:2]$), discarding the lower bits ($Q_0, I_0, I_1$) causes the measured phase to jump by up to $\pm 40.4^\circ$ whenever the RF phasor crosses quadrant boundaries or approaches the origin under noise. When adjacent 25 ns samples straddle such a boundary, the evaluated frequency deviation spikes by 15–25 DAC codes. On an analog video monitor, this single-sample 25 ns impulse appears as an isolated horizontal spike ("huge jagged edge" (translated from Dutch)) protruding well beyond the edge.
 4. **Elevated Background Static Compared to Phase5**:
    - Live observation confirms that the overall background static level remains noticeably higher than in previous Phase5 builds.
    - **Root Cause & Physics**:
@@ -130,7 +130,7 @@ Live analog hardware testing of the soft-saturated True40 build on the ESP32-C5 
 ## 7. The Golden Quality Baseline: Phase5 Quality Mode
 
 Reflashing the baseline `Phase5 Quality` firmware (`build-live/c5vrx2_realtime_iq.bin`) immediately produced an outstanding, highly stable video image on live hardware:
-> *"wow deze is echt fantastisch goed... kleine kartels, bijna geen static."*
+> *"wow this is really fantastic... small jagged edges, almost no static."* (translated from Dutch)
 
 ### Why Phase5 Delivers Superior Quality:
 1. **Full 8-Bit Cartesian Precision ($Q4/I4 \to \text{atan2}$)**:
@@ -140,7 +140,7 @@ Reflashing the baseline `Phase5 Quality` firmware (`build-live/c5vrx2_realtime_i
    - Differentiating over 50 ns ($x[n] - x[n-2]$) places a transmission zero directly at $f = 20\text{ MHz}$, eliminating the high-frequency triangular noise peak without requiring an external low-pass filter.
 3. **Controlled 50 ns Zero-Order Hold**:
    - The DAC operates at 40 MHz PARLIO clock, emitting identical byte pairs `[A, A]`.
-   - The resulting 50 ns analog steps produce clean, uniform, and stable horizontal edge pixels ("kleine kartels") with zero sporadic phase tears ($\ge 16$ code jumps are only **3.06%**, vs 15.10% in adjacent25).
+   - The resulting 50 ns analog steps produce clean, uniform, and stable horizontal edge pixels ("small jagged edges", translated from Dutch) with zero sporadic phase tears ($\ge 16$ code jumps are only **3.06%**, vs 15.10% in adjacent25).
 4. **Physical Clock Alignment**:
    - `CVBS_RATE_HZ = 40000000u` in `main/realtime.c`.
    - Clean rising-edge PARLIO RX clock sampling (`CONFIG_C5VRX2_PARLIO_RX_NEG_EDGE=n`).

@@ -87,9 +87,9 @@ We evaluated implementing the monotone midpoint calculation directly in the ESP3
    - $75\text{ ns} / 2\text{ bytes} = 37.5\text{ ns/byte} > 25.0\text{ ns/byte}$, which triggers immediate **PARLIO TX FIFO underrun (black screen)**.
 
 ### Conclusion under Rule 7
-Per explicit project criteria:
-> **"6. Gemiddeld moet hij op maximaal 1 BitScrambler-bundle per uitgegeven 40-MS/s byte blijven."**
-> **"7. Als dat niet past: stoppen. Niet opnieuw bits weggooien of de demod veranderen om hem passend te maken."**
+Per explicit project criteria (translated from Dutch):
+> **"6. On average, it must use at most 1 BitScrambler bundle per emitted 40-MS/s byte."**
+> **"7. If it does not fit: stop. Do not discard bits again or change the demodulator to make it fit."**
 
 Because the firmware midpoint arithmetic cannot fit within $\le 1$ bundle/byte without starving the DAC or compromising Golden Phase5 demodulation, **we stop firmware modification here** in strict compliance with Rule 7.
 

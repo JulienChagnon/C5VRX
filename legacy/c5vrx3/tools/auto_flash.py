@@ -21,9 +21,9 @@ else:
     version_txt = "local build"
 
 print("=" * 60)
-print(f" AUTO-FLASH WATCHER GESTART (Firmware: {version_txt})")
-print(" Wachten tot ESP32-C5 wordt aangesloten...")
-print(" (Zodra de USB-kabel contact maakt, begint het flashen direct!)")
+print(f" AUTO-FLASH WATCHER STARTED (Firmware: {version_txt})")
+print(" Waiting for ESP32-C5 to be connected...")
+print(" (Flashing starts as soon as the USB connection is detected!)")
 print("=" * 60)
 sys.stdout.flush()
 
@@ -42,7 +42,7 @@ def find_esp_port():
 for attempt in range(1800): # 30 minutes
     port = find_esp_port()
     if port:
-        print(f"\n[GEVONDEN] Poort gedetecteerd: {port}! Starten met flashen...")
+        print(f"\n[FOUND] Port detected: {port}! Starting flash...")
         sys.stdout.flush()
         cmd = [
             sys.executable, "-m", "esptool",
@@ -63,14 +63,14 @@ for attempt in range(1800): # 30 minutes
         print(res.stdout)
         if res.returncode == 0:
             print("\n" + "=" * 60)
-            print(f" >>> FLASH VOLTOOID OP {port}! <<<")
+            print(f" >>> FLASH COMPLETED ON {port}! <<<")
             print("=" * 60)
             sys.stdout.flush()
             sys.exit(0)
         else:
-            print("[HERHAAL] Flash poging mislukt, probeer opnieuw (houd eventueel Boot ingedrukt)...")
+            print("[RETRY] Flash attempt failed, retrying (hold Boot if needed)...")
             sys.stdout.flush()
     time.sleep(1.0)
 
-print("\nTimeout: Geen ESP32-C5 poort gedetecteerd.")
+print("\nTimeout: No ESP32-C5 port detected.")
 sys.exit(1)

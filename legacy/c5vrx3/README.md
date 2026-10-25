@@ -171,7 +171,7 @@ The continuous pixel path runs in AHB GDMA, BitScrambler, and PARLIO TX. A backg
 ## Key Innovations & Architectural Highlights
 
 ### 1. The Breakthrough: Zero-EOF Circular GDMA
-- **The Problem**: In continuous loop mode, the stock ESP-IDF PARLIO TX driver injected a GDMA EOF (`suc_eof = 1`) on every cyclic ring wrap (confirmed in [espressif/esp-idf#19091](https://github.com/espressif/esp-idf/issues/19091)). This triggered periodic hardware stalls, causing a 1-second vertical sync drop and jagged horizontal line jitter ("kartels").
+- **The Problem**: In continuous loop mode, the stock ESP-IDF PARLIO TX driver injected a GDMA EOF (`suc_eof = 1`) on every cyclic ring wrap (confirmed in [espressif/esp-idf#19091](https://github.com/espressif/esp-idf/issues/19091)). This triggered periodic hardware stalls, causing a 1-second vertical sync drop and jagged horizontal line jitter ("jagged edges", translated from Dutch).
 - **The Solution**: C5VRX-3 patches `dw0.suc_eof = 0` across the descriptor ring in SRAM after driver initialization, paired with 64-byte aligned cache synchronization (`sync_dma_c2m`).
 - **The Result**: Removing the cyclic EOF markers eliminated the observed wrap seams, periodic vertical drops and horizontal jitter in the tested live pipeline. This addresses transport boundaries; RF noise and demodulation artifacts remain separate quality limits.
 

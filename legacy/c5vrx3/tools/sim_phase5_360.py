@@ -342,7 +342,7 @@ def run_all_simulations() -> bool:
     print(f"      Samples tested:       {int(sc_stats['samples_tested'])}")
     print(f"      False alarms:         {int(sc_stats['false_alarms'])} (0.000%)")
     print(f"      Max DAC discrepancy:  {int(sc_stats['max_dac_diff'])} counts (Identical to Golden)")
-    print(f"      Chroma Rainbow Ruis:  ZERO (100% Preserved Subcarrier)")
+    print(f"      Chroma Rainbow Noise:  ZERO (100% Preserved Subcarrier)")
     assert sc_stats['false_alarms'] == 0
     
     # 4. High-contrast edge winding

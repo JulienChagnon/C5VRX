@@ -19,7 +19,7 @@ This investigation yielded five foundational, hardware-verified conclusions:
    **100% of all legitimate, valid camera video signals lie strictly within $[-124^\circ, +124^\circ]$.** Any measured phase jump $|\Delta\theta| > 124^\circ$ (especially near the $180^\circ$ pole) is physically impossible for a camera carrier and is guaranteed to be thermal noise or a multi-path destructive fade.
 
 2. **The "Primum Non Nocere" Rule of Demodulator Design:**  
-   In PR #92 (`Q2 adjacent-50`), a learned 5-bit trajectory token was introduced into the 1024-word LUT to unwind rare 360° winding clicks. While this resolved 60/60 synthetic edge winding events, the 5-bit token quantization (~32 states) injected ~5% approximation noise across **100% of normal, clean video pixels**, degrading overall picture clarity (*"niet echt clean"*).  
+   In PR #92 (`Q2 adjacent-50`), a learned 5-bit trajectory token was introduced into the 1024-word LUT to unwind rare 360° winding clicks. While this resolved 60/60 synthetic edge winding events, the 5-bit token quantization (~32 states) injected ~5% approximation noise across **100% of normal, clean video pixels**, degrading overall picture clarity (*"not really clean" (translated from Dutch)*).
    *Rule:* **Never degrade the 98% of clean video to fix the 2% of rare noise clicks.** Clean video must remain 100% bit-exact to Golden Phase5.
 
 3. **MODEM_DIAG Lane Selection (`Q[9:6]` is Mandatory):**  
@@ -77,7 +77,7 @@ This investigation yielded five foundational, hardware-verified conclusions:
 ### PR #92: Live Q2 Adjacent-50 Two-Stage Trajectory Demodulator
 - **Branch:** `feat/phase5-360-q2-live`
 - **Objective:** Two-stage 1024x16 LUT mapping current raw IQ + 2 middle sign bits to a 5-bit token, then combining with previous Phase5 to emit 6-bit CVBS.
-- **Measured Negative:** In live bench testing, the 5-bit token loss added visible quantization grain (*"niet echt clean"*). Closed as an instructive experimental benchmark: proved 2-stage execution without stalls, but ruled out 5-bit learned tokens for production video.
+- **Measured Negative:** In live bench testing, the 5-bit token loss added visible quantization grain (*"not really clean" (translated from Dutch)*). Closed as an instructive experimental benchmark: proved 2-stage execution without stalls, but ruled out 5-bit learned tokens for production video.
 
 ### PR #94: Q[6:3]/I[6:3] MODEM_DIAG Tap & Max Gain Lock
 - **Branch:** `feat/true-fm-360`
