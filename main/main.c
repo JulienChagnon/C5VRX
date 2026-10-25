@@ -47,6 +47,8 @@ void app_main(void)
         printf("TRANSPORT boot failed: live OFF; USB status/download remain available\n");
         return;
     }
+    s_boot_stage = "splash";
+    menu_splash(3000);
     s_boot_stage = "tasks";
     receiver_start();
     control_start();
