@@ -156,6 +156,8 @@ GND ---------------+------> GND (goggle / monitor AV-in ground)
 
 ### DIY Carrier PCB: Fat Shark Module + 3.5 mm AV Jack
 
+**[REV B / C5VRX_JACK_DIY_V2](hardware/C5VRX_JACK_DIY_V2)** adds reserved seventh/eighth DAC branches with separate rear solder jumpers, regenerated fabrication files and new renders. Current firmware remains six-bit: leave R8/R9 unpopulated and SJ2/SJ3 open. [REV A](hardware/C5VRX_JACK_DIY) is retained.
+
 If you prefer a clean PCB over perfboard, the open-source **[C5VRX_JACK_DIY](hardware/C5VRX_JACK_DIY)** carrier board is designed to drop directly into standard Fat Shark goggle bays while also including a 3.5 mm TRRS AV jack for universal bench testing and standalone monitor hookup.
 
 Getting the PCB manufactured (via JLCPCB, PCBWay, etc.) is extremely inexpensive—often even cheaper than buying a sheet of perfboard—and only requires soldering standard through-hole ¼W resistors and pin headers!
