@@ -25,8 +25,9 @@
 
 C5VRX-5 receives analog 5.8 GHz FPV video using the ESP32-C5's own radio
 and outputs composite PAL/NTSC through a passive 6-bit resistor DAC.
-It includes automatic gain control, startup calibration, a sync flywheel,
-an on-screen menu and browser-based flashing and controls.
+It includes automatic gain control, startup calibration, an on-screen menu
+and browser-based flashing and controls. The sync flywheel was removed on
+2026-10-25 (it caused severe desyncs and poor range on the board).
 
 This branch builds and boots **U80P64-R1 only**. U85Q, kp/LP switching and
 `m/K/k/j/P/O/H` controls are retired; see [P64 integration and evidence](docs/P64.md).
@@ -181,9 +182,9 @@ Getting the PCB manufactured (via JLCPCB, PCBWay, etc.) is extremely inexpensive
 
 The menu provides **BAND**, **CHANNEL**, **SCAN**, **VIDEO** (AUTO/NTSC/PAL),
 **CALIBRATE**, **OUTPUT** (0.5-5.0x), **GAIN** (AUTO/MAX/fixed),
-**FLYWHEEL**, **DAC TEST** and **EXIT**. It closes after 30 seconds of
+**DAC TEST** and **EXIT**. It closes after 30 seconds of
 inactivity, or five minutes in DAC TEST. Menu transitions can interrupt video.
-GAIN starts in AUTO on every boot. FLYWHEEL defaults ON and remembers a saved OFF.
+GAIN starts in AUTO on every boot.
 
 ## Serial console (USB, 115200)
 
@@ -196,7 +197,7 @@ without Enter; `h` lists the commands supported by your firmware.
 | `T` / `h` | Status / help |
 | `b` / `c` / `s` | Next band / next channel / scan |
 | `o` / `n` / `x` / `e` | Open menu / next item / select / exit |
-| `v` / `g` / `G` / `U` | Video standard / output level / gain / flywheel |
+| `v` / `g` / `G` | Video standard / output level / gain |
 | `F` / `Z` | Recalibrate / DAC self-test (ground only) |
 | `D` / `R` | Health report / per-second field diagnostics |
 | `I` / `M` / `L` | IQ snapshot / gain map / bench IQ lane test |
@@ -206,9 +207,9 @@ without Enter; `h` lists the commands supported by your firmware.
 P64 always uses the same fixed program and LUT. Profiles select only the
 analog filter (DEFAULT, NARROW or WIDE); old `kp_auto` and `lp_cn` settings
 are ignored. `A` toggles experimental live profile switching (default on).
-Live OUTPUT, comparator-format and profile changes share a five-second
+Live OUTPUT and profile changes share a five-second
 cooldown and verified halted restart/rollback. Higher OUTPUT levels can clip.
-GAIN always starts AUTO at boot; OUTPUT and FLYWHEEL preferences are saved.
+GAIN always starts AUTO at boot; the OUTPUT preference is saved.
 Check `T` after changing settings. Retired models remain research only.
 
 The browser terminal and flasher use the port one at a time. **Download log**

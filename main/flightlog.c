@@ -185,8 +185,7 @@ static void snapshot(uint8_t trigger)
     calibration_flog_live(dc, off, &writes, &sph, &temp);
     const rf_filter_t f = rf_filter();
     uint8_t demod_id, output_level;
-    bool flag_format;
-    transport_flog_identity(&demod_id, &output_level, &flag_format);
+    transport_flog_identity(&demod_id, &output_level);
     const flog_snap_t s = {
         .trigger = trigger, .gain = s_current_gain, .lane = (uint8_t)rf_lane(), .profile = (uint8_t)profile_active(),
         .kp = 0xffu, .lp = 0u, .freq_mhz = rf_frequency_mhz(),
@@ -194,9 +193,7 @@ static void snapshot(uint8_t trigger)
         .session = s_session, .seq = s_snap_seq, .t_ms = (uint32_t)(esp_timer_get_time() / 1000),
         .off_i = (int16_t)off[0], .off_q = (int16_t)off[1], .dc_i_mcells = (int16_t)dc[0], .dc_q_mcells = (int16_t)dc[1],
         .demod_id = demod_id, .output_level = output_level,
-        .output_flags = (uint8_t)((demod_id ? FLOG_OUT_DEMOD_VERIFIED : 0u) |
-                                  (transport_sync_flywheel_enabled() ? FLOG_OUT_FLYWHEEL_REQUESTED : 0u) |
-                                  (flag_format ? FLOG_OUT_FLAG_FORMAT : 0u)),
+        .output_flags = (uint8_t)(demod_id ? FLOG_OUT_DEMOD_VERIFIED : 0u),
     };
     uint8_t head[FLOG_SNAP_HEAD];
     flog_snap_head(head, &s, raw);
@@ -268,7 +265,7 @@ static void session_record(void)
     const arc_gain_table_t *t = rf_gain_table();
     p[37] = t->max_index; p[38] = t->band5; p[39] = 0;   /* IQ scale: in the CALIB record context */
     p[40] = (uint8_t)rf_channel_index(); p[41] = (uint8_t)s_std_mode; p[42] = (uint8_t)transport_output();
-    p[43] = receiver_gain_mode(); p[44] = transport_sync_flywheel_enabled(); p[45] = profile_live_mode();
+    p[43] = receiver_gain_mode(); p[44] = 0; p[45] = profile_live_mode();   /* 44: removed flywheel, always 0 */
     flog_put16(p + 46, rf_frequency_mhz());
     flightlog_record(FLOG_T_SESSION, p, 48);
 }

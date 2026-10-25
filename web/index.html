@@ -315,7 +315,6 @@
                 <button type="button" role="tab" id="menu-calibrate" aria-controls="pane-calibrate" aria-selected="false" tabindex="-1" data-menu="calibrate">CALIBRATE</button>
                 <button type="button" role="tab" id="menu-output" aria-controls="pane-output" aria-selected="false" tabindex="-1" data-menu="output">OUTPUT</button>
                 <button type="button" role="tab" id="menu-gain" aria-controls="pane-gain" aria-selected="false" tabindex="-1" data-menu="gain">GAIN</button>
-                <button type="button" role="tab" id="menu-flywheel" aria-controls="pane-flywheel" aria-selected="false" tabindex="-1" data-menu="flywheel">FLYWHEEL</button>
                 <button type="button" role="tab" id="menu-dac" aria-controls="pane-dac" aria-selected="false" tabindex="-1" data-menu="dac">DAC TEST</button>
                 <button type="button" role="tab" id="menu-exit" aria-controls="pane-exit" aria-selected="false" tabindex="-1" data-menu="exit">EXIT</button>
               </div>
@@ -362,12 +361,6 @@
                   <dl class="readouts"><div><dt>Mode</dt><dd data-value="gainMode">—</dd></div><div><dt>Active gain</dt><dd data-value="gain">—</dd></div></dl>
                   <p class="hint">AUTO uses KEEL-1: a peak AGC on a few home rows 3 dB apart, so the gain holds still instead of hopping. Cycle AUTO → MAX → fixed G78..G24. The choice lasts for this session; every boot starts AUTO. Requires firmware advertising G in its help.</p>
                   <button type="button" class="command-button" data-command="G" data-hint="Cycle AUTO / MAX / fixed receive gain for this session. Every boot starts AUTO." disabled>Change gain mode <kbd>G</kbd></button>
-                </div>
-                <div role="tabpanel" id="pane-flywheel" aria-labelledby="menu-flywheel" hidden>
-                  <h2>SYNC FLYWHEEL</h2>
-                  <dl class="readouts"><div><dt>Requested</dt><dd data-value="flywheel">—</dd></div><div><dt>Output active</dt><dd data-value="flywheelActive">—</dd></div></dl>
-                  <p class="hint">Saved ON/OFF; default ON. A saved ON or OFF restores at boot. Experimental: compare the actual camera and monitor on the ground. Requested ON does not mean output is active or the monitor is locked. Requires firmware advertising U in its help.</p>
-                  <button type="button" class="command-button" data-command="U" data-hint="Toggle the saved sync flywheel. Test on the ground; monitor-lock improvement is unproved." disabled>Toggle flywheel <kbd>U</kbd></button>
                 </div>
                 <div role="tabpanel" id="pane-dac" aria-labelledby="menu-dac" hidden>
                   <h2>DAC SELF-TEST</h2>

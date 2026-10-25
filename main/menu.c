@@ -10,17 +10,16 @@
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "rf.h"
-#include "menu_entry.h"
 #include "dac_check.h"
 
 void transport_start_chain(dma_descriptor_t *first);
 void transport_stop_chain(void);
 
-/* 32 x 12 B = 384 B, word aligned. With live tasks and the flywheel running
- * the internal heap has >20 KiB free but in pieces: 64-byte-aligned 1.5-KiB
- * and 768-B chunks failed after ~14 KiB (board 2026-10-18, NO_MEM at 7-8 KiB
- * free). NTSC needs 1499 nodes, PAL 1811. Internal SRAM is not cached on the
- * C5 and sync_dma_c2m rounds itself, so cache-line alignment buys nothing. */
+/* 32 x 12 B = 384 B, word aligned. With live tasks running the internal
+ * heap has >20 KiB free but in pieces: 64-byte-aligned 1.5-KiB and 768-B
+ * chunks failed after ~14 KiB (board 2026-10-18, NO_MEM at 7-8 KiB free).
+ * NTSC needs 1499 nodes, PAL 1811. Internal SRAM is not cached on the C5
+ * and sync_dma_c2m rounds itself, so cache-line alignment buys nothing. */
 #define NODE_CHUNK  32u
 #define NODE_CHUNKS ((MENU_MAX_NODES + NODE_CHUNK - 1u) / NODE_CHUNK)
 
@@ -52,12 +51,11 @@ static const uint8_t s_icons[MENU_ITEMS][8] = {
     {0x08, 0x08, 0x1c, 0x7f, 0x1c, 0x08, 0x08, 0x00},   /* calibrate */
     {0x00, 0x08, 0x18, 0x38, 0x78, 0x38, 0x18, 0x08},   /* output */
     {0x00, 0x02, 0x06, 0x0e, 0x1e, 0x3e, 0x7e, 0x00},   /* gain */
-    {0x3c, 0x42, 0x81, 0x99, 0x99, 0x81, 0x42, 0x3c},   /* flywheel */
     {0x00, 0x03, 0x03, 0x0f, 0x0f, 0x3f, 0x3f, 0x00},   /* dac test */
     {0x7c, 0x44, 0x04, 0x1f, 0x04, 0x44, 0x7c, 0x00},   /* exit */
 };
-static const char *const s_items[MENU_ITEMS] = {"BAND", "CHANNEL", "SCAN", "VIDEO", "CALIBRATE", "OUTPUT", "GAIN", "FLYWHEEL",
-                                                "DAC TEST", "EXIT"};
+static const char *const s_items[MENU_ITEMS] = {"BAND", "CHANNEL", "SCAN", "VIDEO", "CALIBRATE", "OUTPUT", "GAIN", "DAC TEST",
+                                                "EXIT"};
 
 static void rect(int x, int y, int w, int h, uint8_t code)
 {
@@ -324,13 +322,6 @@ void menu_render(void)
              100, 47, UI_WHITE, 1);
         break;
     }
-    case MENU_FLYWHEEL:
-        title("SYNC FLYWHEEL", "HOLD: ON/OFF");
-        value_box(100, 22, 276, "FLYWHEEL", transport_sync_flywheel_enabled() ? "ON" : "OFF");
-        text("SAVED, APPLIES ON EXIT", 100, 36, UI_MUTED, 1);
-        text(transport_sync_flywheel_enabled() ? "FILLS SYNC WHEN THE CAMERA DROPS" :
-             "CAMERA SYNC ONLY", 100, 47, UI_WHITE, 1);
-        break;
     case MENU_DAC:
         title("DAC TEST", "HOLD: METER STEPS");
         render_dac_pattern();
@@ -433,19 +424,6 @@ static esp_err_t build_chain(video_standard_t standard)
     return ESP_OK;
 }
 
-static esp_err_t s_entry_err;
-static unsigned s_entry_before;
-static bool entry_build(void)
-{
-    s_entry_err = build_chain(menu_standard());
-    if (s_entry_err == ESP_OK) return true;
-    ESP_LOGE("menu", "unavailable: %s (internal free=%u dma_before_release=%u dma_free=%u dma_largest=%u chunks=%u)",
-             esp_err_to_name(s_entry_err), (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
-             s_entry_before, (unsigned)heap_caps_get_free_size(MALLOC_CAP_DMA_DESC_AHB | MALLOC_CAP_INTERNAL),
-             (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_DMA_DESC_AHB | MALLOC_CAP_INTERNAL),
-             s_chunk_count);
-    return false;
-}
 /* A short flat DAC level without sync between live video and the menu
  * raster (both ways): the goggle drops its lock on the camera timing and
  * locks fresh, instead of showing the menu briefly, inverting and going
@@ -459,23 +437,24 @@ static void entry_start(void)
     vTaskDelay(pdMS_TO_TICKS(MENU_RELOCK_GAP_MS));
     transport_start_chain(node(0));
 }
-static const menu_entry_ops_t s_entry_ops = {
-    transport_sync_live_hold, transport_sync_live_release, entry_build, free_nodes, entry_start,
-};
-static menu_entry_t s_last_entry = MENU_ENTRY_OPENED;
-bool menu_open_busy(void) { return s_last_entry == MENU_ENTRY_BUSY; }
 
 bool menu_open(void)
 {
     if (s_menu_active) return true;
     /* Allocate and render before touching live video: if memory is short,
-     * flight video keeps running. The flywheel observer/output must be
-     * released first and checked (menu_entry.h): a busy PHY refuses the
-     * menu for now instead of allocating next to a live output owner. */
-    s_entry_before = (unsigned)heap_caps_get_free_size(MALLOC_CAP_DMA_DESC_AHB | MALLOC_CAP_INTERNAL);
-    s_last_entry = menu_entry_open(&s_entry_ops);
-    if (s_last_entry == MENU_ENTRY_BUSY) printf("[MENU] deferred: sync release waits for the PHY; live video kept\n");
-    return s_last_entry == MENU_ENTRY_OPENED;
+     * flight video keeps running. */
+    const esp_err_t err = build_chain(menu_standard());
+    if (err != ESP_OK) {
+        ESP_LOGE("menu", "unavailable: %s (internal free=%u dma_free=%u dma_largest=%u chunks=%u)",
+                 esp_err_to_name(err), (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+                 (unsigned)heap_caps_get_free_size(MALLOC_CAP_DMA_DESC_AHB | MALLOC_CAP_INTERNAL),
+                 (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_DMA_DESC_AHB | MALLOC_CAP_INTERNAL),
+                 s_chunk_count);
+        free_nodes();
+        return false;
+    }
+    entry_start();
+    return true;
 }
 
 void menu_close(void)

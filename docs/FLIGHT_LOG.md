@@ -58,7 +58,7 @@ What the receiver was, how it was set and calibrated, and why it started.
 | reset reason (power-on, brownout, watchdog, panic, software) | a brownout in flight explains a black screen without any RF cause |
 | chip revision, board id (hash of the MAC, not the MAC) | unit-to-unit differences without identifying a person |
 | PHY context: gain table maximum, band5, IQ scale | the DC rows and the gain table the log refers to |
-| settings: channel, standard mode, output level, gain mode, flywheel, live profile switch, AFC sign | user settings that cost range (fixed gain) are visible |
+| settings: channel, standard mode, output level, gain mode, flywheel (removed 2026-10-25, always 0), live profile switch, AFC sign | user settings that cost range (fixed gain) are visible |
 | calibration this boot: what ran (filter, DC rows per filter, sampling phase, deviation), result, duration | "this boot calibrated" vs "loaded" |
 | filter settings NORMAL/NARROW/WIDE (bw20, code, skirt, width, noise bandwidth) | calibration-to-calibration differences |
 | DC tables: rows, template rows, ready per filter; repair flags | a stale or partial table |
@@ -96,8 +96,8 @@ current 69-byte payload (less when rare events occupy blocks).
 | received level | carrier at the chip pin (0.1 dBm), the noise it is measured against (dBm), flags: valid, above the noise, exact (G54+), noise learned (`main/rx_level.h`) |
 | gain write reasons | writes down (attack), writes up (release), fast-path overloads forwarded (sentinel), overloads within 5 ms of a write |
 | C/N-AUTO | decision C/N plus power, M2M4 and envelope estimates (0.1 dB, -990 unknown), confidence and source (+32: a small carrier on a 4-bit-limited row, not used for decisions), flags (`main/cn_auto.h`); only noise-referenced power may drive AFC/profile decisions; kp/LP consumers are retired |
-| verified output | verified demodulator ID: 3 = `U80P64-R1`; historical IDs 1/2 = `U85Q`/`U85Q-LP` (instruction hash `1a09f5c092e8`), applied output level, flag format, guard standard, requested/active flywheel; identity is unknown unless the live transport state is verified |
-| output observer | task-side samples and fresh samples, native H/V trust (% of fresh samples), native in-phase H lines, repaired and suppressed sync tips, longest continuously observed native-H unlock (ms), observer gaps |
+| verified output | verified demodulator ID: 3 = `U80P64-R1`; historical IDs 1/2 = `U85Q`/`U85Q-LP` (instruction hash `1a09f5c092e8`), applied output level; flag format, guard standard and requested/active flywheel are history (removed 2026-10-25, read 0); identity is unknown unless the live transport state is verified |
+| output observer | history (removed with the flywheel 2026-10-25; current firmware writes 0, lock 0xff): task-side samples and fresh samples, native H/V trust (% of fresh samples), native in-phase H lines, repaired and suppressed sync tips, longest continuously observed native-H unlock (ms), observer gaps |
 | environment | temperature (degC) |
 | flags | menu, scan, calibrating, paused, fault latched, flywheel active, status screen |
 

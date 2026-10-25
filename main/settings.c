@@ -51,9 +51,6 @@ void settings_load(void)
     uint8_t output;
     if (blob_load("output", &output, sizeof(output)) && output < OUTPUT_LEVELS)
         (void)transport_set_output(output);
-    uint8_t flywheel;
-    if (blob_load("flywheel", &flywheel, sizeof(flywheel)) && flywheel <= 1u)
-        transport_sync_flywheel_set_boot(flywheel != 0u);
     settings_t s;
     if (!blob_load("settings", &s, sizeof(s)) || s.version != SETTINGS_VERSION) return;
     if (s.channel < FPV_CHANNELS) (void)rf_set_channel(s.channel);
@@ -69,10 +66,3 @@ void settings_save_output(unsigned level)
     (void)blob_store("output", &output, sizeof(output));
 }
 
-void settings_save_flywheel(bool on)
-{
-    const uint8_t value = on ? 1u : 0u;
-    uint8_t old;
-    if (blob_load("flywheel", &old, sizeof(old)) && old == value) return;
-    (void)blob_store("flywheel", &value, sizeof(value));
-}

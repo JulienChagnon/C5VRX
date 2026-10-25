@@ -43,7 +43,8 @@ typedef struct {
 static portMUX_TYPE s_lock = portMUX_INITIALIZER_UNLOCKED;
 /* Control-task only (no DMA, no ISR): LP SRAM, which GDMA cannot use. The
  * 4 KiB of HP SRAM it frees is what the interlaced menu chain needed next to
- * the flywheel (board 2026-10-18: ~15 KiB DMA-capable free, 18 KiB needed). */
+ * the (since removed) sync flywheel (board 2026-10-18: ~15 KiB DMA-capable
+ * free, 18 KiB needed). */
 static RTC_FAST_ATTR diag_record_t s_hist[DIAG_HISTORY];
 static diag_trace_t s_trace;
 static uint32_t s_seq;                  /* records written */

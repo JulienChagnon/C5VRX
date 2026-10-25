@@ -211,6 +211,9 @@ unresolved until those captures exist.
 
 ## PR #212 boot, menu and flywheel checks
 
+History: the flywheel was removed on 2026-10-25 (see FINDINGS.md, "Sync
+flywheel removed"); skip the FLYWHEEL steps below on current firmware.
+
 Record the exact flashed commit/artifact and its checksum. Start with GAIN
 AUTO (Direct Gain V6 carrier memory) and FLYWHEEL ON; these are the defaults
 without valid saved settings (FLYWHEEL was OFF until 2026-10-18). Check boot, USB/status responsiveness and zero
