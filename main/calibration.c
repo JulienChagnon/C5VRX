@@ -55,6 +55,8 @@ typedef struct {
     bool dc_circle;
     unsigned envelope_x100;
     metrics_t m;             /* last window */
+    cna_sums_t noise_sums;   /* optional DC-verification reuse */
+    double noise_m2, noise_m4;
 } window_stats_t;
 
 static volatile bool s_startup = true;
@@ -72,7 +74,7 @@ static bool startup_owner(void)
     return (!s_menu_active || menu_status_active()) && !s_scan_active && !receiver_paused() && !phy_busy();
 }
 
-static bool collect(unsigned windows, window_stats_t *out)
+static bool collect_stats(unsigned windows, window_stats_t *out, bool noise)
 {
     uint8_t sample[PROBE_BYTES];
     dsp_circle_t circle = {0};
@@ -89,12 +91,26 @@ static bool collect(unsigned windows, window_stats_t *out)
         dsp_circle_sums(sample, sizeof(sample), &circle);
         out->m = measure_window(sample, sizeof(sample));
         rail_sum += (unsigned)out->m.clip_pm;
+        if (noise) {
+            cna_sums_t p = {0};
+            for (unsigned k = 0; k < sizeof(sample); ++k) cna_sums_add(&p, sample[k]);
+            float mi, mq;
+            double m2, m4;
+            cna_mean(&p, &mi, &mq); cna_moments(&p, mi, mq, &m2, &m4);
+            out->noise_m2 += m2; out->noise_m4 += m4;
+            cna_sums_merge(&out->noise_sums, &p);
+        }
         ++out->windows;
     }
     if (!out->windows) return false;
     out->dc_circle = dc_live_measure(&circle, rail_sum / out->windows,
         &out->dc_i, &out->dc_q, &out->envelope_x100);
     return out->windows * 2u >= windows;
+}
+
+static bool collect(unsigned windows, window_stats_t *out)
+{
+    return collect_stats(windows, out, false);
 }
 
 /* ---- Sampling phase --------------------------------------------------------
@@ -151,14 +167,19 @@ static sphase_verdict_t sphase_scan_n(const char *tag, unsigned positions, unsig
     if (!receiver_pause(tag)) return SPHASE_UNSETTLED;
     dco_hold_for_scan();
     window_stats_t w;
+    const bool fast = !carrier && positions == 3u;
     sphase_scan_reset(&s_sphase_last);
     for (unsigned pos = 0; pos < positions; ++pos) {
         if (pos) { rx_clock_slip(1); vTaskDelay(pdMS_TO_TICKS(20)); }
-        if (collect(windows, &w)) sphase_scan_add(&s_sphase_last, sphase_metric(&w));
+        if (collect(windows, &w) && (!fast || w.windows == windows))
+            sphase_scan_add(&s_sphase_last, sphase_metric(&w));
     }
     sphase_verdict_t v = SPHASE_UNSETTLED;
     const bool contrast = carrier ? sphase_carrier_contrast(&s_sphase_last) : sphase_contrast(&s_sphase_last);
-    if (s_sphase_last.valid && !contrast) {
+    if (fast && (s_sphase_last.positions != positions || !contrast)) {
+        /* Three alike positions are not enough to establish NOISE_LIMITED;
+         * the caller repeats the original nine-position scan. */
+    } else if (s_sphase_last.valid && !contrast) {
         /* Every position reads alike: intrinsic noise, slipping cannot help. */
         if (collect(windows, &w))
             v = carrier ? (sphase_record(&w) < SPHASE_LIVE_LIMIT ? SPHASE_SETTLED : SPHASE_NOISE_LIMITED)
@@ -166,10 +187,16 @@ static sphase_verdict_t sphase_scan_n(const char *tag, unsigned positions, unsig
     } else {
         /* Positions repeat every three ticks: stop on one near the cleanest. */
         for (unsigned n = 0; s_sphase_last.valid && n < tries; ++n) {
-            if (!collect(windows, &w)) break;
+            if (!collect(windows, &w) || (fast && w.windows != windows)) break;
             int e = sphase_metric(&w);
             const int margin = carrier ? sphase_carrier_margin(s_sphase_last.best) : sphase_margin(s_sphase_last.best);
             if (e <= s_sphase_last.best + margin) {
+                if (fast) {
+                    const int first = e;
+                    if (!collect(windows, &w) || w.windows != windows) break;
+                    e = sphase_metric(&w);
+                    if (e > s_sphase_last.best + margin || abs(e - first) > margin) break;
+                }
                 (void)sphase_record(&w);
                 v = SPHASE_SETTLED;
                 break;
@@ -186,6 +213,8 @@ static sphase_verdict_t sphase_scan_n(const char *tag, unsigned positions, unsig
 
 static sphase_verdict_t sphase_scan(void)
 {
+    const sphase_verdict_t quick = sphase_scan_n("SPHASE_QUICK", 3u, 48u, 3u, false);
+    if (quick == SPHASE_SETTLED) return quick;
     return sphase_scan_n("SPHASE", SPHASE_POSITIONS, 48u, SPHASE_TRIES, false);
 }
 
@@ -327,16 +356,17 @@ static filter_blob_t s_filter_cal;
 static uint16_t s_original_mhz;
 static const char *s_filter_result = "never";
 
-static bool noise_measure(unsigned *width, unsigned *nbw, unsigned *env_x100, int *clip_pm)
+/* Accumulate in-place: a promoted setting keeps its screening FFTs and
+ * extends to all 96 windows, with no retune or extra settling delay. */
+static bool noise_collect(cal_noise_t *a, unsigned windows)
 {
-    cal_noise_t a = {0};
     uint8_t sample[PROBE_BYTES];
-    for (unsigned tries = 0; tries < CAL_WINDOWS * 3u && a.got < CAL_WINDOWS; ++tries) {
-        vTaskDelay(1);
+    for (unsigned tries = 0; tries < windows * 3u && a->got < windows; ++tries) {
+        vTaskDelay(2);   /* leave IDLE time even during a long filtersweep */
         if (!copy_probe_window(sample, NULL)) continue;
-        cal_noise_add(&a, sample, sizeof(sample), measure_window(sample, sizeof(sample)).clip_pm);
+        cal_noise_add(a, sample, sizeof(sample), measure_window(sample, sizeof(sample)).clip_pm);
     }
-    return cal_noise_finish(&a, width, nbw, env_x100, clip_pm);
+    return a->got == windows;
 }
 
 /* On-screen progress: the measured time per setting gives the time left. */
@@ -362,7 +392,8 @@ static void cal_status(void)
 
 /* *quiet stays false for a setting the PHY did not read back, so it can
  * never be chosen; false only when the probe itself fails. */
-static bool measure_setting(rf_filter_t f, unsigned *width, unsigned *nbw, bool *quiet, bool *carrier)
+static bool measure_setting(rf_filter_t f, unsigned *width, unsigned *nbw, bool *quiet, bool *carrier,
+                            const unsigned best_nbw[3], bool *screen_fault)
 {
     if (s_cal_total) { ++s_cal_done; cal_status(); }
     *quiet = *carrier = false;
@@ -374,7 +405,24 @@ static bool measure_setting(rf_filter_t f, unsigned *width, unsigned *nbw, bool 
     vTaskDelay(pdMS_TO_TICKS(20));
     unsigned env = 0;
     int clip = 0;
-    if (!noise_measure(width, nbw, &env, &clip)) return false;
+    cal_noise_t a = {0};
+    if (best_nbw) {
+        if (!noise_collect(&a, 24u)) return false;
+        const unsigned sw = dsp_psd_width_khz(a.psd), sn = dsp_psd_nbw_khz(a.psd);
+        env = a.env_sum / a.got; clip = a.clip_sum / (int)a.got;
+        if (cal_setting_carrier(env, clip)) { *carrier = true; return true; }
+        const bool contender = !cal_setting_quiet(env, clip) ||
+            cal_filter_contender(sw, sn, FILTER_MIN_KHZ, best_nbw[0]) ||
+            cal_filter_contender(sw, sn, FILTER_NARROW_KHZ, best_nbw[1]) ||
+            cal_filter_contender(sw, sn, FILTER_WIDE_KHZ, best_nbw[2]);
+        if (!contender && sn) {
+            *width = *nbw = 0; /* screened out, never eligible for storage */
+            printf("FILTER_CAL screen=reject width_khz=%u nbw_khz=%u\n", sw, sn);
+            return true;
+        }
+        if (!noise_collect(&a, CAL_WINDOWS) || !cal_noise_finish(&a, width, nbw, &env, &clip)) return false;
+        if (!cal_filter_screen_agrees(sw, sn, *width, *nbw)) *screen_fault = true;
+    } else if (!noise_collect(&a, CAL_WINDOWS) || !cal_noise_finish(&a, width, nbw, &env, &clip)) return false;
     /* A setting with clipped noise is just not chosen; only a clearly
      * non-noise envelope means a carrier appeared. */
     *quiet = cal_setting_quiet(env, clip);
@@ -440,7 +488,7 @@ bool filter_calibrate(bool automatic)
            rf_frequency_mhz(), s_original_mhz, FILTER_MIN_KHZ);
     unsigned width = 0, nbw = 0, cal_nbw = 0;
     bool quiet = false, carrier = false;
-    if (ok && !(ok = measure_setting(calibrated, &width, &cal_nbw, &quiet, &carrier) && quiet))
+    if (ok && !(ok = measure_setting(calibrated, &width, &cal_nbw, &quiet, &carrier, NULL, NULL) && quiet))
         fail = carrier ? "carrier_detected" : "not_quiet";
     rf_filter_t best = calibrated, narrow = calibrated;
     unsigned best_nbw = ok && width >= FILTER_MIN_KHZ ? cal_nbw : 0, best_width = width;
@@ -449,25 +497,61 @@ bool filter_calibrate(bool automatic)
     unsigned wide_nbw = ok && width >= FILTER_WIDE_KHZ ? cal_nbw : 0, wide_width = width;
     static const int8_t codes[FILTER_CODES] = {PHY_FILTER_CALIBRATED, 0, 8, 16, 24, 32, 40, 48, 52, 56, 60, 62, 63};
     static const uint8_t skirts[FILTER_SKIRTS] = {0, 8, 16, 24, 32};
-    for (unsigned d = 0; ok && d < 2u; ++d)
-        for (unsigned c = 0; ok && c < sizeof(codes); ++c)
-            for (unsigned k = 0; ok && k < sizeof(skirts); ++k) {
-                rf_filter_t f = {codes[c], skirts[k], d == 1u};
-                if (!measure_setting(f, &width, &nbw, &quiet, &carrier)) { ok = false; fail = "probe_failed"; break; }
-                if (carrier) { ok = false; fail = "carrier_detected"; break; }   /* appeared mid-sweep */
-                if (quiet && nbw && width >= FILTER_MIN_KHZ && (!best_nbw || nbw < best_nbw)) {
-                    best = f; best_nbw = nbw; best_width = width;
+    /* First pass screens all 130 settings. Any screen/full discrepancy
+     * outside the conservative guard invalidates the pruning evidence:
+     * restart exhaustively, including every previously rejected setting. */
+    bool screen_fault = false;
+    for (unsigned pass = 0; ok && pass < 2u; ++pass) {
+        for (unsigned d = 0; ok && d < 2u; ++d)
+            for (unsigned c = 0; ok && c < sizeof(codes); ++c)
+                for (unsigned k = 0; ok && k < sizeof(skirts); ++k) {
+                    rf_filter_t f = {codes[c], skirts[k], d == 1u};
+                    const unsigned incumbents[3] = {best_nbw, narrow_nbw, wide_nbw};
+                    if (!measure_setting(f, &width, &nbw, &quiet, &carrier,
+                                         pass == 0u ? incumbents : NULL, &screen_fault)) { ok = false; fail = "probe_failed"; break; }
+                    if (carrier) { ok = false; fail = "carrier_detected"; break; }   /* appeared mid-sweep */
+                    if (quiet && nbw && width >= FILTER_MIN_KHZ && (!best_nbw || nbw < best_nbw)) {
+                        best = f; best_nbw = nbw; best_width = width;
+                    }
+                    if (quiet && nbw && width >= FILTER_NARROW_KHZ && (!narrow_nbw || nbw < narrow_nbw)) {
+                        narrow = f; narrow_nbw = nbw; narrow_width = width;
+                    }
+                    if (quiet && nbw && width >= FILTER_WIDE_KHZ && (!wide_nbw || nbw < wide_nbw)) {
+                        wide = f; wide_nbw = nbw; wide_width = width;
+                    }
                 }
-                if (quiet && nbw && width >= FILTER_NARROW_KHZ && (!narrow_nbw || nbw < narrow_nbw)) {
-                    narrow = f; narrow_nbw = nbw; narrow_width = width;
-                }
-                if (quiet && nbw && width >= FILTER_WIDE_KHZ && (!wide_nbw || nbw < wide_nbw)) {
-                    wide = f; wide_nbw = nbw; wide_width = width;
-                }
-            }
+        if (!screen_fault || !ok || pass == 1u) break;
+        printf("FILTER_CAL screen=fallback_full\n");
+        best = narrow = wide = calibrated;
+        best_nbw = best_width = narrow_nbw = narrow_width = wide_nbw = wide_width = 0;
+        s_cal_total += 2u * FILTER_CODES * FILTER_SKIRTS;
+    }
     /* Re-check on the calibrated bytes before trusting the sweep. */
-    if (ok && !(ok = measure_setting(calibrated, &width, &nbw, &quiet, &carrier) && quiet))
+    if (ok && !(ok = measure_setting(calibrated, &width, &nbw, &quiet, &carrier, NULL, NULL) && quiet))
         fail = carrier ? "carrier_detected" : "recheck_not_quiet";
+    /* Independent full rechecks of each distinct winner. Screening never
+     * relaxes the stored width requirement, quiet gate or final precision. */
+    rf_filter_t winners[3] = {best, narrow, wide};
+    unsigned *widths[3] = {&best_width, &narrow_width, &wide_width};
+    unsigned *nbws[3] = {&best_nbw, &narrow_nbw, &wide_nbw};
+    static const unsigned minimum[3] = {FILTER_MIN_KHZ, FILTER_NARROW_KHZ, FILTER_WIDE_KHZ};
+    for (unsigned k = 0; ok && k < 3u; ++k) {
+        if (!*nbws[k]) continue;
+        bool duplicate = false;
+        for (unsigned j = 0; j < k; ++j)
+            if (*nbws[j] && rf_filter_equal(winners[j], winners[k])) {
+                *widths[k] = *widths[j]; *nbws[k] = *nbws[j]; duplicate = true; break;
+            }
+        if (!duplicate) {
+            ++s_cal_total;
+            if (!measure_setting(winners[k], &width, &nbw, &quiet, &carrier, NULL, NULL) || !quiet ||
+                !cal_filter_screen_agrees(*widths[k], *nbws[k], width, nbw)) {
+                ok = false; fail = "winner_recheck_failed"; break;
+            }
+            *widths[k] = width; *nbws[k] = nbw;
+        }
+        if (*widths[k] < minimum[k]) { ok = false; fail = "winner_width_failed"; }
+    }
     /* The normal class must be a measured setting: a noise bandwidth of 0
      * means nothing reached the minimum width. */
     if (ok && !best_nbw) { ok = false; fail = "no_wide_setting"; }
@@ -872,13 +956,44 @@ static void dco_hold_for_scan(void)
     (void)phy_dco_hold(dco_trimmed((unsigned)r, 0), dco_trimmed((unsigned)r, 1));   /* the live trim too */
 }
 
+/* Reuse the exact noise statistics of accepted, quiet DC verification
+ * instead of immediately measuring the same gain/filter again. Volatile,
+ * startup-only, exact-context and at most 30 s old; no NVS format change. */
+#define NOISE_CACHE_LO 54u
+#define NOISE_CACHE_ROWS (ARC_VENDOR_GAIN_MAX - NOISE_CACHE_LO + 1u)
+static RTC_FAST_ATTR struct {
+    int64_t time;
+    uint16_t freq, key;
+    float m2, kurt;
+} s_noise_cache[NOISE_CACHE_ROWS];
+static float s_noise_last_m2, s_noise_last_kurt;
+
 static bool dco_measure(int dc[2])
 {
     window_stats_t w;
     vTaskDelay(pdMS_TO_TICKS(50));
-    if (!collect(64, &w)) return false;
+    if (!collect_stats(64, &w, true) || w.windows != 64u) return false;
+    const double m2 = w.noise_m2 / w.windows;
+    s_noise_last_kurt = m2 > 0 ? (float)((w.noise_m4 / w.windows) / (m2 * m2)) : 0;
+    float mi, mq;
+    double M2, M4;
+    cna_mean(&w.noise_sums, &mi, &mq);
+    cna_moments(&w.noise_sums, mi, mq, &M2, &M4);
+    s_noise_last_m2 = (float)M2;
     dc[0] = w.dc_i;
     dc[1] = w.dc_q;
+    return true;
+}
+
+/* Search at one quarter of the window count; the final callback above
+ * still measures 64 windows. Preserve the board-proven two-tick IDLE yield
+ * and 50 ms settling, rather than trading stability for a shorter delay. */
+static bool dco_measure_fast(int dc[2])
+{
+    window_stats_t w;
+    vTaskDelay(pdMS_TO_TICKS(50));
+    if (!collect(16, &w) || w.windows != 16u) return false;
+    dc[0] = w.dc_i; dc[1] = w.dc_q;
     return true;
 }
 
@@ -971,10 +1086,11 @@ static bool dco_measure_flat(int dc[2])
 
 /* Row g with the receiver noise below one step: codes from the flat search.
  * Before, such a row and all below it were FLOOR (left at the chip's DC). */
-static bool dco_flat_row(uint8_t g)
+static bool dco_flat_row(uint8_t g, const int *seed)
 {
     phy_dco_result_t res;
-    (void)phy_dco_search_flat(dco_measure_flat, &res);
+    (void)phy_dco_search_flat_from(dco_measure_flat, seed, &res);
+    if (!res.measured && seed) (void)phy_dco_search_flat(dco_measure_flat, &res);
     if (!res.measured) return false;
     s_dco.e[g] = (dco_entry_t){{(int16_t)res.codes[0], (int16_t)res.codes[1]},
         {(int16_t)res.residual_mcells[0], (int16_t)res.residual_mcells[1]}, DCO_ROW_OK};
@@ -997,7 +1113,7 @@ static int dco_quiet_search(uint8_t g, const int *seed)
     int measurable = noise_measurable();
     if (measurable == NOISE_PROBE_FAILED) {
         printf("DCO row=%u probe_failed (rows kept for the next boot)\n", g);
-    } else if (measurable == NOISE_BELOW_STEP && dco_flat_row(g)) {
+    } else if (measurable == NOISE_BELOW_STEP && dco_flat_row(g, seed)) {
         measurable = NOISE_MEASURABLE;          /* this row has codes now; go on downward */
     } else if (measurable == NOISE_BELOW_STEP) {
         /* Less gain, even less noise, and no flip found: the rows below
@@ -1012,13 +1128,29 @@ static int dco_quiet_search(uint8_t g, const int *seed)
         s_dco_floor = (uint8_t)(g + 1);
     } else {
         phy_dco_result_t res;
-        (void)phy_dco_search_from(dco_measure, seed, &res);
+        (void)phy_dco_search_verified(dco_measure_fast, dco_measure, seed, &res);
+        if (!res.measured) {
+            printf("DCO row=%u fast_search=fallback_full\n", g);
+            (void)phy_dco_search_from(dco_measure, seed, &res);
+        }
+        /* A neighbouring seed may be outside this row's response range. */
+        if ((!res.measured || abs(res.residual_mcells[0]) > DCO_BAD_MCELLS ||
+             abs(res.residual_mcells[1]) > DCO_BAD_MCELLS) && seed)
+            (void)phy_dco_search_from(dco_measure, NULL, &res);
         if (res.measured) {
             const dco_entry_t e = {{(int16_t)res.codes[0], (int16_t)res.codes[1]},
                 {(int16_t)res.residual_mcells[0], (int16_t)res.residual_mcells[1]}, DCO_ROW_OK};
             if (!dco_entry_bad(&e)) {
                 s_dco.e[g] = e;
                 dco_row_measured(g);
+                if (g >= NOISE_CACHE_LO) {
+                    const unsigned k = g - NOISE_CACHE_LO;
+                    s_noise_cache[k].time = esp_timer_get_time();
+                    s_noise_cache[k].freq = rf_frequency_mhz();
+                    s_noise_cache[k].key = live_filter_key();
+                    s_noise_cache[k].m2 = s_noise_last_m2;
+                    s_noise_cache[k].kurt = s_noise_last_kurt;
+                }
             } else {
                 s_dco.e[g].valid = 0;                /* not converged: missing, repaired from a neighbour */
                 printf("DCO row=%u not_converged residual=%d/%d\n", g, e.residual_mcells[0], e.residual_mcells[1]);
@@ -1100,7 +1232,13 @@ static const char *dco_quiet_rows(bool manual, bool refine, int64_t deadline, co
         status_screen("CALIBRATING DC", line1, line2, rows ? (int)(done * 100u / rows) : 0);
         if (esp_timer_get_time() > deadline) { why = "timeout"; break; }
         if (!noise_like()) { why = "carrier_detected"; break; }   /* VTX switched on / leaking */
-        const int r = dco_quiet_search((uint8_t)g, NULL);
+        /* Only own, converged, unbanned rows of this exact filter/channel
+         * seed the next row; a template is never calibration evidence. */
+        const bool neighbour = g < (int)s_dco.hi && s_dco.e[g + 1].valid == DCO_ROW_OK &&
+            !dco_mask_get(s_dco_templ, (unsigned)g + 1u) && !s_dco_banned[g + 1];
+        const int seed[2] = {neighbour ? s_dco.e[g + 1].code[0] : 0,
+                             neighbour ? s_dco.e[g + 1].code[1] : 0};
+        const int r = dco_quiet_search((uint8_t)g, neighbour ? seed : NULL);
         if (r == NOISE_PROBE_FAILED) { why = "probe_failed"; break; }
         if (r == NOISE_BELOW_STEP) { why = "floor"; break; }     /* the rest needs no correction */
         ++done;
@@ -1702,9 +1840,9 @@ static void gain_map_service(void)
  * this boot's carrier while the DEFAULT picture keeps running (a stored
  * deviation is not a VTX identity); only the switch to a matched profile
  * happens behind a status screen. With no VTX yet (calibrated with the VTX
- * off) it waits up to 20 s for one to appear; later the measurement goes
+ * off) it gives one 2 s to appear; later the measurement goes
  * on passively and a result is kept as pending for the next boot. */
-#define DEVIATION_WAIT_US    20000000LL
+#define DEVIATION_WAIT_US    2000000LL
 #define DEVIATION_MEASURE_US 15000000LL
 static void deviation_startup(int64_t deadline)
 {
@@ -1751,6 +1889,20 @@ static void noise_map_startup(int64_t deadline)
      * edge rows, gain.c dg_apply_measured_gain), every 3rd below. */
     bool fine = true;
     for (int g = (int)rf_gain_table()->max_index; g >= 54 && esp_timer_get_time() < deadline; g -= fine ? 1 : 3) {
+        const unsigned ck = (unsigned)g - NOISE_CACHE_LO;
+        if (ck < NOISE_CACHE_ROWS && s_noise_cache[ck].time &&
+            esp_timer_get_time() - s_noise_cache[ck].time <= 30000000LL &&
+            s_noise_cache[ck].freq == rf_frequency_mhz() && s_noise_cache[ck].key == live_filter_key() &&
+            (s_noise_cache[ck].m2 < CNA_QLIM_CELLS2 ||
+             (s_noise_cache[ck].kurt >= 1.85f && s_noise_cache[ck].kurt <= 2.25f))) {
+            const float m2 = s_noise_cache[ck].m2;
+            receiver_cn_noise_store((uint8_t)g, m2);
+            if (g < DG_STATES) measured[g] = m2;
+            ++rows;
+            if (m2 < CNA_QLIM_CELLS2) fine = false;
+            printf("CN_NOISE row=%d noise_cells2=%.3f source=dc_verify\n", g, (double)m2);
+            continue;
+        }
         receiver_set_gain((uint8_t)g);
         vTaskDelay(pdMS_TO_TICKS(20));
         cna_sums_t s = {0};
@@ -1814,6 +1966,7 @@ static void calib_record(bool manual, int64_t t0);   /* flight log, below */
 static void startup_phase(bool manual)
 {
     s_startup = true;
+    memset(s_noise_cache, 0, sizeof(s_noise_cache));
     {
         const uint8_t m = manual;
         flightlog_event(FLOG_E_CAL_START, &m, 1);
@@ -1846,10 +1999,11 @@ static void startup_phase(bool manual)
         }
         printf("STARTUP step=dco\n");
         if (esp_timer_get_time() < deadline) dco_startup(manual, deadline);
-        if (esp_timer_get_time() < deadline) dco_startup_profiles(manual, deadline);
-        else dco_ready_note();
+        /* Reuse fresh NORMAL DC windows before the other filter passes. */
         printf("STARTUP step=noise_map\n");
         if (esp_timer_get_time() < deadline) noise_map_startup(deadline);
+        if (esp_timer_get_time() < deadline) dco_startup_profiles(manual, deadline);
+        else dco_ready_note();
         printf("STARTUP step=deviation\n");
         /* Video needs a moment back on the own channel before measuring. */
         status_screen_end();

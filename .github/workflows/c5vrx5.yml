@@ -124,6 +124,7 @@ jobs:
           python3 test/test_gain_map_context.py
           python3 test/test_afc_telemetry.py
           python3 test/test_sphase_runtime.py
+          python3 test/test_calibration_search_runtime.py
       - name: Analytic IQ lane reference
         shell: bash
         run: |

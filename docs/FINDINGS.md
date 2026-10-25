@@ -1700,3 +1700,18 @@ interpretation, recovered helper semantics and measurement limits, with frozen
 source links. It imports no experimental firmware or lab tooling and changes
 no production defaults. Noise-only variance changes are not RF sensitivity
 or range measurements.
+
+## Faster verified startup calibration (2026-10-25, hardware pending)
+
+Extends C5VRX by Twotoz and contributors' startup calibration, neighbouring-row
+repair and exact filter-context work. DC now uses short search probes with a
+full final measurement and exhaustive fallback; the filter grid screens every
+setting and fully measures contenders, with full-grid fallback and independent
+winner rechecks. A three-position phase fast path requires repeated confirmation;
+ambiguous evidence retains the nine-position scan. Fresh exact-context DC noise
+statistics can serve the startup gain map. Absent-VTX grace is 2 s instead of
+20 s; deviation sample/quality requirements remain unchanged.
+
+See [FASTER_CALIBRATION.md](FASTER_CALIBRATION.md) for bounds, tests and board
+comparison. This is host-tested search/control work, not a measured speedup,
+sensitivity gain or proof of unchanged filter selection on all C5 boards.

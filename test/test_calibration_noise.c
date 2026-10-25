@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "calibration_noise.h"
-#define N (24u * 256u)
+#define N (96u * 256u)
 static uint64_t rng = 199;
 static double uniform(void)
 {
@@ -62,10 +62,19 @@ int main(void)
         assert(cal_channel_quiet(s, 24, false, &env, &clipping) == NULL);
         cal_noise_t a = {0};
         for (unsigned w = 0; w < 96; ++w) {
-            const uint8_t *part = s + (w % 24) * 256;
+            const uint8_t *part = s + w * 256;
             cal_noise_add(&a, part, 256, clip(part));
         }
         assert(cal_noise_finish(&a, &width, &nbw, &env, &clipping));
+        cal_noise_t screen = {0};
+        for (unsigned w = 0; w < 24; ++w) cal_noise_add(&screen, s + w * 256, 256, clip(s + w * 256));
+        unsigned sw = dsp_psd_width_khz(screen.psd), sn = dsp_psd_nbw_khz(screen.psd);
+        /* No true improvement on a measured incumbent may be screened out
+         * in these independent-noise trials, including class boundaries. */
+        static const unsigned minimum[3] = {10000, 12000, 16000};
+        for (unsigned c = 0; c < 3; ++c)
+            if (width >= minimum[c]) assert(cal_filter_contender(sw, sn, minimum[c], nbw + 1u));
+        assert(cal_filter_screen_agrees(sw, sn, width, nbw));
         /* As in the real sweep, noisy/too-narrow settings may be skipped;
          * only a definite carrier aborts it. Do not relax quiet thresholds. */
         assert(width && nbw && !cal_setting_carrier(env, clipping));

@@ -25,6 +25,19 @@ static inline bool cal_noise_finish(const cal_noise_t *a, unsigned *width, unsig
     *clip = a->clip_sum / (int)a->got;
     return true;
 }
+/* Screening never supplies a stored calibration. Keep a wide guard (four
+ * FFT bins in width, 25% NBW) around a fully measured incumbent. No assumed
+ * monotonicity of the undocumented filter controls: visit every setting. */
+static inline bool cal_filter_contender(unsigned width, unsigned nbw, unsigned minimum, unsigned best_nbw)
+{
+    return width + 2500u >= minimum && (!best_nbw || (uint64_t)nbw * 4u <= (uint64_t)best_nbw * 5u);
+}
+static inline bool cal_filter_screen_agrees(unsigned w0, unsigned n0, unsigned w1, unsigned n1)
+{
+    unsigned dw = w0 > w1 ? w0 - w1 : w1 - w0;
+    unsigned dn = n0 > n1 ? n0 - n1 : n1 - n0;
+    return n0 && n1 && dw <= 2500u && (uint64_t)dn * 4u <= n1;
+}
 static inline const char *cal_channel_quiet(const uint8_t *s, unsigned windows, bool recent_sync,
                                           unsigned *env, int *clip)
 {

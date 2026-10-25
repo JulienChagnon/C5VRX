@@ -652,6 +652,16 @@ do not treat model-only proposals or unused counters as physical validation.
    update this ledger and its linked evidence. Credit Twotoz
    and the relevant C5VRX contributors for the prior research being extended.
 
+## Startup calibration acceleration (2026-10-25, hardware pending)
+
+`docs/FASTER_CALIBRATION.md` records the startup-only fast search extensions:
+short DC probes with full verification/fallback; all-setting filter screening
+with full contender and winner checks; confirmed three-position phase fast path
+with nine-position fallback; exact-context fresh DC noise reuse; 2 s absent-VTX
+grace with unchanged deviation evidence. Preserve the fallback and final
+measurement boundaries. Do not report hardware speedup or filter equivalence
+from host tests alone; keep the board-proven DC settle and IDLE yields.
+
 ## Design flexibility and optimization priority
 
 C5VRX is intentionally flexible. Historical implementations, names, data
