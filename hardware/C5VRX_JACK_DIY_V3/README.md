@@ -56,9 +56,9 @@ R1–R7 retain the existing 8.2 kΩ / 3.9 kΩ / 2 kΩ / 1 kΩ / 470 Ω / 240 Ω 
 ## Files and checks
 
 - Open `C5VRX_JACK_DIY_V3.kicad_pro` in **KiCad 10**. Project symbol/footprint libraries (including the D1 footprint) and the PJ-320D STEP model are included.
-- [Fabrication ZIP](exports/C5VRX_JACK_DIY_V3-gerbers.zip): Gerber X2 plus plated/non-plated Excellon drills; [individual outputs](exports/gerbers/).
+- [Fabrication ZIP](exports/C5VRX_JACK_DIY_V3-gerbers.zip): Gerber X2 plus plated/non-plated Excellon drills, ready to upload to a PCB fab.
 - [BOM](BOM.csv): PCB values, DNP flags and open rear solder bridges (PCB features, not purchased components).
-- [Schematic PDF](exports/C5VRX_JACK_DIY_V3-schematic.pdf), [1:1 fit-check PDF](exports/C5VRX_JACK_DIY_V3-fit-check-1to1.pdf), top/bottom SVGs, STEP and GLB models are in `exports/`.
+- [Schematic PDF](exports/C5VRX_JACK_DIY_V3-schematic.pdf), [1:1 fit-check PDF](exports/C5VRX_JACK_DIY_V3-fit-check-1to1.pdf), STEP and GLB models are in `exports/`.
 - [3200 × 2200 renders](exports/renders/) and [render ZIP](exports/C5VRX_JACK_DIY_V3-renders.zip). The XIAO mounting outline is visible because no module 3D model is supplied; DNP parts are omitted.
 - [DRC report](validation/drc.json) and [ERC report](validation/erc.json): zero errors, zero unrouted connections and zero schematic/PCB parity issues. Generated with KiCad 10.0.7.
 
