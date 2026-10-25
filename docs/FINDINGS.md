@@ -1612,3 +1612,13 @@ observation unavailable, break unlock continuity and clear the summary's
 current observer-validity flags while retaining cumulative-counter deltas.
 Host regressions cover cached locked/unlocked states and resumption without
 recounting counters. This does not change the output guard or ISR behavior.
+
+
+## PR #254: retained PHY research (2026-10-25)
+
+[The knowledge-only extraction](PR254_PHY_FINDINGS.md) preserves the 11p
+noise-bandwidth measurements, negative PHY tests, corrected live-G83/DC
+interpretation, recovered helper semantics and measurement limits, with frozen
+source links. It imports no experimental firmware or lab tooling and changes
+no production defaults. Noise-only variance changes are not RF sensitivity
+or range measurements.
