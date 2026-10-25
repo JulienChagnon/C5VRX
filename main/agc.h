@@ -27,20 +27,34 @@
 #include <stdint.h>
 #include "gain.h"
 
-#define AGC_BINS 100              /* 1 dB bins of the input level */
+#ifndef AGC_BIN_DB
+#define AGC_BIN_DB 2              /* bins of the input level, dB */
+#endif
+#define AGC_BINS (100 / AGC_BIN_DB)
 #define AGC_LMIN_DB (-20)         /* bin 0: carrier power at the top row, dB cells^2 */
-#define AGC_MAX_HOMES 32u
+#define AGC_MAX_HOMES 30u
 
 typedef struct {
     uint8_t max_index, homes;
     uint8_t home[AGC_MAX_HOMES];
-    int16_t rel_q8[DG_STATES];        /* row gain minus the top row, dB Q8 */
+    int16_t rel_q8[DG_STATES];        /* row gain minus the top row, dB Q8 (model + learned) */
+    int16_t learned_q8[DG_STATES];    /* learned correction of the model per row */
     uint16_t noise_x16[DG_STATES];    /* receiver noise power per row, cells^2 x16 */
+    uint16_t noise_top_x16;
     int8_t quality[AGC_MAX_HOMES][AGC_BINS];
     uint32_t hist[AGC_BINS];
     uint64_t decide_us;
     bool fold_pending;
-    uint32_t folds, decisions, moves;
+    /* Self-calibration: the input level just before and just after a move
+     * must agree (the carrier barely changes in ~2 ms); the difference is
+     * the model error of the new row. */
+    int32_t level_ema_q8;
+    uint8_t level_windows;
+    bool move_pending;
+    uint8_t move_to, move_windows;
+    int32_t move_pre_q8, move_sum_q8;
+    uint64_t move_us;
+    uint32_t folds, decisions, moves, learned;
 } agc_level_t;
 
 typedef struct {

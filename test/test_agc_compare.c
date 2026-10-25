@@ -48,6 +48,9 @@ unsigned char phy_param[2048];
 #ifndef GAIN_ERR_DB
 #define GAIN_ERR_DB 0.0
 #endif
+#ifndef GAIN_ERR_LOW_DB
+#define GAIN_ERR_LOW_DB GAIN_ERR_DB
+#endif
 #ifndef FOLD_RN
 #define FOLD_RN 1.0
 #endif
@@ -71,7 +74,13 @@ static void build_model(void)
         arc_gain_tuple_t t;
         arc_gain_tuple_decode(&table, (uint8_t)k, &t);
         s_model_db[k] = 6.0 * t.rf_stage + 6.0 * log2(t.bb_code + 1.0) + 0.83 * (5 - (int)t.fine_code);
-        s_db[k] = s_model_db[k] + GAIN_ERR_DB * (2.0 * urand() - 1.0) * (k != table.max_index);
+    }
+    for (unsigned k = 0; k <= table.max_index; ++k) {
+        /* GAIN_ERR_LOW_DB: the board's model error where the noise map cannot
+         * measure the rows (more than 24 dB under the top, FINDINGS "First
+         * KEEL-1 board session"); GAIN_ERR_DB everywhere else. */
+        const double err = s_model_db[k] < s_model_db[table.max_index] - 24.0 ? GAIN_ERR_LOW_DB : GAIN_ERR_DB;
+        s_db[k] = s_model_db[k] + err * (2.0 * urand() - 1.0) * (k != table.max_index);
     }
     s_seed = keep;
 }
@@ -301,5 +310,16 @@ int main(int argc, char **argv)
     for (int c = 0; c < C_COUNT; ++c)
         printf("%-10s %8.2f %10.1f %12.1f\n", s_ctl_name[c], score[c] / weights, writes[c], edge3u[c]);
     (void)verbose;
+#ifdef AGC_CHECKS
+    /* Regression floor for LEVEL against KEEL-1 on the same draws (nominal
+     * model 63.6 / 5.5 writes / 34.0 % against 61.6 / 4.5 / 28.7 %; with
+     * -DGAIN_ERR_DB=1.0 -DGAIN_ERR_LOW_DB=6.0 62.0 / 6.8 / 33.4 against 60.6). */
+    unsigned fail = 0;
+    if ((score[C_LEVEL] - score[C_KEEL]) / weights < 0.5) { printf("FAIL LEVEL score %.2f < KEEL-1 %.2f + 0.5\n", score[C_LEVEL] / weights, score[C_KEEL] / weights); ++fail; }
+    if (edge3u[C_LEVEL] < edge3u[C_KEEL] + 2.0) { printf("FAIL LEVEL edge %.1f < KEEL-1 %.1f + 2\n", edge3u[C_LEVEL], edge3u[C_KEEL]); ++fail; }
+    if (writes[C_LEVEL] > 8.0) { printf("FAIL LEVEL writes %.1f/s > 8\n", writes[C_LEVEL]); ++fail; }
+    printf("%s: LEVEL checks\n", fail ? "FAIL" : "PASS");
+    return fail != 0;
+#endif
     return 0;
 }

@@ -89,6 +89,11 @@ jobs:
           /tmp/test_rx_level
           cc -O2 -std=c11 -Wall -Wextra -Werror -I../main test_keel_track.c ../main/gain.c ../main/arc_phy.c -lm -o /tmp/test_keel_track
           /tmp/test_keel_track | grep -v "^S,"
+          # Research AGC models (agc.c) against KEEL-1: nominal and a board-like gain-model error.
+          cc -O2 -std=c11 -Wall -Wextra -Werror -I../main -DSKIP_BOUNDS -DAGC_CHECKS test_agc_compare.c ../main/agc.c ../main/gain.c ../main/arc_phy.c -lm -o /tmp/test_agc_compare
+          /tmp/test_agc_compare | tail -5
+          cc -O2 -std=c11 -Wall -Wextra -Werror -I../main -DSKIP_BOUNDS -DAGC_CHECKS -DGAIN_ERR_DB=1.0 -DGAIN_ERR_LOW_DB=6.0 test_agc_compare.c ../main/agc.c ../main/gain.c ../main/arc_phy.c -lm -o /tmp/test_agc_compare_err
+          /tmp/test_agc_compare_err | tail -5
           cc -O2 -std=c11 -Wall -Wextra -Werror -I../main test_cn_auto.c -lm -o /tmp/test_cn_auto
           /tmp/test_cn_auto
           cc -O2 -std=c11 -Wall -Wextra -Werror -I../main test_gain_measured.c ../main/gain.c ../main/arc_phy.c -lm -o /tmp/test_gain_measured

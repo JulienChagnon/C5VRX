@@ -29,6 +29,15 @@
 #ifndef LEVEL_RAIL
 #define LEVEL_RAIL 7.5f
 #endif
+#ifndef LEVEL_LEARN_MAX_Q8
+#define LEVEL_LEARN_MAX_Q8 (8 * 256)   /* learned model correction per row, at most */
+#endif
+#ifndef LEVEL_LEARN_WINDOWS
+#define LEVEL_LEARN_WINDOWS 8u         /* windows after a move that measure the new row */
+#endif
+#ifndef LEVEL_LEARN_SETTLE_US
+#define LEVEL_LEARN_SETTLE_US 600u     /* the write transient */
+#endif
 #ifndef LEVEL_SYNC_DB
 #define LEVEL_SYNC_DB 3.0f     /* a picture holds above ~3 dB (FINDINGS, static edge) */
 #endif
@@ -119,25 +128,53 @@ static int quality(float level_db, float rel_db, float noise_top)
     return (int)lroundf(100.0f * sync * (LEVEL_SYNC_SHARE + (1.0f - LEVEL_SYNC_SHARE) * pic));
 }
 
+static void row_noise(agc_level_t *a, unsigned k)
+{
+    const float n = a->noise_top_x16 * powf(10.0f, a->rel_q8[k] / 2560.0f);
+    a->noise_x16[k] = (uint16_t)(n < 1.0f ? 1.0f : n > 65535.0f ? 65535.0f : n);
+}
+
+static void home_quality(agc_level_t *a, unsigned h)
+{
+    for (int b = 0; b < AGC_BINS; ++b)
+        a->quality[h][b] = (int8_t)quality(AGC_LMIN_DB + (b + 0.5f) * AGC_BIN_DB, a->rel_q8[a->home[h]] / 256.0f,
+                                           a->noise_top_x16 / 16.0f);
+}
+
 void agc_level_reset(agc_level_t *a, const int16_t row_db_q8[DG_STATES], uint8_t max_index, uint16_t noise_top_x16)
 {
     memset(a, 0, sizeof(*a));
     a->max_index = max_index;
+    a->noise_top_x16 = noise_top_x16;
     for (unsigned k = 0; k <= max_index; ++k) {
         a->rel_q8[k] = (int16_t)(row_db_q8[k] - row_db_q8[max_index]);
-        const float n = noise_top_x16 * powf(10.0f, a->rel_q8[k] / 2560.0f);
-        a->noise_x16[k] = (uint16_t)(n < 1.0f ? 1.0f : n > 65535.0f ? 65535.0f : n);
+        row_noise(a, k);
     }
     a->homes = (uint8_t)build_homes(a->home, row_db_q8, max_index);
-    const float noise_top = noise_top_x16 / 16.0f;
+    for (unsigned h = 0; h < a->homes; ++h) home_quality(a, h);
+}
+
+/* The model error of the row a move went to, a quarter at a time, at most
+ * LEVEL_LEARN_MAX_Q8 in all; the top row is the anchor (noise measured there). */
+static void level_learn(agc_level_t *a, uint8_t row, int err_q8)
+{
+    if (row == a->max_index) return;
+    if (err_q8 > 6 * 256) err_q8 = 6 * 256;
+    if (err_q8 < -6 * 256) err_q8 = -6 * 256;
+    int l = a->learned_q8[row] + err_q8 / 4;
+    l = l > LEVEL_LEARN_MAX_Q8 ? LEVEL_LEARN_MAX_Q8 : l < -LEVEL_LEARN_MAX_Q8 ? -LEVEL_LEARN_MAX_Q8 : l;
+    a->rel_q8[row] = (int16_t)(a->rel_q8[row] + l - a->learned_q8[row]);
+    a->learned_q8[row] = (int16_t)l;
+    row_noise(a, row);
     for (unsigned h = 0; h < a->homes; ++h)
-        for (int b = 0; b < AGC_BINS; ++b)
-            a->quality[h][b] = (int8_t)quality(AGC_LMIN_DB + b + 0.5f, a->rel_q8[a->home[h]] / 256.0f, noise_top);
+        if (a->home[h] == row) home_quality(a, h);
+    ++a->learned;
 }
 
 static void level_add(agc_level_t *a, int level_q8, uint32_t weight)
 {
-    int b = (level_q8 >> 8) - AGC_LMIN_DB;   /* floor */
+    int b = ((level_q8 >> 8) - AGC_LMIN_DB) / AGC_BIN_DB;   /* floor (level >= LMIN) */
+    if (level_q8 < AGC_LMIN_DB * 256) b = 0;
     b = b < 0 ? 0 : b >= AGC_BINS ? AGC_BINS - 1 : b;
     a->hist[b] += weight;
 }
@@ -160,11 +197,29 @@ uint8_t agc_level_tick(agc_level_t *a, const dg_observation_t *o, uint8_t curren
         const float c = lim > 0.5f ? lim * lim : 0.25f;
         level_add(a, agc_db_q8((uint32_t)(c * 16.0f)) - agc_db_q8(16) - rel + 3 * 256, LEVEL_FOLD_WEIGHT);
         a->fold_pending = true;
+        a->move_pending = false;   /* a folded level says nothing about the row's gain */
+        a->level_windows = 0;
         ++a->folds;
     } else {
         uint32_t c = o->pwr_x16 > noise ? o->pwr_x16 - noise : 0;
         if (c < noise / 50u + 1u) c = noise / 50u + 1u;
-        level_add(a, agc_db_q8(c) - agc_db_q8(16) - rel, LEVEL_WEIGHT);
+        const int level = agc_db_q8(c) - agc_db_q8(16) - rel;
+        level_add(a, level, LEVEL_WEIGHT);
+        if (a->move_pending && current == a->move_to && now_us - a->move_us >= LEVEL_LEARN_SETTLE_US) {
+            a->move_sum_q8 += level;
+            if (++a->move_windows >= LEVEL_LEARN_WINDOWS) {
+                level_learn(a, current, a->move_sum_q8 / (int)LEVEL_LEARN_WINDOWS - a->move_pre_q8);
+                a->move_pending = false;
+                a->level_ema_q8 = level;
+                a->level_windows = 1;
+            }
+        } else if (!a->move_pending) {
+            /* Only a carrier well above the noise measures a gain. */
+            const bool usable = c >= noise;
+            if (!usable) a->level_windows = 0;
+            else if (!a->level_windows++) a->level_ema_q8 = level;
+            else a->level_ema_q8 += (level - a->level_ema_q8) / 4;
+        }
     }
     if (!a->fold_pending && now_us - a->decide_us < LEVEL_DECIDE_US) return current;
     a->decide_us = now_us;
@@ -183,6 +238,15 @@ uint8_t agc_level_tick(agc_level_t *a, const dg_observation_t *o, uint8_t curren
     for (int b = 0; b < AGC_BINS; ++b) a->hist[b] = (uint32_t)(((uint64_t)a->hist[b] * LEVEL_DECAY_Q8) >> 8);
     if (best == cur_h || best_u <= cur_u + LEVEL_HYST * 256) return current;
     ++a->moves;
+    a->move_pending = a->level_windows >= 4u;
+    if (a->move_pending) {
+        a->move_to = a->home[best];
+        a->move_pre_q8 = a->level_ema_q8;
+        a->move_sum_q8 = 0;
+        a->move_windows = 0;
+        a->move_us = now_us;
+    }
+    a->level_windows = 0;
     return a->home[best];
 }
 
