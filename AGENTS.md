@@ -846,19 +846,26 @@ the project explicitly changes hosting architecture.
     never replace published version assets), marked as the repository's
     Latest release (an unchanged-input main run re-marks the newest one);
   - a mutable `c5vrx5-pr-<number>` prerelease for every same-repository PR
-    (`opened`/`synchronize`/`reopened`), deleted when the PR closes. Fork PRs
-    never get write-capable publication.
+    (`opened`/`synchronize`/`reopened`); publish skips a PR that closed
+    during the build. Fork PRs never get write-capable publication.
   - Unchanged `tools/firmware_input_hash.py` inputs keep the existing release,
     so website/docs changes do not mint firmware.
 - Keep its concurrency group separated by event type and PR identity
   (`c5vrx5-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}`):
   a `github.ref`-only group let a merged PR's cleanup cancel the main build.
+- `.github/workflows/pr-channel-cleanup.yml` deletes every `c5vrx5-pr-<number>`
+  release whose PR is no longer open, then dispatches Deploy Web Flasher. It
+  sweeps on `pull_request_target` close (no path filter, runs despite merge
+  conflicts, never checks out PR code), hourly and manually. A per-PR cleanup
+  on the build's `pull_request` close event is not reliable: GitHub does not
+  deliver it for PRs with merge conflicts or outside the path filter, which
+  left channels of closed PRs in the flasher.
 - `.github/workflows/deploy-web.yml` is the only production web deployment.
   It always checks out trusted `main`, runs `tools/prepare_pages_site.sh` and
   publishes `web/` plus a same-origin `firmware/` mirror. It runs for web
-  changes on `main`, manually, and after a successful C5VRX-5 Build, so new or
-  removed PR builds and new releases reach the flasher without deploying
-  unmerged web code.
+  changes on `main`, manually (also dispatched by the PR channel cleanup), and
+  after a successful C5VRX-5 Build, so new or removed PR builds and new
+  releases reach the flasher without deploying unmerged web code.
 - `.github/workflows/web-checks.yml` checks the flasher scripts and tests.
 
 The former C5VRX-3 Production CI (semantic `v3.x` releases, `pr-N`), the
