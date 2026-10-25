@@ -7,6 +7,17 @@ A two-layer DIY carrier for the Seeed Studio XIAO ESP32-C5, with a Fat Shark mod
   <img src="exports/renders/02-back-perspective.png" alt="REV B back and solder jumpers" width="49%" />
 </p>
 
+## Downloads
+
+| File | Link |
+| --- | --- |
+| Gerber X2 + Excellon drills | [Fabrication ZIP](exports/C5VRX_JACK_DIY_V2-gerbers.zip) |
+| KiCad 10 source | [Project](C5VRX_JACK_DIY_V2.kicad_pro) · [PCB](C5VRX_JACK_DIY_V2.kicad_pcb) · [Schematic](C5VRX_JACK_DIY_V2.kicad_sch) |
+| Parts and assembly flags | [BOM](BOM.csv) |
+| Schematic and fit check | [Schematic PDF](exports/C5VRX_JACK_DIY_V2-schematic.pdf) · [1:1 PDF](exports/C5VRX_JACK_DIY_V2-fit-check-1to1.pdf) |
+| Mechanical models | [STEP](exports/C5VRX_JACK_DIY_V2.step) · [GLB](exports/C5VRX_JACK_DIY_V2.glb) |
+| High-resolution images | [Front](exports/renders/01-front-perspective.png) · [Back](exports/renders/02-back-perspective.png) · [All four as ZIP](exports/C5VRX_JACK_DIY_V2-renders.zip) |
+
 ## DAC branches and rear jumpers
 
 | Jumper | Function | Default |
@@ -31,7 +42,7 @@ Open SJ1 before USB programming, as for REV A. J2 tip and ring 1 carry VIDEO, sl
 
 ## Layout and files
 
-The resistor bank has 3.0 mm row spacing. The upper C1 hole aligns with the right R8 hole. C5VRX logos appear on both sides; the front logo uses the latest manually adjusted lower position. The back includes REV B, 6–8 BIT DAC, and individual jumper labels. The explicit jack-to-ground connection is retained: removing it and refilling the current zones leaves a disconnected ground island.
+The resistor bank has 3.0 mm row spacing. The upper C1 hole aligns with the right R8 hole. C5VRX logos appear on both sides; the front logo uses the latest manually adjusted lower position. The back includes REV B, 6–8 BIT DAC, and individual jumper labels. The separate ground trace above the front logo has been removed. Ground pours on both copper layers provide the connection without that trace; the zones are refilled and DRC connectivity is clean.
 
 - Open `C5VRX_JACK_DIY_V2.kicad_pro` in **KiCad 10**. Project symbol/footprint libraries and the PJ-320D STEP model are included.
 - [Fabrication ZIP](exports/C5VRX_JACK_DIY_V2-gerbers.zip): Gerber X2 plus plated/non-plated Excellon drills; [individual outputs](exports/gerbers/).

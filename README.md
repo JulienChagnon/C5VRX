@@ -154,27 +154,29 @@ GND ---------------+------> GND (goggle / monitor AV-in ground)
   a swapped, open or wrong resistor. See
   [Building and testing the resistor DAC](docs/hardware/dac-build-and-test.md).
 
-### DIY Carrier PCB: Fat Shark Module + 3.5 mm AV Jack
+### DIY Carrier PCB — REV B: Fat Shark Module + 3.5 mm AV Jack
 
-**[REV B / C5VRX_JACK_DIY_V2](hardware/C5VRX_JACK_DIY_V2)** adds reserved seventh/eighth DAC branches with separate rear solder jumpers, regenerated fabrication files and new renders. Current firmware remains six-bit: leave R8/R9 unpopulated and SJ2/SJ3 open. [REV A](hardware/C5VRX_JACK_DIY) is retained.
-
-If you prefer a clean PCB over perfboard, the open-source **[C5VRX_JACK_DIY](hardware/C5VRX_JACK_DIY)** carrier board is designed to drop directly into standard Fat Shark goggle bays while also including a 3.5 mm TRRS AV jack for universal bench testing and standalone monitor hookup.
-
-Getting the PCB manufactured (via JLCPCB, PCBWay, etc.) is extremely inexpensive—often even cheaper than buying a sheet of perfboard—and only requires soldering standard through-hole ¼W resistors and pin headers!
+**[C5VRX_JACK_DIY_V2 / REV B](hardware/C5VRX_JACK_DIY_V2)** is the latest proposed DIY carrier revision for the Seeed Studio XIAO ESP32-C5. It retains the Fat Shark module-bay outline and 3.5 mm PJ-320D AV jack, adds reserved seventh/eighth DAC branches, and puts all three solder jumpers on the back.
 
 <div align="center">
-  <img src="hardware/C5VRX_JACK_DIY/exports/C5VRX_JACK_DIY-3D-top-iso.png" alt="C5VRX_JACK_DIY 3D Top View" width="49%" />
-  <img src="hardware/C5VRX_JACK_DIY/exports/C5VRX_JACK_DIY-3D-top-straight.png" alt="C5VRX_JACK_DIY Straight Top View" width="49%" />
+  <img src="hardware/C5VRX_JACK_DIY_V2/exports/renders/01-front-perspective.png" alt="C5VRX REV B front with lowered logo" width="49%" />
+  <img src="hardware/C5VRX_JACK_DIY_V2/exports/renders/02-back-perspective.png" alt="C5VRX REV B back with power and DAC jumpers" width="49%" />
 </div>
 
-| Feature | Details | Benefit |
-| --- | --- | --- |
-| **Form factor** | 42.51 × 28.80 mm (r = 2.0 mm) | Fits standard Fat Shark Dominator module bays |
-| **AV output** | 3.5 mm TRRS jack (PJ-320D) + Bay Pin 1 | Universal: use in goggles, on external monitors, or for bench testing |
-| **Through-hole DAC** | Standard ¼W axial resistors (`DIN0207`) | Quick hand-soldering with labeled footprints (`8.2k`, `3.9k`, etc.) |
-| **Socketed MCU** | 2× 7-pin female pin headers | Reusable Seeed XIAO ESP32-C5 with USB-C accessible on the edge |
-| **Dual power** | 5V goggle rail (via SJ1 solder bridge) or USB-C | Powered from the goggles or directly via USB for bench testing |
-| **Fabrication files** | Gerber zip, Excellon drill, BOM, STEP/GLB | Ready to order immediately from [`hardware/C5VRX_JACK_DIY`](hardware/C5VRX_JACK_DIY) |
+| Feature | REV B details |
+| --- | --- |
+| **Form factor** | 42.51 × 28.80 mm; XIAO, AV jack and bay header keep their REV A positions |
+| **AV output** | VIDEO on Fat Shark J1 pin 6 and PJ-320D tip + ring 1; ground on the jack sleeve |
+| **Through-hole DAC** | DIN0207 axial ¼ W resistors; existing six branches and 200 Ω shunt retained |
+| **Reserved DAC expansion** | R8: 16 kΩ from D10/GPIO10 via SJ2; R9: 32 kΩ from D3/GPIO7 via SJ3 |
+| **Rear solder jumpers** | SJ1 / 5V: bay power; SJ2 / BIT 7 and SJ3 / BIT 8: extra DAC branches |
+| **Artwork** | C5VRX logos on both sides; REV B and 6–8 BIT DAC markings on the back |
+
+**Current firmware remains six-bit:** leave R8/R9 unpopulated and SJ2/SJ3 open. The jumpers connect hardware only; seven/eight-bit output still needs matching firmware and electrical validation. [Assembly and jumper settings](hardware/C5VRX_JACK_DIY_V2#dac-branches-and-rear-jumpers).
+
+**Downloads:** [Gerbers + drills](hardware/C5VRX_JACK_DIY_V2/exports/C5VRX_JACK_DIY_V2-gerbers.zip) · [KiCad project](hardware/C5VRX_JACK_DIY_V2) · [BOM](hardware/C5VRX_JACK_DIY_V2/BOM.csv) · [Schematic PDF](hardware/C5VRX_JACK_DIY_V2/exports/C5VRX_JACK_DIY_V2-schematic.pdf) · [STEP](hardware/C5VRX_JACK_DIY_V2/exports/C5VRX_JACK_DIY_V2.step) · [Renders](hardware/C5VRX_JACK_DIY_V2/exports/renders/).
+
+KiCad ERC/DRC and schematic/PCB parity checks are clean; physical REV B validation is pending. The original [REV A carrier and its fabrication files](hardware/C5VRX_JACK_DIY) remain available.
 
 ## Flashing
 
@@ -248,7 +250,8 @@ saves the displayed output; only the latest 120,000 characters are retained.
 ## Documentation and development
 
 - [DAC build and self-test guide](docs/hardware/dac-build-and-test.md)
-- [C5VRX_JACK_DIY Fat Shark carrier PCB](hardware/C5VRX_JACK_DIY)
+- [REV B Fat Shark carrier PCB, jumpers and fabrication files](hardware/C5VRX_JACK_DIY_V2)
+- [REV A carrier archive](hardware/C5VRX_JACK_DIY)
 - [Receiver findings and hardware evidence](docs/FINDINGS.md)
 - [Field-test protocol](docs/FIELD_TEST.md)
 - [Current receiver changes and validation](docs/PR212.md)
@@ -297,7 +300,7 @@ The C5VRX name and logos have separate terms; see [assets/BRANDING.md](assets/BR
 | Product | Photo | Link / Source |
 | --- | --- | --- |
 | Seeed Studio XIAO ESP32-C5 | <img src="web/assets/xiao-esp32c5.png" alt="Seeed Studio XIAO ESP32-C5 board" width="96" height="72"> | [View on Amazon](https://link.amazon/B0gopCVDt) |
-| C5VRX_JACK_DIY Carrier PCB | <img src="hardware/C5VRX_JACK_DIY/exports/C5VRX_JACK_DIY-3D-top-straight.png" alt="C5VRX_JACK_DIY PCB render" width="96" height="65"> | [Gerbers & KiCad files](hardware/C5VRX_JACK_DIY) (often cheaper than perfboard!) |
+| C5VRX_JACK_DIY_V2 / REV B carrier | <img src="hardware/C5VRX_JACK_DIY_V2/exports/renders/03-front-straight.png" alt="C5VRX REV B PCB render" width="96" height="65"> | [Gerbers & KiCad files](hardware/C5VRX_JACK_DIY_V2) · [REV A](hardware/C5VRX_JACK_DIY) |
 | Perfboard (alternative) | <img src="web/assets/perfboard.png" alt="Green perfboard" width="42" height="61"> | [View on Amazon](https://link.amazon/B0i2qqMeq) |
 | Resistor kit | <img src="web/assets/resistor-kit.png" alt="Resistor assortment in a storage case" width="72" height="72"> | [View on Amazon](https://link.amazon/B06XSBkln) |
 
