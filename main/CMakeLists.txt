@@ -3,19 +3,15 @@ idf_component_register(
         "main.c" "rf.c" "phy.c" "arc_phy.c" "transport.c" "gain.c" "receiver.c"
         "control.c" "calibration.c" "menu.c" "menu_raster.c" "analog_video_detect.c"
         "settings.c" "console.c" "profile.c" "diag.c" "flightlog.c"
-        # Sync flywheel (menu FLYWHEEL / console U, default ON): native
-        # comparator observer, common edge clock, conditional DAC-OE output.
-        "sync_output_probe.c" "sync_edge_clock.c" "sync_live_gate.c" "sync_live_output.c"
     INCLUDE_DIRS "."
     REQUIRES esp_wifi esp_phy nvs_flash esp_event esp_netif esp_driver_parlio
              esp_driver_gpio esp_driver_bitscrambler esp_driver_usb_serial_jtag
-             esp_driver_tsens esp_driver_gptimer esp_driver_rmt esp_timer esp_mm hal heap esp_hw_support esp_app_format esp_partition)
+             esp_driver_tsens esp_timer esp_mm hal heap esp_hw_support esp_app_format esp_partition)
 
 target_bitscrambler_add_src("p64.bsasm")
 
-# The sync observer/output and the AFC decoder (which shares the CPU with the
-# sync alarms) must not inherit the application's debug-oriented -Og.
-set_source_files_properties(control.c sync_output_probe.c sync_live_gate.c sync_live_output.c PROPERTIES COMPILE_OPTIONS "-O2")
+# The AFC decoder must not inherit the application's debug-oriented -Og.
+set_source_files_properties(control.c PROPERTIES COMPILE_OPTIONS "-O2")
 
 # Firmware identity in every log (FIRMWARE line, fw= fields): CI passes the
 # exact head commit; local builds ask git at configure time and mark a dirty

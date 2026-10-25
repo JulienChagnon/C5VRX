@@ -7,6 +7,30 @@ scripts and data live in that branch under `v4/docs/PICTURE_CLIFF_STUDY.md`,
 Synthetic results are host simulations; board results are labelled as such.
 Measured range is not established.
 
+## Sync flywheel removed (operator decision, 2026-10-25)
+
+The C5VRX-5 sync flywheel (PR #212, witness fix PR #218, bounded sync-loss
+scheduling 2026-10-18) is removed from the firmware. Operator report on the
+board: with it the picture showed extreme desyncs and range was poor. This
+is an operator observation, not a controlled attenuation A/B; it agrees with
+the earlier board evidence below (flywheel ON rolled the picture, 2026-10-18)
+and with the range study's conclusion that a sync flywheel is not a range
+lever (`research/README.md`).
+
+Removed: the native comparator observer (`sync_output_probe.c`, GPIO2/RMT),
+the shared edge clock and live gate/output (`sync_edge_clock.c`,
+`sync_live_gate.c`, `sync_live_output.c`, GPTimer alarms writing the DAC OE),
+the comparator flag LUT format and GPIO23 clamp in `transport.c`, the
+coasting restart lease, the 2-ms control-task tick (back to the plain
+50-ms tick), the menu FLYWHEEL item and its PHY-release/retry handshake,
+console `U`, `SYNC_LIVE`/`SYNC_FLYWHEEL*` status lines, NVS key `flywheel`
+(now ignored if present), their host tests and `tools/check_sync_output_iram.py`.
+The flight-log V1 wire slots stay so old logs decode: the session byte 44
+and output flag bits 1..7 read 0, and the observer lock percentages 0xff.
+The live path again only recovers the transmitted composite waveform.
+Not changed: the P64 program/LUT, gain, AFC, filters, OUTPUT scaling and the
+verified halted restart/rollback. The flywheel sections below are history.
+
 ## P64 demodulator on mode 0 (PR #250 model, 2026-10-23)
 
 This branch repairs the P64 model from PR #250 on top of the digital-filter

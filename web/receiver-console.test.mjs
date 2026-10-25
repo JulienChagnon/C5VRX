@@ -164,47 +164,20 @@ test('STATUS beat fills the menu and marks firmware that reports by itself', () 
   assert.equal(state.reportsByItself(9000), false, 'a silent receiver falls back to status requests');
 });
 
-test('saved gain and flywheel controls require advertised firmware support', () => {
+test('gain control requires advertised firmware support; the retired flywheel key is never offered', () => {
   const state = new ReceiverConsole();
   assert.equal(state.supports('G'), false);
-  assert.equal(state.supports('U'), false);
   state.push('C5VRX-5 keys: T status\n');
   assert.equal(state.supports('G'), false, 'older C5VRX-5 is not sufficient');
-  assert.equal(state.supports('U'), false);
   const help = '  G RX gain AUTO (Direct Gain V6) -> MAX -> fixed G78..G24 (saved; restored at boot),\n'
     + '  U sync flywheel ON/OFF (saved; menu FLYWHEEL; default ON),\n';
   for (const character of help) state.push(character);
   assert.equal(state.supports('G'), true);
-  assert.equal(state.supports('U'), true);
+  assert.equal(state.supports('U'), false, 'flywheel removed, even on older firmware');
+  state.push('SYNC_FLYWHEEL requested=1 active=1 repaired=100\n');
+  assert.equal(state.view().flywheel, undefined);
   state.push('C5VRX5 v5.0.0 ready: A1 5865 MHz\n');
   assert.equal(state.supports('G'), false, 'a reboot requires fresh capability reports');
-  assert.equal(state.supports('U'), false);
-});
-
-test('flywheel requested state stays distinct from active output and refused changes', () => {
-  const state = new ReceiverConsole();
-  state.push('C5VRX-5 keys: T status\n');
-  assert.equal(state.view().flywheel, null);
-  assert.equal(state.view().flywheelActive, null);
-  state.push('GAIN owner=direct_gain_v6 mode=AUTO gain=62 state=1\n'
-    + 'SYNC_FLYWHEEL requested=1 active=0 repaired=0 fault=0\n');
-  assert.equal(state.view().gainMode, 'AUTO');
-  assert.equal(state.view().gain, '62');
-  assert.equal(state.view().flywheel, true);
-  assert.equal(state.view().flywheelActive, false, 'requested ON is not active output');
-  state.push('SYNC_FLYWHEEL requested=1 active=1 repaired=100\n');
-  assert.equal(state.view().flywheelActive, true);
-  state.push('GAIN mode=MAX saved=1\nSYNC_FLYWHEEL requested=0 saved=1\n');
-  assert.equal(state.view().gainMode, 'MAX');
-  assert.equal(state.view().flywheel, false);
-  assert.equal(state.view().flywheelActive, null, 'await actual output teardown report');
-  state.push('SYNC_FLYWHEEL requested=0 active=0 repaired=100\nSYNC_FLYWHEEL refused=memory\n');
-  assert.equal(state.view().flywheel, false, 'refusal does not change the requested state');
-  assert.equal(state.view().flywheelActive, false);
-  state.push('C5VRX5 v5.0.0 ready: A1 5865 MHz\n');
-  assert.equal(state.view().gainMode, '');
-  assert.equal(state.view().flywheel, null);
-  assert.equal(state.view().flywheelActive, null);
 });
 
 test('DAC self-test: Z needs firmware that advertises it; steps and expected levels are parsed', () => {

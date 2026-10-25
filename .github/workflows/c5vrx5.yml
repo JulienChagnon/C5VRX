@@ -62,16 +62,12 @@ jobs:
         working-directory: test
         run: |
           set -euo pipefail   # each compile on its own line: in "cc && ./t" a failed cc did not stop -e
-          for t in test_quiet test_profile test_diag test_afc test_afc_measure test_control_window test_cn_observation test_transport_recovery test_calibration_noise test_sphase test_dco_slots test_dc_health test_dc_servo test_flightlog test_output_telemetry test_rx_state test_dac_check; do
+          for t in test_quiet test_profile test_diag test_afc test_afc_measure test_control_window test_cn_observation test_transport_recovery test_calibration_noise test_sphase test_dco_slots test_dc_health test_dc_servo test_flightlog test_rx_state test_dac_check; do
             cc -O2 -std=c11 -Wall -Wextra -Werror -I../main "$t.c" -lm -o "/tmp/$t"
             "/tmp/$t" | tail -1
           done
-          for t in test_dc_trim test_sync_native_track test_sync_live_clock test_sync_native_trace test_sync_flag test_sync_phase_guard test_sync_clock_pll test_menu_entry; do
-            cc -O2 -std=c11 -Wall -Wextra -Werror -I../main "$t.c" -o "/tmp/$t"
-            "/tmp/$t"
-          done
-          cc -O2 -std=c11 -Wall -Wextra -Werror test_sync_phase_bracket.c -o /tmp/test_sync_phase_bracket
-          /tmp/test_sync_phase_bracket
+          cc -O2 -std=c11 -Wall -Wextra -Werror -I../main test_dc_trim.c -o /tmp/test_dc_trim
+          /tmp/test_dc_trim
           cc -O2 -std=c11 -Wall -Wextra -Werror -I../main test_dc_live.c -lm -o /tmp/test_dc_live
           /tmp/test_dc_live ../research/data/walk_2026-10-13
           cc -O2 -std=c11 -Wall -Wextra -Werror -I../main test_no_signal_raster.c ../main/menu_raster.c -lm -o /tmp/test_no_signal_raster
@@ -125,16 +121,6 @@ jobs:
           python3 test/test_gain_map_context.py
           python3 test/test_afc_telemetry.py
           python3 test/test_sphase_runtime.py
-          python3 test/test_sync_startup_runtime.py
-          python3 test/test_sync_output_probe_runtime.py
-          python3 test/test_sync_flag_pin_runtime.py
-          python3 test/test_sync_format_runtime.py
-          python3 test/test_sync_restart_runtime.py
-          cc -O2 -std=c11 -Wall -Wextra -Werror -Imain test/test_sync_native_flag_track.c -o /tmp/test_sync_native_flag_track
-          /tmp/test_sync_native_flag_track
-          python3 test/test_sync_edge_clock_runtime.py
-          python3 research/native_flag_emulator.py --output /tmp/native_flag_emulator.json
-          python3 test/test_sync_live_output_runtime.py
       - name: Analytic IQ lane reference
         shell: bash
         run: |
@@ -165,7 +151,6 @@ jobs:
           . "$IDF_PATH/export.sh"
           idf.py -DC5VRX5_VERSION="${{ steps.version.outputs.version }}" \
             -DC5VRX5_COMMIT="${{ github.event.pull_request.head.sha || github.sha }}" build
-          python3 tools/check_sync_output_iram.py build/c5vrx5.elf
       - name: Package firmware for web flashing
         shell: bash
         run: |

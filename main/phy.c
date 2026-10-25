@@ -76,11 +76,10 @@ bool phy_try_actuator(uint32_t expected_generation)
     return valid;
 }
 
-/* The same, waiting up to `wait_ticks` for the lock: the gain write would
- * otherwise bounce off the sync flywheel's tick, which holds the lock for
- * its whole tick (board: 16 % of gain writes refused during a sweep, 0.2 %
- * with the flywheel off). The generation check after taking it is
- * unchanged. */
+/* The same, waiting up to `wait_ticks` for the lock, so a gain write does
+ * not bounce off another short owner (board, with the since removed sync
+ * flywheel: 16 % of gain writes refused during a sweep without the wait).
+ * The generation check after taking it is unchanged. */
 bool phy_try_actuator_wait(uint32_t expected_generation, uint32_t wait_ticks)
 {
     portENTER_CRITICAL(&s_mux);

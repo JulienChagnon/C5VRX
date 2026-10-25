@@ -8,7 +8,6 @@
 #include "afc_ctrl.h"
 #include "output_level.h"
 #include "profile_logic.h"
-#include "menu_entry.h"
 #include "cn_estimate.h"
 #include "analog_video_detect.h"
 #include "driver/gpio.h"
@@ -46,14 +45,11 @@ bool control_prepare(void)
 }
 
 volatile bool s_menu_active;
-/* A long press/'o' while the PHY is busy: retry from this owner, bounded. */
-static menu_retry_t s_menu_retry;
 static bool menu_open_checked(void)
 {
-    if (menu_open()) { menu_retry_done(&s_menu_retry); s_menu_cursor = 0; return true; }
-    if (menu_open_busy()) menu_retry_busy(&s_menu_retry, esp_timer_get_time());
-    else menu_retry_done(&s_menu_retry);
-    return false;
+    if (!menu_open()) return false;
+    s_menu_cursor = 0;
+    return true;
 }
 volatile int s_signal_strength;
 volatile bool s_scan_active;
@@ -259,7 +255,6 @@ static void menu_action(void)
     case MENU_CALIBRATE: menu_close(); filter_request(); return;   /* runs once the menu is closed */
     case MENU_OUTPUT: (void)transport_set_output((transport_output() + 1u) % OUTPUT_LEVELS); break;
     case MENU_GAIN: receiver_set_gain_mode(receiver_gain_mode_next(receiver_gain_mode()), true); break;
-    case MENU_FLYWHEEL: transport_sync_flywheel_set(!transport_sync_flywheel_enabled(), true); break;
     case MENU_DAC: menu_dac_step(); break;
     case MENU_VIDEO:
         cycle_video_standard();
@@ -280,7 +275,6 @@ static void command(int c, unsigned *menu_idle)
     case 'G': receiver_set_gain_mode(receiver_gain_mode_next(receiver_gain_mode()), true); break;
     /* Bench: the real gain step of every table row pair (receiver.c). */
     case 'Q': receiver_pair_sweep_toggle(); break;
-    case 'U': transport_sync_flywheel_toggle(); break;
     /* DAC self-test: open the menu on DAC TEST, then step like a hold. */
     case 'Z':
         if (!s_menu_active && !menu_open_checked()) break;
@@ -339,16 +333,9 @@ static void control_task(void *arg)
     uint8_t afc_lost = 0;
     unsigned settle = RETUNE_SETTLE_TICKS, btn = 0, boot_grace = 20, menu_idle = 0, menu_refresh = 0;
     bool long_fired = false, was_locked = false;
-    int64_t next_control_us = esp_timer_get_time();
     uint32_t seen_phy = phy_generation(), seen_control = s_control_epoch;
     for (;;) {
-        vTaskDelay(pdMS_TO_TICKS(2));
-        transport_sync_live_tick();
-        /* The flywheel owner ticks every 2 ms; gain/AFC/button/menu
-         * timing stays at its original 50 ms. */
-        int64_t control_now = esp_timer_get_time();
-        if (control_now < next_control_us) continue;
-        next_control_us = control_now + TICK_MS * 1000;
+        vTaskDelay(pdMS_TO_TICKS(TICK_MS));
         int c;
         for (unsigned k = 0; k < 8 && xQueueReceive(s_commands, &c, 0) == pdTRUE; ++k) command(c, &menu_idle);
 
@@ -374,12 +361,6 @@ static void control_task(void *arg)
             }
             btn = 0;
             long_fired = false;
-        }
-        if (!s_menu_active && s_menu_retry.pending) {
-            uint32_t refused = s_menu_retry.refused;
-            if (menu_retry_due(&s_menu_retry, esp_timer_get_time())) (void)menu_open_checked();
-            else if (s_menu_retry.refused != refused)
-                printf("[MENU] refused: sync release still waiting for the PHY after 1 s; live video kept\n");
         }
         if (s_menu_active) {
             /* The dBm on the CHANNEL page: the gain observer stands still in

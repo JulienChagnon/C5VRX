@@ -26,8 +26,6 @@ void settings_load(void);
 void settings_save(void);
 void settings_save_output(unsigned);
 void receiver_set_gain_mode(uint8_t mode, bool save);
-void settings_save_flywheel(bool on);
-void transport_sync_flywheel_set_boot(bool on);
 '''
 NVS = r'''
 #pragma once
@@ -62,7 +60,7 @@ HARNESS = r'''
 typedef struct { unsigned char bytes[16]; size_t n; } slot_t;
 static slot_t slots[4], pending;
 static int pending_index = -1, writes, commits, fail_open, fail_set, fail_commit;
-static unsigned output, channel, output_applied, gain_mode, gain_restores, flywheel_boot, flywheel_restores;
+static unsigned output, channel, output_applied, gain_mode, gain_restores;
 std_mode_t s_std_mode;
 static int index_of(const char *key) {
     if (!strcmp(key, "settings")) return 0;
@@ -100,9 +98,8 @@ unsigned rf_channel_index(void) { return channel; }
 bool rf_set_channel(unsigned c) { channel = c; return true; }
 bool transport_set_output(unsigned o) { assert(o < OUTPUT_LEVELS); output = o; ++output_applied; return true; }
 void receiver_set_gain_mode(uint8_t mode, bool save) { assert(!save); gain_mode = mode; ++gain_restores; }
-void transport_sync_flywheel_set_boot(bool on) { flywheel_boot = on; ++flywheel_restores; }
 static void boot(void) { output = 0; channel = 0; s_std_mode = STD_MODE_AUTO; output_applied = 0;
-    gain_mode = 0; gain_restores = 0; flywheel_boot = 0; flywheel_restores = 0; settings_load(); }
+    gain_mode = 0; gain_restores = 0; settings_load(); }
 static void seed(unsigned slot, const unsigned char *bytes, size_t n) {
     assert(n <= sizeof(slots[slot].bytes)); slots[slot].n = n; memcpy(slots[slot].bytes, bytes, n);
 }
@@ -150,13 +147,9 @@ int main(void) {
      * mode left in NVS by an earlier firmware. */
     boot(); assert(!gain_restores);
     const unsigned char old_fixed = 42; seed(2, &old_fixed, 1); boot(); assert(!gain_restores && gain_mode == 0);
-    /* Flywheel: absent key keeps the firmware default (ON), saved ON/OFF restored. */
-    slots[3].n = 0; boot(); assert(!flywheel_restores && flywheel_boot == 0);
-    writes = commits = 0; settings_save_flywheel(true); assert(writes == 1 && commits == 1);
-    boot(); assert(flywheel_restores == 1 && flywheel_boot == 1 && gain_mode == 0 && output == 1);
-    settings_save_flywheel(true); assert(writes == 1 && commits == 1);
-    settings_save_flywheel(false); boot(); assert(flywheel_restores == 1 && flywheel_boot == 0);
-    const unsigned char bad_flywheel = 7; seed(3, &bad_flywheel, 1); boot(); assert(!flywheel_restores);
+    /* A "flywheel" key left by an earlier firmware is ignored (flywheel removed). */
+    const unsigned char old_flywheel = 1; seed(3, &old_flywheel, 1);
+    writes = commits = 0; boot(); assert(!writes && !commits && output == 1 && gain_mode == 0);
     puts("PASS: actual settings.c output save/reboot, legacy compatibility, invalid data, wear and NVS failures");
     return 0;
 }

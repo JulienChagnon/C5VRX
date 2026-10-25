@@ -569,8 +569,6 @@ function receiverValues(v) {
     output: v.output,
     gainMode: v.gainMode,
     gain: v.gain ? `G${v.gain}` : '',
-    flywheel: v.flywheel === null ? '' : v.flywheel ? 'ON' : 'OFF',
-    flywheelActive: v.flywheelActive === null ? '' : v.flywheelActive ? 'YES' : 'NO',
     menu: v.menu === null ? '' : v.menu ? 'OPEN' : 'CLOSED · LIVE VIDEO',
     calibrate: v.busy ? 'RUNNING · VIDEO STOPPED' : v.stage || v.statusAt ? 'READY' : '',
     scan: v.scan,
@@ -754,8 +752,8 @@ async function sendTerminalCommand(command) {
   }
   if (sent && command === 's') receiverConsole.startScan();
   // Firmware with the STATUS beat shows the effect within 2 s by itself.
-  // GAIN/FLYWHEEL are reported by T, not the short STATUS beat.
-  if (sent && (['G', 'U'].includes(command) || (REFRESH_AFTER.has(command) && !receiverConsole.reportsByItself()))) scheduleRefresh();
+  // GAIN is reported by T, not the short STATUS beat.
+  if (sent && (command === 'G' || (REFRESH_AFTER.has(command) && !receiverConsole.reportsByItself()))) scheduleRefresh();
   if (sent) renderReceiver();
   return sent;
 }

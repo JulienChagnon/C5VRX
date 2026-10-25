@@ -699,10 +699,18 @@ requirements by themselves**.
   are retired. Saved kp_auto/lp_cn are ignored. Profiles select only analog
   filter classes; historical profile ID 2 is reserved, never selected.
   `research/legacy_demod/` preserves historical programs, policies and replay
-  inputs, never firmware dependencies. OUTPUT/flywheel settings and verified
+  inputs, never firmware dependencies. OUTPUT settings and verified
   bounded restart/rollback stay active, with one shared five-second guard for
-  live OUTPUT/format/profile changes. Existing flight-log wire slots and
+  live OUTPUT/profile changes. Existing flight-log wire slots and
   decoder identities remain backward-compatible.
+- Operator decision (2026-10-25): the C5VRX-5 sync flywheel (native
+  comparator observer, edge clock, DAC-OE sync output, flag LUT format,
+  menu FLYWHEEL, console `U`, NVS `flywheel`) is removed completely. On the
+  board it gave extreme desyncs and poor range. The live path again only
+  recovers the transmitted composite waveform. A saved `flywheel` key is
+  ignored; flight-log flywheel slots stay for old logs and read 0. See
+  `docs/FINDINGS.md`, "Sync flywheel removed". Do not restore it from git
+  history without a new board comparison that beats flywheel OFF.
 - The P64 default is an explicit operator choice, not a host-score promotion.
   Its fixed table is unchanged from the positive VTX-on NTSC check at d894bef;
   PAL, weak-signal/range and the final cleanup still require board checks.
@@ -902,11 +910,10 @@ Direct Gain V6 extends V5 with same-context carrier memory: hold 10 ms,
 then climb eight indices per 3 ms; overload above the remembered healthy gain
 returns to it in one write. Learned maps still require exact provenance.
 GAIN (console `G`): AUTO (KEEL-1), MAX or fixed G78..G24, never stored: every boot starts AUTO (operator decision 2026-10-20).
-FLYWHEEL (console `U`) is saved and defaults ON without a valid setting
-(operator decision 2026-10-18, after the PR #218 witness fix held on the
-board); a saved OFF is respected. Do not claim monitor lock.
-Menu entry must hold flywheel restarts and verify observer/output release
-before allocating internal DMA descriptors in 384-byte chunks. Interlaced
+FLYWHEEL (console `U`) was removed on 2026-10-25 (operator: extreme
+desyncs and poor range); see the realtime invariants above.
+Menu entry allocates internal DMA descriptors in 384-byte chunks before
+touching live video. Interlaced
 NTSC/PAL needs about 18/22 KiB; progressive fallback about 9/11 KiB.
 Keep the 6144-byte control stack reserved before RF/driver allocations.
 See [PR212](docs/PR212.md) for current behavior, evidence and board checks.
@@ -920,26 +927,12 @@ Current C/N decisions still require C/N-AUTO's noise-referenced power source;
 uncalibrated envelope/M2M4 estimates are telemetry only (issue #222). Without
 an exact-context noise reference, AFC/profile decisions see UNKNOWN and hold
 or refuse the action. Preserve that boundary independently of retired kp/LP.
-`SYNC_FLYWHEEL_LOAD` measures
-flywheel ISR occupancy; board numbers pending (`docs/FINDINGS.md`).
 
+### Removed sync flywheel (PR #212/#218 history, removed 2026-10-25)
 
-
-### Bounded sync-loss background work (2026-10-18)
-
-See `docs/FINDINGS.md`, "Bounded background work during sync loss". Early
-output alarms without repair authority must advance/publish without waiting
-for the tip; already-late alarms keep miss accounting. RMT drains consume a
-snapshot of the producer head, and overdue gain timer callbacks coalesce.
-Host-tested scheduling changes only; RF sensitivity and physical sync/range
-gains are unmeasured. Preserve the native suppression and repair deadline.
-
-
-### Flywheel witness ownership (PR #218)
-
-An asserted native sync level or unreadable source must never be interpreted as
-permission to clamp, even after camera presence expires. H/V holdover requires
-fresh raw observer coverage; a coverage gap revokes authority until reacquired.
-Use completed sample timestamps and their grid/halfline for guard/PLL decisions,
-not task delivery time. Keep IRQ deadlines strict and hardware claims bounded.
-See `docs/FINDINGS.md`, "Flywheel witness freshness and delayed observations".
+The C5VRX-5 flywheel (PR #212, witness fix PR #218, bounded sync-loss
+scheduling 2026-10-18) is no longer firmware. Its findings stay in
+`docs/FINDINGS.md` ("Bounded background work during sync loss", "Flywheel
+witness freshness and delayed observations", "Sync flywheel removed") and
+`research/data/flywheel_desync_2026-10-18.json`; the code is in git history
+before the removal.

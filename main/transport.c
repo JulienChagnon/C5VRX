@@ -10,8 +10,6 @@
 #include "driver/bitscrambler.h"
 #include "driver/parlio_rx.h"
 #include "driver/parlio_tx.h"
-#include "sync_output_probe.h"
-#include "sync_live_output.h"
 #include "esp_attr.h"
 #include "esp_cache.h"
 #include "esp_rom_sys.h"
@@ -24,11 +22,9 @@
 #include "transport_guard.h"
 #include "transport_recovery.h"
 #include "output_level.h"
-#include "sync_flag.h"
 #include "hal/parlio_ll.h"
 #include "p64_tables.h"
 #include "snapshot.h"
-#include "output_telemetry.h"
 #include "control_window.h"
 #include "phase8_gain_lut.h"
 #include "esp_cpu.h"
@@ -40,13 +36,10 @@
 #include "soc/bitscrambler_struct.h"
 #include "soc/parl_io_struct.h"
 #include "soc/pcr_struct.h"
-#include "soc/gpio_reg.h"
-#include "soc/io_mux_reg.h"
 
 /* Fixed U80P64-R1 program and LUT; no runtime demodulator or kp policy. */
 BITSCRAMBLER_PROGRAM(s_p64, "p64");
 static bool s_started;
-static bool s_flag_format, s_verified_flag;
 static const void *tracker_program(void) { return s_p64; }
 
 /* 6-bit resistor DAC, LSB first (XIAO D4..D9; 8.2k/3.9k/2k/1k/470R/240R
@@ -61,8 +54,6 @@ static bitscrambler_handle_t s_bs;
 static bool s_tx_enabled;
 static bool s_rx_enabled, s_bs_enabled;
 static bool s_transport_fault;
-static uint32_t s_stream_generation;
-static bool s_stream_generation_overflow;
 static unsigned s_output, s_verified_output, s_output_clipped;
 static bool s_have_verified;
 static uint32_t s_restart_errors, s_rollbacks, s_rollback_fail;
@@ -312,79 +303,8 @@ bool transport_set_output(unsigned level)
  * of the complete program and LUT on boot/menu/rollback as well as OUTPUT/format changes. */
 typedef struct {
     const uint8_t *program;
-    bool flag;
     unsigned output, clipped;
 } restart_t;
-
-/* Comparator-flag DAC pin ownership for the live flywheel format. Ordinary
- * verified state and s_lut_live remain the restoration target. */
-typedef struct {
-    uint32_t iomux,matrix,pad,enable,output,clamp_matrix,generation;
-    bool active,saved,clamped;
-} flag_pin_t;
-static flag_pin_t *s_flag_pin;
-static flag_pin_t *s_flag_storage;
-#define FLAG_PIN_MASK (UINT32_C(1)<<23)
-
-static bool IRAM_ATTR flag_pin_clamped(void)
-{
-    const flag_pin_t *s=s_flag_pin;
-    return s && s->saved && s->clamped &&
-        REG_READ(IO_MUX_GPIO23_REG)==s->iomux &&
-        REG_READ(GPIO_FUNC23_OUT_SEL_CFG_REG)==s->clamp_matrix &&
-        REG_READ(GPIO_PIN23_REG)==s->pad &&
-        (REG_READ(GPIO_ENABLE_REG)&FLAG_PIN_MASK)==FLAG_PIN_MASK &&
-        !(REG_READ(GPIO_OUT_REG)&FLAG_PIN_MASK);
-}
-static bool flag_pin_restored(void)
-{
-    const flag_pin_t *s=s_flag_pin;
-    return s && s->saved && !s->clamped &&
-        REG_READ(IO_MUX_GPIO23_REG)==s->iomux &&
-        REG_READ(GPIO_FUNC23_OUT_SEL_CFG_REG)==s->matrix &&
-        REG_READ(GPIO_PIN23_REG)==s->pad &&
-        (REG_READ(GPIO_ENABLE_REG)&FLAG_PIN_MASK)==s->enable &&
-        (REG_READ(GPIO_OUT_REG)&FLAG_PIN_MASK)==s->output;
-}
-/* Called only while TX is halted, after enable() and before TX_START.
- * Disable this one pad before restoring its latent GPIO output latch. */
-static bool flag_pin_apply(bool flag)
-{
-    flag_pin_t *s=s_flag_pin;
-    if(!s || !s->active)return !flag;
-    if(!s->saved)return false;
-    REG_WRITE(GPIO_ENABLE_W1TC_REG,FLAG_PIN_MASK);
-    REG_WRITE(flag?GPIO_OUT_W1TC_REG:s->output?GPIO_OUT_W1TS_REG:GPIO_OUT_W1TC_REG,FLAG_PIN_MASK);
-    REG_WRITE(IO_MUX_GPIO23_REG,s->iomux);
-    REG_WRITE(GPIO_FUNC23_OUT_SEL_CFG_REG,flag?s->clamp_matrix:s->matrix);
-    REG_WRITE(GPIO_PIN23_REG,s->pad);
-    if(flag || s->enable)REG_WRITE(GPIO_ENABLE_W1TS_REG,FLAG_PIN_MASK);
-    s->clamped=flag;
-    if(flag)return flag_pin_clamped();
-    return flag_pin_restored();
-}
-
-/* Pin identity is acquired once, before any comparator program can run.
- * The small ownership record is independent of optional diagnostic buffers. */
-static bool flag_pin_acquire(void)
-{
-    if(s_flag_pin)return false;
-    if(!s_flag_storage)s_flag_storage=calloc(1,sizeof(*s_flag_storage));
-    flag_pin_t *s=s_flag_storage;
-    if(!s)return false;
-    memset(s,0,sizeof(*s));
-    s->iomux=REG_READ(IO_MUX_GPIO23_REG);s->matrix=REG_READ(GPIO_FUNC23_OUT_SEL_CFG_REG);
-    s->pad=REG_READ(GPIO_PIN23_REG);s->enable=REG_READ(GPIO_ENABLE_REG)&FLAG_PIN_MASK;
-    s->output=REG_READ(GPIO_OUT_REG)&FLAG_PIN_MASK;
-    if((s->matrix&GPIO_FUNC23_OUT_SEL_M)!=48u ||
-       (s->matrix&(GPIO_FUNC23_OUT_INV_SEL_M|GPIO_FUNC23_OE_INV_SEL_M)) ||
-       (s->pad&GPIO_PIN23_PAD_DRIVER_M) || !s->enable ||
-       ((s->iomux&MCU_SEL_M)>>MCU_SEL_S)!=1u)return false;
-    s->clamp_matrix=(s->matrix&~(GPIO_FUNC23_OUT_SEL_M|GPIO_FUNC23_OUT_INV_SEL_M|
-        GPIO_FUNC23_OE_INV_SEL_M))|256u|GPIO_FUNC23_OE_SEL_M;
-    s->saved=true;s->active=true;s_flag_pin=s;
-    return true;
-}
 
 static bool stop_part(void *ctx, tr_part_t part)
 {
@@ -394,8 +314,6 @@ static bool stop_part(void *ctx, tr_part_t part)
     if (err != ESP_OK) printf("TRANSPORT teardown part=%d error=%s\n", part, esp_err_to_name(err));
     return err == ESP_OK;
 }
-static bool transport_sync_restart_begin(bool flag);
-static void transport_sync_restart_finish(bool verified);
 /* Where a restart's picture gap goes (T TRANSPORT_STAGES_US, range audit
  * PR #230): the last restart's time per stage. */
 static uint32_t s_stage_us[TR_STAGES], s_quiesce_us;
@@ -407,8 +325,6 @@ static void stage_note(int stage, int64_t us)
 }
 static bool quiesce(void *ctx)
 {
-    const restart_t *r=ctx;
-    if(!transport_sync_restart_begin(r && r->flag) && !transport_sync_live_cancel())return false;
     bool ok = tr_stop_parts(ctx, stop_part, &s_tx_enabled, &s_bs_enabled, &s_rx_enabled, true);
     s_started = false;
     s_rx_node_count = 0; /* observers cannot consume stopped/stale DMA */
@@ -422,8 +338,6 @@ static bool restart_stage(void *ctx, tr_stage_t stage, bool rollback)
     if (stage == TR_BS_ENABLE && rollback) {
         s_output = s_verified_output;
         r->output = s_verified_output;
-        r->flag = s_verified_flag;
-        s_flag_format=s_verified_flag;
         r->program = tracker_program();
         const uint8_t *inst;
         if (!program_words(r->program, &inst)) return false;
@@ -473,10 +387,6 @@ static bool restart_stage(void *ctx, tr_stage_t stage, bool rollback)
         break;
     case TR_TX_ENABLE:
         err = enable_tx();
-        /* A flag-to-flag restart retains the independent sync clock and pad
-         * owner. Do not interrupt its clamp while changing the stream. */
-        if(err==ESP_OK && !(r->flag && s_verified_flag && flag_pin_clamped()) &&
-           !flag_pin_apply(r->flag))return false;
         break;
     case TR_RX_START: err = start_rx(); break;
     case TR_TX_START: err = start_rings_tail(); break;
@@ -532,13 +442,9 @@ static void quiet_interrupts(void)
 
 /* RX first, TX three quarters of a ring later (nominal614us). Compared with
  * half a ring this buys8192 bytes for whole-descriptor/write-history guards,
- * for205us more video latency and no extra memory. Actual frontiers, never
- * this requested delay, decide whether a future keeper write is admissible. */
+ * for205us more video latency and no extra memory. */
 static esp_err_t start_rings_tail(void)
 {
-    /* Invalidate every old DMA epoch at entry, including a failed start or
-     * rollback replacement. This changes no stream data or clock setting. */
-    if (++s_stream_generation == 0) s_stream_generation_overflow = true;
     quiet_interrupts();
     /* Make RX endless BEFORE any wait for TX. start_tx may wait/yield for
      * FIFO readiness; deferring this until afterward could let RX reach EOF. */
@@ -583,7 +489,6 @@ esp_err_t transport_start(void)
  * DC and profile calibration. Full recovery quiesce stops RX as well. */
 void transport_stop_tx(void)
 {
-    if(!transport_sync_live_cancel()){s_transport_fault=true;return;}
     bool ok = tr_stop_parts(NULL, stop_part, &s_tx_enabled, &s_bs_enabled, &s_rx_enabled, false);
     s_started = false;
     if (!ok) {
@@ -595,7 +500,6 @@ void transport_stop_tx(void)
 /* Start a standalone descriptor chain (menu raster) on the TX GDMA. */
 void transport_start_chain(dma_descriptor_t *first)
 {
-    if(!transport_sync_live_cancel()){s_transport_fault=true;return;}
     if (s_transport_fault || enable_tx() != ESP_OK) return;
     s_tx_dma_ch = find_dma(false);
     if (s_tx_dma_ch < 0) { (void)disable_tx(); s_transport_fault = true; return; }
@@ -625,7 +529,6 @@ void transport_start_chain(dma_descriptor_t *first)
 
 void transport_stop_chain(void)
 {
-    if(!transport_sync_live_cancel()){s_transport_fault=true;return;}
     if (s_tx_enabled && disable_tx() != ESP_OK) s_transport_fault = true;
 }
 
@@ -634,14 +537,11 @@ static bool resume_live(const uint16_t *restore_lut)
 {
     if (s_transport_fault) return false;
     stage_hooks();
-    restart_t r = {.program=tracker_program(),
-        .flag=s_flag_format,.output=s_output};
+    restart_t r = {.program = tracker_program(), .output = s_output};
     const uint8_t *program_inst;
     if (!program_words(r.program, &program_inst)) return false;
     memcpy(s_program_work.prefix, r.program, sizeof(s_program_work.prefix));
     if (!restore_lut) restore_lut = p64_table;
-    if(restore_lut==s_lut_live && s_flag_format!=s_verified_flag)
-        restore_lut=p64_table;
     if (restore_lut == s_lut_live) {
         memcpy(s_lut_work, s_lut_live, sizeof(s_lut_work));
         r.clipped = s_output_clipped;
@@ -650,8 +550,7 @@ static bool resume_live(const uint16_t *restore_lut)
         if (!program_words(r.program, &inst) || r.program[6] != 1u) return false;
         for (unsigned i = 0; i < 1024u; ++i) {
             bool clipped;
-            s_lut_work[i] = r.flag?sync_flag_entry(restore_lut[i],s_output,&clipped):
-                                  output_entry(restore_lut[i], s_output, &clipped);
+            s_lut_work[i] = output_entry(restore_lut[i], s_output, &clipped);
             r.clipped += clipped;
         }
     }
@@ -661,49 +560,26 @@ static bool resume_live(const uint16_t *restore_lut)
         ++s_rollback_fail;
         s_transport_fault = true;
         s_lut_known = false;
-        transport_sync_restart_finish(false);
         printf("TRANSPORT ERROR: verified recovery failed; live OFF latched, USB/reflash available\n");
         return false;
     }
     s_started = true;
     if (result == TR_ROLLED_BACK) {
         ++s_rollbacks;
-        transport_sync_restart_finish(true);
         printf("TRANSPORT rollback=verified program=%s output=%s\n",
                transport_program_name(), transport_output_name());
         return false;
     }
     memcpy(s_lut_live, s_lut_work, sizeof(s_lut_live));
     const bool output_changed = s_have_verified && s_verified_output != r.output;
-    s_verified_flag=r.flag;
     s_verified_output = r.output;
     s_output_clipped = r.clipped;
     s_have_verified = true;
     s_lut_known = true;
-    transport_sync_restart_finish(true);
     /* A failed restart or
      * rollback returns above and cannot replace the remembered output. */
     if (output_changed) settings_save_output(r.output);
     return true;
-}
-
-static bool transport_flag_format(bool flag)
-{
-    if(s_transport_fault || !s_started || !s_have_verified || !s_lut_known)return false;
-    if(s_verified_flag==flag)return true;
-    if(!transport_guard_ready(&s_switch_guard,esp_timer_get_time()))return false;
-    if(!transport_sync_live_cancel())return false;
-    if(flag && !flag_pin_acquire())return false;
-    s_flag_format=flag;
-    bool ok=resume_live(p64_table);
-    transport_guard_mark(&s_switch_guard,esp_timer_get_time());
-    if(!s_transport_fault && !s_verified_flag) {
-        if(!flag_pin_restored()){s_transport_fault=true;s_lut_known=false;return false;}
-        s_flag_pin->active=false;s_flag_pin=NULL;
-    } else if(!s_transport_fault && !flag_pin_clamped()) {
-        s_transport_fault=true;s_lut_known=false;return false;
-    }
-    return ok;
 }
 
 void transport_resume_live(void)
@@ -735,355 +611,25 @@ uint32_t transport_fault_count(void)
     return s_tx_empty + s_rx_overflow + s_dma_faults + s_bs_overload;
 }
 
-/* Transport identity the live flywheel was started on. */
-typedef struct {
-    uint32_t generation;
-    unsigned output;
-} sync_live_context_t;
-
-static bool s_output_probe_busy;
-
-/* Allocate after startup so observer state cannot fragment the control stack
- * allocation. Lifecycle is serialized by short PHY ownership, not held while
- * the resident peripheral observes video or the control task sleeps. */
-typedef struct {
-    sync_live_context_t context;
-    bool requested,authorized,fault,output_requested;
-    bool coasting_restart;
-    uint32_t stream_generation;
-    int64_t retry_us;
-    size_t channel;
-    uint32_t starts,stops,failures;
-} sync_live_owner_t;
-static sync_live_owner_t *s_live_owner;
-static output_telem_acc_t s_output_telem;
-static bool s_output_observation_available;
-
-void transport_flog_identity(uint8_t *demod, uint8_t *output_level, bool *flag_format)
+void transport_flog_identity(uint8_t *demod, uint8_t *output_level)
 {
     const bool verified = s_started && s_tx_enabled && s_bs_enabled && s_have_verified && s_lut_known &&
                           !s_transport_fault;
     if (demod) *demod = verified ? FLOG_DEMOD_P64_R1 : FLOG_DEMOD_UNKNOWN;
     if (output_level) *output_level = verified ? (uint8_t)s_verified_output : 0xffu;
-    if (flag_format) *flag_format = verified && s_verified_flag;
 }
 
-/* Existing ISR/RMT counters only: one bounded task-side rollup sample per
- * 2-ms owner tick. Missing coverage terminates an unlock run as UNKNOWN. */
-static void transport_output_telem_sample(bool observation_available)
-{
-    s_output_observation_available = observation_available;
-    slo_status_t status;
-    sync_live_output_status(&status);
-    const output_telem_sample_t sample = {
-        .repaired = status.repaired, .suppressed = status.suppressed,
-        .camera_lines = status.camera_lines, .observer_gaps = status.observer_gaps,
-        .standard = status.standard, .active = status.active,
-        .observer_fresh = status.observer_fresh, .camera_present = status.camera_present,
-        .h_trusted = status.h_trusted, .v_trusted = status.v_trusted,
-    };
-    const uint32_t gaps_before = s_output_telem.observer_gaps;
-    const bool unlock = output_telem_add(&s_output_telem, &sample, (uint32_t)(esp_timer_get_time() / 1000),
-                                         observation_available);
-    const uint32_t new_gaps = s_output_telem.observer_gaps - gaps_before;
-    uint8_t demod, level;
-    transport_flog_identity(&demod, &level, NULL);
-    const uint8_t state = (uint8_t)((status.observer_fresh ? 1u : 0u) | (status.h_trusted ? 2u : 0u) |
-                                    (status.v_trusted ? 4u : 0u) | (status.camera_present ? 8u : 0u));
-    if (new_gaps) {
-        const uint8_t e[4] = {flog_sat8(new_gaps), demod, status.standard, state};
-        flightlog_event(FLOG_E_OUTPUT_GAP, e, sizeof(e));
-    }
-    if (unlock) {
-        const uint8_t e[4] = {demod, status.standard, state, level};
-        flightlog_event(FLOG_E_OUTPUT_UNLOCK, e, sizeof(e));
-        flightlog_snapshot_request(FLOG_SNAP_OUTPUT_UNLOCK);
-    }
-}
-
+/* Flight-log V1 output fields keep their wire slots. Without an output
+ * observer only the verified identity is known; lock percentages read
+ * 0xff (no fresh samples) and the counters stay zero. */
 void transport_flog_output(transport_flog_output_t *out)
 {
     if (!out) return;
-    slo_status_t status;
-    sync_live_output_status(&status);
-    if (!s_output_observation_available) {
-        status.observer_fresh = status.h_trusted = status.v_trusted = status.camera_present = false;
-    }
-    output_telem_roll_t roll;
-    output_telem_roll(&s_output_telem, (uint32_t)(esp_timer_get_time() / 1000), &roll);
-    bool flag_format;
-    transport_flog_identity(&out->demod, &out->output_level, &flag_format);
-    out->flags = (uint8_t)((out->demod ? FLOG_OUT_DEMOD_VERIFIED : 0u) |
-                           (transport_sync_flywheel_enabled() ? FLOG_OUT_FLYWHEEL_REQUESTED : 0u) |
-                           (status.active ? FLOG_OUT_FLYWHEEL_ACTIVE : 0u) |
-                           (status.observer_fresh ? FLOG_OUT_OBSERVER_FRESH : 0u) |
-                           (status.h_trusted ? FLOG_OUT_H_TRUSTED : 0u) |
-                           (status.v_trusted ? FLOG_OUT_V_TRUSTED : 0u) |
-                           (status.camera_present ? FLOG_OUT_CAMERA_PRESENT : 0u) |
-                           (flag_format ? FLOG_OUT_FLAG_FORMAT : 0u));
-    out->standard = roll.standard ? roll.standard : status.standard;
-    out->samples = output_telem_sat16(roll.samples);
-    out->fresh_samples = output_telem_sat16(roll.fresh_samples);
-    out->h_lock_pct = output_telem_pct(roll.h_locked_samples, roll.fresh_samples);
-    out->v_lock_pct = output_telem_pct(roll.v_locked_samples, roll.fresh_samples);
-    out->native_h_lines = output_telem_sat16(roll.native_h_lines);
-    out->repaired_tips = output_telem_sat16(roll.repaired);
-    out->suppressed_tips = output_telem_sat16(roll.suppressed);
-    out->longest_h_unlock_ms = output_telem_sat16(roll.longest_unlock_ms);
-    out->observer_gaps = flog_sat8(roll.observer_gaps);
+    memset(out, 0, sizeof(*out));
+    transport_flog_identity(&out->demod, &out->output_level);
+    out->flags = out->demod ? FLOG_OUT_DEMOD_VERIFIED : 0u;
+    out->h_lock_pct = out->v_lock_pct = 0xffu;
 }
-
-static bool IRAM_ATTR transport_sync_live_valid(uint32_t generation)
-{
-    const sync_live_owner_t *s=s_live_owner;
-    if(!(s && s->authorized && !s->fault && s_have_verified &&
-        s_lut_known && s_verified_flag && s_flag_format && flag_pin_clamped() &&
-        !s_transport_fault && !s_stream_generation_overflow &&
-        !s_menu_active && !s_scan_active && generation==s->context.generation))return false;
-    /* The peripheral lease owns the absolute output clock; a replacement DMA
-     * stream gets a separate generation. Only this bounded verified restart
-     * may keep sync running while the stream itself is stopped. */
-    if(s->coasting_restart)return true;
-    return s_started && s_rx_enabled && s_tx_enabled && s_bs_enabled &&
-        s_stream_generation==s->stream_generation &&
-        s_verified_output==s->context.output;
-}
-
-static bool transport_sync_restart_begin(bool flag)
-{
-    sync_live_owner_t *s=s_live_owner;
-    if(!flag || !s || !s->requested || !s->authorized || s->fault ||
-       !s_verified_flag || !s_flag_format || s_transport_fault ||
-       s_menu_active || s_scan_active || !flag_pin_clamped() ||
-       !sync_output_live_active())return false;
-    if(!s->coasting_restart && !transport_sync_live_valid(s->context.generation))return false;
-    s->coasting_restart=true;
-    sync_live_output_phase(4u);
-    sync_output_live_invalidate(); /* revoke source before stopping any producer */
-    return true;
-}
-
-static void transport_sync_restart_finish(bool verified)
-{
-    sync_live_owner_t *s=s_live_owner;
-    if(!s || !s->coasting_restart)return;
-    if(!verified || !s_verified_flag || !s_flag_format || !flag_pin_clamped()) {
-        (void)transport_sync_live_cancel();
-        return;
-    }
-    s->context.output=s_verified_output;s->stream_generation=s_stream_generation;
-    __sync_synchronize();
-    s->coasting_restart=false;
-    sync_live_output_phase(0u);
-}
-
-bool transport_sync_live_cancel(void)
-{
-    if(!s_live_owner)return true;
-    s_live_owner->authorized=false;
-    s_live_owner->coasting_restart=false;
-    sync_live_output_phase(0u);
-    __sync_synchronize();
-    if(!sync_live_output_end()){s_live_owner->fault=true;return false;}
-    bool active=sync_output_live_active();
-    bool ok=sync_output_live_end();
-    if(ok)s_output_probe_busy=false;
-    if(active)++s_live_owner->stops;
-    if(!ok){s_live_owner->fault=true;++s_live_owner->failures;}
-    return ok;
-}
-
-static volatile bool s_sync_live_hold;
-void transport_sync_live_hold(bool on) { s_sync_live_hold=on; }
-
-bool transport_sync_live_release(void)
-{
-    if(!s_live_owner || !sync_output_live_active())return true;
-    if(!phy_try_actuator(phy_generation()))return false;
-    bool ok=transport_sync_live_cancel();
-    phy_end_actuator();
-    return ok && !sync_output_live_active();
-}
-
-/* Saved user setting (menu FLYWHEEL, console U); ON when never saved
- * (operator, 2026-10-18, after the PR #218 witness fix held on the board).
- * A saved OFF is respected and never allocates the observer/output, so
- * its heap stays free for the menu. */
-static bool s_flywheel_boot=true;
-void transport_sync_flywheel_set_boot(bool on) { s_flywheel_boot=on; }
-bool transport_sync_flywheel_enabled(void)
-{
-    return s_live_owner ? s_live_owner->output_requested : s_flywheel_boot;
-}
-
-void transport_sync_flywheel_set(bool on, bool save)
-{
-    if(on && !s_live_owner)s_live_owner=calloc(1,sizeof(*s_live_owner));
-    if(on && !s_live_owner){printf("SYNC_FLYWHEEL refused=memory\n");return;}
-    s_flywheel_boot=on;
-    if(s_live_owner) {
-        /* The control owner stops/starts it on its next tick. */
-        s_live_owner->output_requested=on;
-        s_live_owner->requested=on;
-    }
-    if(save)settings_save_flywheel(on);
-    printf("SYNC_FLYWHEEL requested=%u saved=%u\n",(unsigned)on,(unsigned)save);
-}
-
-void transport_sync_flywheel_toggle(void)
-{
-    transport_sync_flywheel_set(!transport_sync_flywheel_enabled(),true);
-}
-
-static bool IRAM_ATTR transport_sync_native_source(void *arg,uint32_t *epoch)
-{
-    (void)arg;
-    /* Source validity only (markers, RX rearm, receive mutations). Gating
-     * on the probe's strict model hid every native edge from the ISR on the
-     * board (camera_qualified=0): tips were repaired over the camera.
-     * A coasting restart has stopped the producers: nothing is native. */
-    return s_live_owner && !s_live_owner->coasting_restart && sync_output_live_source(NULL,epoch);
-}
-
-void transport_sync_live_tick(void)
-{
-    /* Saved setting (default ON): allocate lazily on the first control tick
-     * (after receiver startup, same as pressing U) so startup RAM is unchanged. */
-    static bool boot_default_applied;
-    if(!boot_default_applied) {
-        boot_default_applied=true;
-        if(!s_live_owner && s_flywheel_boot) {
-            s_live_owner=calloc(1,sizeof(*s_live_owner));
-            if(s_live_owner) {
-                s_live_owner->requested=s_live_owner->output_requested=true;
-                printf("SYNC_FLYWHEEL requested=1 boot=saved_or_default_on\n");
-            } else printf("SYNC_FLYWHEEL refused=memory\n");
-        } else if(!s_flywheel_boot) printf("SYNC_FLYWHEEL requested=0 boot=saved_off\n");
-    }
-    sync_live_owner_t *s=s_live_owner;
-    if(!s || s->fault){transport_output_telem_sample(false);return;}
-    if(!phy_try_actuator(phy_generation())){transport_output_telem_sample(false);return;}
-    bool eligible=s->requested && !s_sync_live_hold && !calibration_in_startup() && !receiver_paused() &&
-        !s_menu_active && !s_scan_active && s_started && s_have_verified && s_lut_known && !s_transport_fault;
-    bool active=sync_output_live_active();
-    if(active && (!eligible || !transport_sync_live_valid(s->context.generation))) {
-        (void)transport_sync_live_cancel();active=false;
-    }
-    int64_t now=esp_timer_get_time();
-    if(!s->requested && s_verified_flag && !active && now>=s->retry_us) {
-        if(!transport_flag_format(false)){++s->failures;s->retry_us=now+1000000;}
-    }
-    if(eligible && !s_verified_flag && !active && now>=s->retry_us) {
-        if(!transport_flag_format(true)) {++s->failures;s->retry_us=now+1000000;}
-    }
-    if(eligible && s_verified_flag && !s->fault && !active && now>=s->retry_us && !s_output_probe_busy) {
-        s->context=(sync_live_context_t){s_stream_generation,s_verified_output};
-        s->stream_generation=s_stream_generation;
-        s->authorized=true;
-        phy_set_observation_hook(sync_output_live_invalidate);
-        sync_output_live_pulse_hook(sync_live_output_native_pulse);
-        if(sync_output_live_begin_flag(s->context.generation,transport_sync_live_valid)) {
-            sync_output_live_before_close(sync_live_output_end);
-            s_output_probe_busy=true;++s->starts;active=true;
-            s->channel=rf_channel_index();
-        } else {s->authorized=false;++s->failures;s->retry_us=now+1000000;}
-    }
-    if(active && s->channel!=rf_channel_index()) {
-        sync_output_live_forget();s->channel=rf_channel_index();
-    }
-    sync_live_output_phase(1u);
-    if(active && !sync_output_live_poll()) {
-        ++s->failures;(void)transport_sync_live_cancel();s->retry_us=now+1000000;
-    }
-    if(active && sync_output_live_active()) {
-        sync_live_output_phase(2u);
-        slo_status_t output;sync_live_output_status(&output);
-        /* The snapshot drains native pulses into the output's guard, which
-         * alone owns the grid; the probe's H/V model only reports which
-         * comparator polarity carries sync. */
-        sync_output_live_model_t m;
-        bool have=sync_output_live_snapshot(&m);
-        if(have && m.tracking)sync_live_output_native_polarity(m.inverted);
-        if(!s->output_requested && output.active) {
-            if(!sync_live_output_end())s->fault=true;
-        } else if(s->output_requested && have && !output.active && !output.fault) {
-            slg_standard_t fallback=s_std_mode==STD_MODE_PAL?SLG_PAL:
-                s_std_mode==STD_MODE_NTSC?SLG_NTSC:s_video_std==VIDEO_STD_NTSC?SLG_NTSC:SLG_PAL;
-            if(!sync_live_output_flag_begin(fallback,s->context.generation,transport_sync_live_valid,
-                transport_sync_native_source,NULL))++s->failures;
-        }
-        sync_live_output_guard_tick();
-        sync_live_output_status(&output);
-        if(output.active && !sync_live_output_poll())++s->failures;
-    }
-    sync_live_output_phase(0u);
-    phy_end_actuator();
-    transport_output_telem_sample(true);
-}
-
-void transport_sync_live_print(void)
-{
-    sync_live_owner_t *s=s_live_owner;
-    printf("SYNC_LIVE requested=%u active=%u fault=%u starts=%lu stops=%lu failures=%lu boot_default=ON\n",
-        s?(unsigned)s->requested:0u,(unsigned)sync_output_live_active(),s?(unsigned)s->fault:0u,
-        s?(unsigned long)s->starts:0ul,s?(unsigned long)s->stops:0ul,s?(unsigned long)s->failures:0ul);
-    sync_output_live_model_t model;
-    bool have_model=false,have_diag=false;
-    char diagnostic[768];
-    if(phy_try_actuator(phy_generation())) {
-        have_model=sync_output_live_snapshot(&model);
-        have_diag=sync_output_live_diagnostics(diagnostic,sizeof(diagnostic));
-        phy_end_actuator();
-    }
-    if(have_diag)printf("%s",diagnostic);
-    if(have_model)
-        printf("SYNC_LIVE_MODEL valid=%u tracking=%u standard=%u line_ticks_x32=%lu last_h=%llu field=%llu now=%llu phase_span_ticks=%lld inverted=%u boot_default=ON\n",
-            (unsigned)model.valid,(unsigned)model.tracking,(unsigned)model.standard,(unsigned long)model.line_ticks_x32,
-            (unsigned long long)model.last_h,(unsigned long long)model.field,
-            (unsigned long long)model.now,(long long)(model.phase_hi-model.phase_lo),(unsigned)model.inverted);
-    slo_status_t output;sync_live_output_status(&output);
-    printf("SYNC_FLYWHEEL requested=%u active=%u repaired=%lu suppressed=%lu batches=%lu late_ticks=%lu missed=%lu miss_kind=%lu queue_low=%lu fault=%lu "
-        "irq_delay_ticks=%lu callback_ticks=%lu budget_yields=%lu miss_phase=%lu miss_other=%lu miss_observer=%lu miss_snapshot=%lu miss_update=%lu miss_restart=%lu miss_reserved=%lu "
-        "guard_yield=%u yielded=%lu h_jumps=%lu v_jumps=%lu trims=%lu pll_updates=%lu pll_rejected=%lu pll_ppb=%ld acquired=%lu camera_present=%u camera_lines=%lu camera_yields=%lu h_trusted=%u v_trusted=%u std_switches=%lu monitor_lock_proven=0\n",
-        s?(unsigned)s->output_requested:0u,(unsigned)output.active,
-        (unsigned long)output.repaired,(unsigned long)output.suppressed,(unsigned long)output.batches,
-        (unsigned long)output.max_late_ticks,(unsigned long)output.missed,(unsigned long)output.miss_kind,
-        (unsigned long)output.queue_low,(unsigned long)output.fault,
-        (unsigned long)output.max_irq_delay_ticks,(unsigned long)output.max_callback_ticks,
-        (unsigned long)output.budget_yields,
-        (unsigned long)output.miss_phase,(unsigned long)output.misses_by_phase[0],
-        (unsigned long)output.misses_by_phase[1],(unsigned long)output.misses_by_phase[2],
-        (unsigned long)output.misses_by_phase[3],(unsigned long)output.misses_by_phase[4],
-        (unsigned long)output.misses_by_phase[5],
-        (unsigned)output.guard_yield,(unsigned long)output.yielded,(unsigned long)output.guard_h_jumps,
-        (unsigned long)output.guard_v_jumps,(unsigned long)output.guard_trims,
-        (unsigned long)output.pll_updates,(unsigned long)output.pll_rejected,(long)output.pll_ppb,
-        (unsigned long)output.guard_acquired,(unsigned)output.camera_present,
-        (unsigned long)output.camera_lines,(unsigned long)output.camera_yields,
-        (unsigned)output.h_trusted,(unsigned)output.v_trusted,(unsigned long)output.std_switches);
-    printf("SYNC_FLYWHEEL_WITNESS observer_fresh=%u sample_age_ticks=%lu observer_yields=%lu source_yields=%lu "
-        "observer_gaps=%lu stale_native=%lu\n",(unsigned)output.observer_fresh,(unsigned long)output.sample_age_ticks,
-        (unsigned long)output.observer_yields,(unsigned long)output.source_yields,
-        (unsigned long)output.observer_gaps,(unsigned long)output.stale_native);
-    /* ISR occupancy since the previous print (task side, 240 MHz cycles);
-     * a restarted output (counters went back) starts a new interval. */
-    static uint64_t prev_us,prev_isr,prev_wait,prev_wasted,prev_hold;
-    const uint64_t now_us=(uint64_t)esp_timer_get_time();
-    if(output.isr_cycles<prev_isr || output.wait_cycles<prev_wait || output.suppressed_wait_cycles<prev_wasted ||
-       output.hold_cycles<prev_hold)prev_us=0;
-    const uint64_t span=prev_us && now_us>prev_us ? (now_us-prev_us)*240u : 0u;
-    #define SLO_PERMILLE(x,p) (span ? (unsigned long)(((x)-(p))*1000u/span) : 0ul)
-    printf("SYNC_FLYWHEEL_LOAD active=%u interval_ms=%lu isr_calls=%lu max_isr_us=%lu isr_permille=%lu wait_permille=%lu "
-        "suppressed_wait_permille=%lu hold_permille=%lu measured_not_estimated=1\n",(unsigned)output.active,
-        (unsigned long)(span/240000u),(unsigned long)output.isr_calls,(unsigned long)(output.max_isr_cycles/240u),
-        SLO_PERMILLE(output.isr_cycles,prev_isr),SLO_PERMILLE(output.wait_cycles,prev_wait),
-        SLO_PERMILLE(output.suppressed_wait_cycles,prev_wasted),SLO_PERMILLE(output.hold_cycles,prev_hold));
-    #undef SLO_PERMILLE
-    prev_us=now_us;prev_isr=output.isr_cycles;prev_wait=output.wait_cycles;
-    prev_wasted=output.suppressed_wait_cycles;prev_hold=output.hold_cycles;
-}
-
-
 
 void transport_print(void)
 {
@@ -1105,11 +651,11 @@ void transport_print(void)
            (unsigned long)s_restart_errors, (unsigned long)s_rollbacks, (unsigned long)s_rollback_fail,
            s_transport_fault, s_started);
     printf("TRANSPORT rx_descriptors=%d tx_empty=%lu rx_overflow=%lu dma_faults=%lu bs_overload=%lu "
-           "lut_writes=%lu lut_verify_fail=%lu program=%s flag_format=%u switch_wait_ms=%lu prog_verify_fail=%lu\n",
+           "lut_writes=%lu lut_verify_fail=%lu program=%s switch_wait_ms=%lu prog_verify_fail=%lu\n",
            s_rx_node_count, (unsigned long)s_tx_empty, (unsigned long)s_rx_overflow,
            (unsigned long)s_dma_faults, (unsigned long)s_bs_overload,
            (unsigned long)s_lut_writes, (unsigned long)s_lut_verify_fail,
-           transport_program_name(), (unsigned)s_verified_flag,
+           transport_program_name(),
            (unsigned long)transport_switch_wait_ms(), (unsigned long)s_prog_verify_fail);
     printf("CONTROL_COPY calls=%lu not_ready=%lu source_invalid=%lu pointer_invalid=%lu "
            "lapped=%lu timed_out=%lu max_us=%lu max_advance=%lu\n",

@@ -73,24 +73,10 @@ void transport_stop_chain(void);
 void transport_poll_faults(void);
 uint32_t transport_fault_count(void);
 void transport_print(void);
-void transport_sync_flywheel_toggle(void); /* U / menu FLYWHEEL: toggle and save */
-void transport_sync_flywheel_set(bool on, bool save);
-bool transport_sync_flywheel_enabled(void);
-void transport_sync_flywheel_set_boot(bool on); /* settings_load: saved choice */
-void transport_sync_live_tick(void);   /* control loop; never holds a lifetime PHY lease */
-bool transport_sync_live_cancel(void); /* stop/restore before transport ownership changes */
-/* Menu open: stop the flywheel output (not eligible under the menu anyway)
- * so its heap is free before the menu reserves descriptors. */
-/* true once the flywheel observer and output are released (or none ran);
- * false while the PHY is owned elsewhere: nothing may allocate then. */
-bool transport_sync_live_release(void);
-/* Hold the control owner from (re)starting the flywheel, e.g. while the menu
- * builds its chain from another task. */
-void transport_sync_live_hold(bool on);
-void transport_sync_live_print(void);
 /* Flight-log V1 output telemetry. Demod is 0 unknown, 1 verified U85Q,
- * 2 reserved for historical LP logs, 3 verified U80P64-R1. Lock
- * percentages are 0xff when the native observer had no fresh samples. */
+ * 2 reserved for historical LP logs, 3 verified U80P64-R1. The observer
+ * fields keep their wire slots for old logs; firmware writes them empty
+ * (lock percentages 0xff) since the sync flywheel was removed. */
 typedef struct {
     uint8_t flags, demod, standard, output_level;
     uint16_t samples, fresh_samples;
@@ -99,7 +85,7 @@ typedef struct {
     uint8_t observer_gaps;
 } transport_flog_output_t;
 void transport_flog_output(transport_flog_output_t *out);
-void transport_flog_identity(uint8_t *demod, uint8_t *output_level, bool *flag_format);
+void transport_flog_identity(uint8_t *demod, uint8_t *output_level);
 void sync_dma_c2m(const void *addr, size_t size);
 void sync_dma_m2c(const void *addr, size_t size);
 int ring_node_index(uint32_t addr);
@@ -233,12 +219,10 @@ void lane_compare_request(void);
 void self_noise_request(void);   /* bench: noise floor with the video output on vs off (console N) */
 
 /* ---- menu.c ---- */
-enum { MENU_BAND, MENU_CHANNEL, MENU_SCAN, MENU_VIDEO, MENU_CALIBRATE, MENU_OUTPUT, MENU_GAIN, MENU_FLYWHEEL, MENU_DAC,
+enum { MENU_BAND, MENU_CHANNEL, MENU_SCAN, MENU_VIDEO, MENU_CALIBRATE, MENU_OUTPUT, MENU_GAIN, MENU_DAC,
        MENU_EXIT, MENU_ITEMS };
 extern volatile int s_menu_cursor;
 bool menu_open(void);
-/* The last menu_open() was deferred by a busy PHY (retry, don't allocate). */
-bool menu_open_busy(void);
 void menu_close(void);
 void menu_render(void);
 void menu_set_standard_mode(std_mode_t mode);
@@ -285,7 +269,6 @@ void diag_toggle_stream(void);          /* console R */
 void settings_load(void);
 void settings_save(void);
 void settings_save_output(unsigned level); /* only after verified output application */
-void settings_save_flywheel(bool on);
 bool blob_load(const char *key, void *data, size_t size);
 bool blob_store(const char *key, const void *data, size_t size);
 

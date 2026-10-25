@@ -26,14 +26,12 @@ export class ReceiverConsole {
     this.current = false;
     this.directMenu = false;
     this.gainControl = false;
-    this.flywheelControl = false;
     this.dacTest = false;
     this.control = {};
     this.demod = null;
     this.dac = {};
     this.output = {};
     this.gain = {};
-    this.flywheel = {};
     this.heartbeat = {};
     this.profile = {};
     this.scan = { active: false, candidates: 0, result: '', channel: '' };
@@ -69,8 +67,7 @@ export class ReceiverConsole {
         this.demod = null;
         this.output = {};
         this.gain = {};
-        this.flywheel = {};
-        this.directMenu = this.gainControl = this.flywheelControl = this.dacTest = false;
+        this.directMenu = this.gainControl = this.dacTest = false;
         this.dac = {};
         this.scan = { active: false, candidates: 0, result: '', channel: '' };
         this.refused = '';
@@ -83,7 +80,6 @@ export class ReceiverConsole {
     if (/^\s+v video standard AUTO\/NTSC\/PAL, e close menu/.test(line)) this.directMenu = true;
     if (!this.current) return;
     if (/^\s+G RX gain /.test(line)) this.gainControl = true;
-    if (/^\s+U sync flywheel ON\/OFF /.test(line)) this.flywheelControl = true;
     if (/^\s+Z DAC self-test /.test(line)) this.dacTest = true;
 
     if (line.startsWith('C5VRX5 version=')) {
@@ -121,12 +117,6 @@ export class ReceiverConsole {
     } else if (line.startsWith('GAIN ')) {
       fields(line, this.gain);
       if (this.gain.mode) events.add('changed');
-    } else if (line.startsWith('SYNC_FLYWHEEL ')) {
-      const report = fields(line);
-      if (report.requested !== undefined && report.active === undefined)
-        delete this.flywheel.active; // command accepted; actual output is not yet reported
-      Object.assign(this.flywheel, report);
-      if (report.requested !== undefined) events.add('changed');
     } else if (line.startsWith('PROFILE monitor ')) {
       this.profile.live = fields(line).mode === 'live_switch';
     } else if (line.startsWith('PROFILE active=')) {
@@ -220,8 +210,6 @@ export class ReceiverConsole {
       stage: this.heartbeat.stage || '',
       gain: this.gain.gain || this.heartbeat.gain || '',
       gainMode: this.gain.mode || '',
-      flywheel: this.flywheel.requested === undefined ? null : this.flywheel.requested === '1',
-      flywheelActive: this.flywheel.active === undefined ? null : this.flywheel.active === '1',
       kpMode: Number.isInteger(kp) ? KP_MODES[kp] || '' : '',
       demod: this.demod ? (this.demod.verified && this.demod.verified !== 'unknown'
         ? this.demod.verified : `${this.demod.selected || c.demod || 'UNKNOWN'} (unverified)`) : c.demod || '',
@@ -239,9 +227,8 @@ export class ReceiverConsole {
 
   supports(key) {
     if (key === 'G') return this.current && this.gainControl;
-    if (key === 'U') return this.current && this.flywheelControl;
     if (key === 'Z') return this.current && this.dacTest;
-    if (['m', 'K', 'k', 'j', 'P', 'O', 'H'].includes(key)) return false;
+    if (['m', 'K', 'k', 'j', 'P', 'O', 'H', 'U'].includes(key)) return false;
     return ['T', 'h', '?'].includes(key) || (this.current && (!['v', 'e'].includes(key) || this.directMenu));
   }
 }
