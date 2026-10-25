@@ -175,7 +175,8 @@ static bool partial,unstable;
 static bool receiver_pause(const char *tag) {(void)tag;++pauses;return true;}
 static void receiver_resume(void) {++resumes;}
 static void dco_hold_for_scan(void) {}
-static void rx_clock_slip(unsigned n) {position+=n;}
+static bool phase_slip(void) {++position;return true;}
+static bool menu_splash_active(void) {return true;}
 static void vTaskDelay(unsigned n) {(void)n;}
 static bool collect(unsigned windows,window_stats_t *w) {
     ++copies;w->windows=partial ? windows/2 : windows;

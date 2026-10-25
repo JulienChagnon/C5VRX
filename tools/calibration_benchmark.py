@@ -70,7 +70,7 @@ def main():
  result={'evidence':'deterministic mock PHY; scheduled waits only; not hardware timing or RF quality',
  'base_commit':subprocess.check_output(['git','rev-parse',args.base],cwd=ROOT,text=True).strip(),
  'cases':[{ 'case':names[i],'main':a,'pr':b,'wait_speedup':round(a['wait_ms']/b['wait_ms'],3)} for i,(a,b) in enumerate(zip(base,pr))],
- 'boot_policy':{'pr_automatic_sweeps':0,'pr_automatic_searches':0,'pr_automatic_slips':0,'pr_automatic_dc_trim':0,
+ 'boot_policy':{'pr_automatic_sweeps':0,'pr_automatic_searches':0,'pr_boot_phase_budget_ms':600,'pr_automatic_dc_trim':0,
                 'note':'normal boot loads baseline/saved settings; shared passive checks run independently, not a blocking sweep'}}
  text=json.dumps(result,indent=2)+'\n'
  if args.output:args.output.write_text(text)

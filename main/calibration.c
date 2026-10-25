@@ -81,7 +81,7 @@ static bool collect_stats(unsigned windows, window_stats_t *out, bool noise)
     unsigned rail_sum = 0;
     memset(out, 0, sizeof(*out));
     for (unsigned tries = 0; tries < windows * 3u && out->windows < windows; ++tries) {
-        if (s_probe_deadline && esp_timer_get_time() >= s_probe_deadline) break;
+        if (s_probe_deadline && (esp_timer_get_time() >= s_probe_deadline || !menu_splash_active())) break;
         vTaskDelay(2);   /* two ticks: one tick starved IDLE with the observer */
         if (!copy_probe_window(sample, NULL)) continue;
         for (unsigned r = 0; r < PROBE_REGIONS; ++r) {
@@ -164,17 +164,32 @@ static int sphase_record(const window_stats_t *w)
 /* positions/windows/tries: startup 9 / 48 / 12 on any signal; on the
  * carrier 3 / 16 / 6 (one cycle, ~0.4 s with the control loop paused),
  * settling within the tight carrier margin of the cleanest position. */
+static bool phase_slip(void)
+{
+    if (!s_probe_deadline) { rx_clock_slip(1); return true; }
+    /* Close the splash-check/write race with main's TX handover. This
+     * encloses only the existing one-microsecond register pulse, no waits. */
+    vTaskSuspendAll();
+    const bool allowed = menu_splash_active() && esp_timer_get_time() < s_probe_deadline;
+    if (allowed) rx_clock_slip(1);
+    (void)xTaskResumeAll();
+    return allowed;
+}
+
 static sphase_verdict_t sphase_scan_n(const char *tag, unsigned positions, unsigned windows, unsigned tries,
                                       bool carrier)
 {
     if (!receiver_pause(tag)) return SPHASE_UNSETTLED;
-    dco_hold_for_scan();
+    if (s_probe_deadline && (!menu_splash_active() || esp_timer_get_time() >= s_probe_deadline)) {
+        receiver_resume(); return SPHASE_UNSETTLED;
+    }
+    if (!s_probe_deadline) dco_hold_for_scan();
     window_stats_t w;
     const bool fast = !carrier && positions == 3u;
     sphase_scan_reset(&s_sphase_last);
     for (unsigned pos = 0; pos < positions; ++pos) {
-        if (s_probe_deadline && esp_timer_get_time() >= s_probe_deadline) break;
-        if (pos) { rx_clock_slip(1); vTaskDelay(pdMS_TO_TICKS(20)); }
+        if (s_probe_deadline && (esp_timer_get_time() >= s_probe_deadline || !menu_splash_active())) break;
+        if (pos) { if (!phase_slip()) break; vTaskDelay(pdMS_TO_TICKS(20)); }
         if (collect(windows, &w) && (!fast || w.windows == windows))
             sphase_scan_add(&s_sphase_last, sphase_metric(&w));
     }
@@ -191,7 +206,7 @@ static sphase_verdict_t sphase_scan_n(const char *tag, unsigned positions, unsig
     } else {
         /* Positions repeat every three ticks: stop on one near the cleanest. */
         for (unsigned n = 0; s_sphase_last.valid && n < tries; ++n) {
-            if (s_probe_deadline && esp_timer_get_time() >= s_probe_deadline) break;
+            if (s_probe_deadline && (esp_timer_get_time() >= s_probe_deadline || !menu_splash_active())) break;
             if (!collect(windows, &w) || (fast && w.windows != windows)) break;
             int e = sphase_metric(&w);
             const int margin = carrier ? sphase_carrier_margin(s_sphase_last.best) : sphase_margin(s_sphase_last.best);
@@ -206,7 +221,7 @@ static sphase_verdict_t sphase_scan_n(const char *tag, unsigned positions, unsig
                 v = SPHASE_SETTLED;
                 break;
             }
-            rx_clock_slip(1);
+            if (!phase_slip()) break;
             vTaskDelay(pdMS_TO_TICKS(20));
         }
     }
@@ -2006,8 +2021,16 @@ static void calibration_dump(void)
         rf_lane(), f.code, f.skirt, f.bw20 ? "true" : "false", s_filter_cal.normal.valid ? "true" : "false",
         calibration_filter_nbw_khz(), phy_dco_held() ? "true" : "false", s_basemap_watch.state,
         s_basemap_watch.last_i, s_basemap_watch.last_q, s_health_blocks, s_health_rejected);
+    int64_t radio_ms, ready_ms;
+    firmware_boot_timing(&radio_ms, &ready_ms);
+    cal_dump_line(&d, "{\"type\":\"boot_timing\",\"radio_ms\":%lld,\"ready_ms\":%lld,\"target_ms\":10000}",
+                  radio_ms, ready_ms);
+    int bank1[2] = {0}, bank2[2] = {0};
+    const bool banks_valid = phy_dco_banks(bank1, bank2);
+    cal_dump_line(&d, "{\"type\":\"dc_hardware\",\"valid\":%s,\"gain\":%u,\"bank1_i\":%d,\"bank1_q\":%d,"
+        "\"bank2_i\":%d,\"bank2_q\":%d}", banks_valid ? "true" : "false", s_current_gain, bank1[0], bank1[1], bank2[0], bank2[1]);
     cal_dump_line(&d, "{\"type\":\"policy\",\"auto_calibration\":false,\"auto_dc_trim\":false,"
-        "\"boot_blocking_ms\":%lld,\"boot_phase_ms\":%lld,\"last_manual_ms\":%lld,\"last_manual_full\":%s,\"health_observation_us\":%lld}",
+        "\"baseline_code\":16,\"baseline_skirt\":32,\"baseline_bw20\":false,\"boot_blocking_ms\":%lld,\"boot_phase_ms\":%lld,\"last_manual_ms\":%lld,\"last_manual_full\":%s,\"health_observation_us\":%lld}",
         s_boot_policy_ms, s_boot_phase_ms, s_manual_ms, s_last_manual_full ? "true" : "false", s_health_us);
     const filter_entry_t *filters[] = {&s_filter_cal.normal, &s_filter_cal.narrow, &s_filter_cal.wide};
     for (unsigned k = 0; k < 3u; ++k) {
@@ -2056,10 +2079,12 @@ static void boot_phase_check(void)
     s_probe_deadline = t0 + 600000;
     s_startup = true;
     window_stats_t w;
+    const uint32_t context = health_context();
     if (collect(24, &w) && w.windows == 24u && sphase_record(&w) < SPHASE_LIMIT &&
-        collect(24, &w) && w.windows == 24u && sphase_record(&w) < SPHASE_LIMIT)
+        collect(24, &w) && w.windows == 24u && sphase_record(&w) < SPHASE_LIMIT &&
+        context == health_context())
         s_sphase_state = "settled";
-    else if (esp_timer_get_time() < s_probe_deadline) {
+    else if (menu_splash_active() && esp_timer_get_time() < s_probe_deadline) {
         const sphase_verdict_t v = sphase_scan_n("BOOT_PHASE", 3u, 24u, 3u, false);
         s_sphase_state = v == SPHASE_SETTLED ? "settled" : "unverified";
     }

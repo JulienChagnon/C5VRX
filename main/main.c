@@ -10,6 +10,11 @@
 #include "rf.h"
 
 volatile const char *s_boot_stage = "start";
+static int64_t s_boot_radio_ms = -1, s_boot_ready_ms = -1;
+void firmware_boot_timing(int64_t *radio_ms, int64_t *ready_ms)
+{
+    *radio_ms = s_boot_radio_ms; *ready_ms = s_boot_ready_ms;
+}
 
 /* The boot logo while the receiver tasks start and Direct Gain makes its
  * first decision (a hold, also without a carrier). The bar fills evenly
@@ -51,7 +56,8 @@ void app_main(void)
     }
     s_boot_stage = "rf";
     ESP_ERROR_CHECK(rf_start());
-    printf("BOOT_TIMING radio_ms=%lld\n", (esp_timer_get_time() - app_t0) / 1000);
+    s_boot_radio_ms = (esp_timer_get_time() - app_t0) / 1000;
+    printf("BOOT_TIMING radio_ms=%lld\n", s_boot_radio_ms);
     s_boot_stage = "settings";
     settings_load();
     s_boot_stage = "flightlog";
@@ -84,7 +90,8 @@ void app_main(void)
     if (splash) splash_wait_gain(splash_t0, splash_holds, ready_deadline);
     menu_splash_end();
     s_boot_stage = "ready";
-    printf("BOOT_TIMING ready_ms=%lld target_ms=10000\n", (esp_timer_get_time() - app_t0) / 1000);
+    s_boot_ready_ms = (esp_timer_get_time() - app_t0) / 1000;
+    printf("BOOT_TIMING ready_ms=%lld target_ms=10000\n", s_boot_ready_ms);
     printf("C5VRX5 %s ready: %s %u MHz, %s, ultrafine IQ, KEEL-1 ('h' for keys) fw=%s\n",
            esp_app_get_description()->version, rf_channel()->name, rf_frequency_mhz(),
            transport_program_name(), firmware_id());

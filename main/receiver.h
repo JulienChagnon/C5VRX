@@ -159,10 +159,10 @@ bool filter_calibrate(bool automatic);
 void filter_request(void);
 void filter_request_full(void);
 void calibration_dump_request(void);
+void firmware_boot_timing(int64_t *radio_ms, int64_t *ready_ms);
 bool receiver_export_noise(uint8_t row, float *cells2, uint16_t *samples, int64_t *measured_us);
-/* True until the startup calibration has finished: afterwards nothing
- * intrusive (searches, sweeps, slips, retunes) runs for the rest of the
- * boot. A manual calibration from the menu reopens it once. */
+/* True during bounded splash-only phase alignment or an explicitly
+ * requested F/B calibration. Normal boot never opens RF/DC searches. */
 bool calibration_in_startup(void);
 /* Calibrated analog filter classes: normal (>= 12 MHz, the default),
  * narrow (>= 10 MHz, low-deviation VTXs), wide (>= 16 MHz, wide VTXs).
