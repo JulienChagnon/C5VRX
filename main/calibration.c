@@ -1873,7 +1873,7 @@ static void startup_phase(bool manual)
     }
     /* A fixed gain is saved across boots and costs range without any sign
      * in the picture (a bench setting left behind): say so at every boot. */
-    if (!manual && receiver_gain_mode() != GAIN_MODE_AUTO) {
+    if (!manual && !receiver_gain_mode_auto(receiver_gain_mode())) {
         char mode[16], line[48];
         const char *name = receiver_gain_mode_name(receiver_gain_mode(), mode, sizeof(mode));
         snprintf(line, sizeof(line), "GAIN %s COSTS RANGE: USE AUTO", name);

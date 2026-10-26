@@ -185,9 +185,19 @@ KiCad ERC/DRC and schematic/PCB parity checks are clean; REV C has not been buil
   desktop Chrome or Edge, choose **C5VRX-5** and a build, then flash.
   Use **Full firmware** when switching from another generation.
   Unmerged PR builds are marked as development builds.
-- **From source:** use ESP-IDF **6.0.2** and run `idf.py build flash` in
-  the repository root. Filter and DC correction require its exact libphy;
+- **From source:** use ESP-IDF **6.0.2**, run `idf.py build` in the
+  repository root, then `python tools/flash.py PORT` (for example `COM6`
+  or `/dev/ttyACM0`). Filter and DC correction require its exact libphy;
   other PHY versions disable them and produce a build warning.
+  Do not use `idf.py flash` on a running receiver: its USB line reset hangs
+  the board (pySerial "Write timeout") until USB and battery are removed.
+  `tools/flash.py` asks the firmware for download mode with the `` ` `` key,
+  flashes without a line reset and restarts through the watchdog. If the
+  board is already in the ROM loader (BOOT held while plugging in), add
+  `--no-key`. `--app-only` flashes only the app image, which is faster
+  when the bootloader and partition table have not changed, and
+  `--monitor` then shows the console without resetting the chip (use it
+  instead of `idf.py flash monitor`).
 - **Local File** flashes your own `.bin`; **Legacy builds** contains archived
   C5VRX-3 firmware.
 
@@ -209,7 +219,7 @@ KiCad ERC/DRC and schematic/PCB parity checks are clean; REV C has not been buil
 
 The menu is one black-and-white settings list with every row in view:
 **BAND**, **CHANNEL**, **SCAN**, **VIDEO** (AUTO/NTSC/PAL),
-**CALIBRATE**, **OUTPUT** (0.5-5.0x), **GAIN** (AUTO/MAX/fixed),
+**CALIBRATE**, **OUTPUT** (0.5-5.0x), **GAIN** (AUTO/LEVEL/RSSI/MAX/fixed),
 **DAC TEST** and **EXIT**, each with its current value. A card beside the
 list keeps the frequency, signal and level in view and names what a hold
 does. Every boot shows the C5VRX logo while Direct Gain finds its first
@@ -217,7 +227,9 @@ gain: the bar fills over 3 s (up to 4 s while the gain has not
 held yet), so live video starts on a settled gain.
 It closes after 30 seconds of
 inactivity, or five minutes in DAC TEST. Menu transitions can interrupt video.
-GAIN starts in AUTO on every boot.
+GAIN starts in AUTO (KEEL-1) on every boot. LEVEL and RSSI are research AGC
+models for a side-by-side comparison on your own setup (docs/FINDINGS.md,
+"AGC research"); they are simulated, not yet proven on the board.
 
 ## Serial console (USB, 115200)
 

@@ -1700,3 +1700,75 @@ interpretation, recovered helper semantics and measurement limits, with frozen
 source links. It imports no experimental firmware or lab tooling and changes
 no production defaults. Noise-only variance changes are not RF sensitivity
 or range measurements.
+
+
+## AGC research: LEVEL, an input-level AGC, and an RSSI baseline (2026-10-25, PR #266)
+
+**Question.** KEEL-1 grew in layers (V3 core, V5, V6 carrier memory, V7
+peak/pacing, home rows, heat, anchors, fade hold). Is a model built from
+what we now know better?
+
+**Premise from earlier findings.** The receiver noise is set before the
+baseband gain ("Direct Gain V7"): a row scales carrier and noise alike, so
+the gain does not change C/N. What costs picture is a fold of the ultrafine
+lane, each write (~2 ms), stale per-row DC after a row change, and moments
+with the gain far too low.
+
+**LEVEL** (`main/agc.c`). The carrier level referred to the input is then
+row-independent. LEVEL keeps a ~20 ms decaying histogram of it (2 dB bins)
+and scores every KEEL-1 home row over that history: sync and picture SNR
+from C/N, 4-bit quantisation and the detector's small-signal loss (bit-exact
+U85Q, PR #230), or a fold. It moves when another row is better by a
+hysteresis, at once on a fold. Integer per window; the per-row quality table
+is built at reset. It learns the gain-model error of the row it moves to
+from the input level just before and after the move. **RSSI** (`main/agc.c`):
+a classic mean-power AGC (target radius ~3.5 cells, +-3 dB dead band, 6 dB
+drop on a fold), as a simple baseline.
+
+**Host comparison** (`test/test_agc_compare.c`: the test_keel_track.c
+receiver, DC and fading model, 24 scenarios, 3 seeds; usable %, edge
+weighted twice):
+
+| model | score | writes/s | edge 3 dB C/N |
+| --- | ---: | ---: | ---: |
+| KEEL-1 | 61.6 | 4.5 | 28.7 % |
+| LEVEL | 63.6 | 5.5 | 34.0 % |
+| RSSI | 61.1 | 48.4 | 30.6 % |
+| best static home row (a posteriori) | 60.7 | 0 | 35.0 % |
+| ideal per-tick oracle (bound) | 74.1 | 0 | 41.8 % |
+
+- At the edge KEEL-1 averages G77-78 and loses ~6 points against simply
+  holding G79 (35.0 %); the fast-drone edge case 25.6 % against 34.9 %.
+  LEVEL closes most of that.
+- Close in with slow fades (walking, 2-5 Hz) following the fades pays:
+  KEEL-1 95.7 % against 79 % for a static row. LEVEL needed a short memory
+  (~20 ms) to match it; a 0.6 s memory scored 57.8.
+- Fast fades (drone, 540-1070 Hz): LEVEL rides one row (87.4 % against
+  KEEL-1 78.0 % mid range).
+- 4 dB bins cost 2.5 points; 1 and 2 dB bins score alike.
+
+**Robustness** (same draws):
+
+| perturbation | KEEL-1 | LEVEL | RSSI |
+| --- | ---: | ---: | ---: |
+| fold rule 0.8 / 1.3 noise radii | 61.6 / 61.6 | 63.9 / 63.6 | 61.1 / 61.0 |
+| twice the DC | 60.9 | 63.4 | 60.5 |
+| DC servo 1 s | 56.9 | 60.7 | 55.8 |
+| write costs 5 ms | 60.9 | 62.6 | 54.3 |
+| gain model +-1 dB (top 24 dB), +-6 dB below | 60.6 | 61.7 | 57.4 |
+| gain model +-1 dB, +-10 dB below | 59.5 | 60.3 | 56.5 |
+| gain model +-3 dB on every row | 57.7 | 53.9 (edge 8.7 %) | 46.4 |
+
+The learned row correction halves LEVEL's writes with a poor low-row model
+(11.9 -> 6.8 and 17 -> 9.7 a second) and keeps the edge at 33.4 % (31.0 %
+without). **Limit:** LEVEL needs the measured noise map of the top rows
+(`gtab`, startup); with +-3 dB errors there, it subtracts the wrong noise at
+the edge and loses to KEEL-1, which measures the envelope directly.
+
+**Firmware.** Menu GAIN row and console `G` cycle AUTO (KEEL-1, default) ->
+LEVEL -> RSSI -> MAX -> fixed; not stored, every boot starts AUTO. Console
+`T` prints `AGC model=... moves folds learned`. +2.3 KB static RAM (one
+model at a time, union). **Evidence:** host simulation and firmware build
+only; the harness shares its picture model with LEVEL's quality function
+(the physics from PR #230), so a board A/B is the deciding test. No range
+or picture claim.
