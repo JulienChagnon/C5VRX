@@ -57,6 +57,11 @@ static bool collect_stats(unsigned n,window_stats_t *w,bool noise){
  return copy_ok;
 }
 static int sphase_record(const window_stats_t *w){(void)w;s_sphase_excess=phase;return phase;}
+/* The live servo (servo_service) is a separate actuator; the monitor only
+ * asks whether it can still correct the row. */
+static bool servo_fix;
+static bool dc_servo_can_fix(unsigned g){(void)g;return servo_fix;}
+static cal_persist_t s_dc_persist;
 /* Any accidental addition of an actuator to production becomes observable. */
 unsigned actuations;
 void rx_clock_slip(unsigned n){actuations+=n;}
@@ -90,7 +95,18 @@ int main(void){
   * still dither >=3 cells per axis; it must reveal a large DC park. */
  s_startup=false;++context;qualified=false;dither=true;measured_i=2200;m2=.9;kurt=2;
  tick();tick();tick();assert(warnings==3);
- puts("PASS: production monitor shares DC/noise/phase observations, warns only on sustained qualified bad evidence, no actuation");
+ /* With the live servo able to correct the row, stable bad DC waits for it:
+  * a recommendation only after CAL_SERVO_GIVEUP_US of qualified bad DC. */
+ ++context;qualified=dither=true;m2=2;measured_i=0;tick();tick();tick();
+ servo_fix=true;measured_i=2500;
+ for(int k=0;k<99;++k)tick();
+ assert(warnings==3);
+ tick();tick();tick();assert(warnings==4);
+ for(int k=0;k<20;++k)tick();
+ assert(warnings==4); /* once */
+ measured_i=0;tick();tick();tick();measured_i=2500;servo_fix=false;tick();tick();tick();
+ assert(warnings==5); /* at its trim limit: at once */
+ puts("PASS: production monitor shares DC/noise/phase observations, warns only on sustained qualified bad evidence the live servo cannot fix, no actuation");
 }
 '''
 class SamplingRuntimeTest(unittest.TestCase):

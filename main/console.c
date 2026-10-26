@@ -144,6 +144,7 @@ static void console_task(void *arg)
             case 'R': diag_toggle_stream(); break;
             case 'L': lane_compare_request(); break;
             case 'N': self_noise_request(); break;
+            case 'S': rx_clock_slip(1); printf("SLIP bench: one RX sampling-phase slip (T SPHASE shows the new excess)\n"); break;
             case 'Y': case 'W': case 'X': flightlog_console((char)c); break;
             case 'h': case '?': help(); break;
             case 'o': case 'e': case 'v': case 'n': case 'x': case 'c': case 'b': case 's': case 'g': case 'A': case 'U': case 'G': case 'Q': case 'Z': {

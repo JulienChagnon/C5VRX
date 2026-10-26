@@ -24,7 +24,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifndef DC_SERVO_ROWS
 #define DC_SERVO_ROWS          96u      /* >= ARC_VENDOR_GAIN_MAX + 1 */
+#endif
 #define DC_SERVO_MIN_SAMPLES   40000u   /* ~1 ms of IQ, spread over >= 150 probes */
 #define DC_SERVO_DEADBAND      250      /* mcells: ~0.13 of the noise per axis at the edge */
 #define DC_SERVO_GAIN_PCT      70       /* fraction of the computed step (no overshoot on slope error) */

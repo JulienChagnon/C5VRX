@@ -43,3 +43,29 @@ static inline bool cal_watch_add(cal_watch_t *s, uint32_t generation, int64_t no
     if (s->good >= CAL_CONFIRM_BLOCKS) s->state = CAL_GOOD;
     return warn;
 }
+
+/* With the live DC servo running, bad DC that it cannot bring below
+ * CAL_BAD_DC_MCELLS within CAL_SERVO_GIVEUP_US of qualified evidence on one
+ * channel and filter (any gain row) recommends calibration once. A good
+ * block, another key or an evidence gap restarts the clock. */
+#define CAL_SERVO_GIVEUP_US 30000000LL
+typedef struct {
+    uint32_t key;
+    int64_t bad_since, last_us;
+    bool warned;
+} cal_persist_t;
+static inline bool cal_persist_add(cal_persist_t *p, uint32_t key, int64_t now, bool qualified, int i, int q)
+{
+    if (p->key != key || (p->last_us && now - p->last_us > CAL_EVIDENCE_GAP_US)) *p = (cal_persist_t){.key = key};
+    if (!qualified) return false;
+    p->last_us = now;
+    if (abs(i) <= CAL_BAD_DC_MCELLS && abs(q) <= CAL_BAD_DC_MCELLS) {
+        p->bad_since = 0;
+        p->warned = false;
+        return false;
+    }
+    if (!p->bad_since) p->bad_since = now;
+    if (p->warned || now - p->bad_since < CAL_SERVO_GIVEUP_US) return false;
+    p->warned = true;
+    return true;
+}
