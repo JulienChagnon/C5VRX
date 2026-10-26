@@ -17,6 +17,11 @@ both removed. This runs the route that works instead:
     idf.py build
     python tools/flash.py COM6
     python tools/flash.py /dev/ttyACM0 --no-key   # board already in the ROM loader
+    python tools/flash.py COM6 --app-only         # app image only (flash_app_args)
+
+--app-only skips the bootloader and partition table, so it is faster for
+firmware-only changes; use the full set after a partition or bootloader
+change, or when switching from another generation.
 
 Run it in the ESP-IDF environment, which provides esptool and pyserial.
 """
@@ -31,9 +36,9 @@ HERE = Path(__file__).resolve().parent
 DEFAULT_BUILD = HERE.parent / "build"
 
 
-def esptool_cmd(port, baud):
+def esptool_cmd(port, baud, args_file="flash_args"):
     return [sys.executable, "-m", "esptool", "--chip", "esp32c5", "-p", port, "-b", str(baud),
-            "--before", "no-reset", "--after", "watchdog-reset", "write-flash", "@flash_args"]
+            "--before", "no-reset", "--after", "watchdog-reset", "write-flash", "@" + args_file]
 
 
 def send_download_key(port):
@@ -62,11 +67,15 @@ def main(argv=None):
     ap.add_argument("--no-key", action="store_true",
                     help="skip the download key: the board is already in the ROM loader "
                          "(BOOT held while plugging in, or an interrupted flash)")
+    ap.add_argument("--app-only", action="store_true",
+                    help="flash only the app image (flash_app_args), not the bootloader "
+                         "and partition table")
     args = ap.parse_args(argv)
+    args_file = "flash_app_args" if args.app_only else "flash_args"
 
     # Check everything before the key: it reboots the receiver into the loader.
-    if not (args.build / "flash_args").is_file():
-        print(f"flash: {args.build / 'flash_args'} not found; run idf.py build first")
+    if not (args.build / args_file).is_file():
+        print(f"flash: {args.build / args_file} not found; run idf.py build first")
         return 2
     if importlib.util.find_spec("esptool") is None:
         print("flash: esptool not found; run this in the ESP-IDF environment "
@@ -83,7 +92,7 @@ def main(argv=None):
             return 1
         wait_for_port(args.port)
 
-    rc = subprocess.run(esptool_cmd(args.port, args.baud), cwd=args.build).returncode
+    rc = subprocess.run(esptool_cmd(args.port, args.baud, args_file), cwd=args.build).returncode
     if rc == 0:
         print("flash: done; the receiver restarts into the new image")
     else:

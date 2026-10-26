@@ -194,7 +194,8 @@ KiCad ERC/DRC and schematic/PCB parity checks are clean; REV C has not been buil
   `tools/flash.py` asks the firmware for download mode with the `` ` `` key,
   flashes without a line reset and restarts through the watchdog. If the
   board is already in the ROM loader (BOOT held while plugging in), add
-  `--no-key`.
+  `--no-key`. `--app-only` flashes only the app image, which is faster
+  when the bootloader and partition table have not changed.
 - **Local File** flashes your own `.bin`; **Legacy builds** contains archived
   C5VRX-3 firmware.
 

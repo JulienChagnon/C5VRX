@@ -12,11 +12,11 @@ flash = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(flash)
 
 
-def run(argv, key_ack=True, has_esptool=True, flash_args=True, rc=0):
+def run(argv, key_ack=True, has_esptool=True, flash_args=("flash_args",), rc=0):
     """main() with the board side mocked; returns (rc, key mock, esptool mock, output)."""
     with tempfile.TemporaryDirectory() as build:
-        if flash_args:
-            (Path(build) / "flash_args").write_text("--flash-mode dio\n0x0 bootloader/bootloader.bin\n")
+        for name in flash_args:
+            (Path(build) / name).write_text("--flash-mode dio\n0x10000 c5vrx.bin\n")
         key = mock.Mock(return_value=key_ack)
         esptool = mock.Mock(return_value=mock.Mock(returncode=rc))
         out = io.StringIO()
@@ -59,11 +59,21 @@ class FlashToolTest(unittest.TestCase):
     def test_checks_run_before_the_key(self):
         # The key reboots the receiver into the loader, so a missing build or
         # esptool must stop the tool before it is sent.
-        for kw in ({"flash_args": False}, {"has_esptool": False}):
+        for kw in ({"flash_args": ()}, {"has_esptool": False}):
             code, key, esptool, _, _ = run(["COM6"], **kw)
             self.assertEqual(code, 2)
             key.assert_not_called()
             esptool.assert_not_called()
+
+    def test_app_only_uses_flash_app_args(self):
+        code, _, esptool, _, _ = run(["COM6", "--app-only"], flash_args=("flash_args", "flash_app_args"))
+        self.assertEqual(code, 0)
+        self.assertEqual(esptool.call_args.args[0][-1], "@flash_app_args")
+        # Only the full set present: --app-only must not fall back to it.
+        code, key, _, out, _ = run(["COM6", "--app-only"])
+        self.assertEqual(code, 2)
+        key.assert_not_called()
+        self.assertIn("flash_app_args", out)
 
     def test_esptool_failure_is_returned(self):
         code, _, _, out, _ = run(["COM6"], rc=2)
