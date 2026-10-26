@@ -1731,3 +1731,29 @@ shows 2.054x/1.407x/1.615x less scheduled waiting in three cases with equal fina
 residuals. End-to-end board timing, residual distributions, standard-preset
 bandwidth and RF/video performance remain to be measured. This supersedes the
 initial PR #272 startup-policy note; docs/FASTER_CALIBRATION.md is current.
+
+## Wrong sampling phase after boot, live DC servo and base map (2026-10-26)
+
+Board b26ef545, A1 5865 MHz, VTX off, PR #272. Supersedes the "no automatic
+DC servo" part of the policy note above (operator decision the same day).
+
+- **Wrong sampling phase is a blind receiver.** Console `S` (one RX slip)
+  over 12 positions: 3 read mixed IQ bits, excess_mc2 4588-6597 against
+  44-62, with the IQ 989-998 per mille clipped. One boot in five stayed on
+  such a position after the splash (`SPHASE unverified excess_mc2=1883..3149`);
+  ten OUTPUT restarts never moved a settled phase. Nothing repaired a phase
+  found wrong after the boot check: `phase_service()` now runs the confirmed
+  scan live. Main has the same exposure; the host model puts mixed bits at
+  1.4-5 dB, the board shows near-total clipping. Range not yet measured.
+- **Live DC servo restored, gated on the phase.** On the four settled boots:
+  0.26-0.37 cells mean from starts up to 1.65 cells, learned slope 200-420
+  mcells/code. On the wrong-phase boot (before the gate) it walked I to its
+  -96 limit. Servo state is 36 rows in LP RAM: 5.2 KB more static HP RAM left
+  the USB console silent from boot (heap ~34 KB free after boot).
+- **DC batch stop at low gain.** F stopped at G68-G73 as carrier_detected on
+  quantized receiver noise (envelope 1.22); only a definite carrier stops it
+  now. 30/30 rows, code spread 0.8 per row within a session; between boot
+  sessions high-gain Q moved 10-15 codes (~1-2 cells), which the servo trims.
+- **Base map** `main/dco_preset.h` from nine F runs of one board, filled as
+  template rows in task context. Looking it up in the gain hook (which also
+  runs in the vendor RF restore) left the console silent from boot.
