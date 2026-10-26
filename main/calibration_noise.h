@@ -1,6 +1,7 @@
 /* C5VRX by Twotoz and contributors: exact shared filter-measurement math.
  * No prior DC calibration is required; failed copies contribute no samples. */
 #pragma once
+#include <string.h>
 #include "dsp.h"
 typedef struct {
     float psd[DSP_FFT_N];
@@ -25,6 +26,19 @@ static inline bool cal_noise_finish(const cal_noise_t *a, unsigned *width, unsig
     *clip = a->clip_sum / (int)a->got;
     return true;
 }
+/* Screening never supplies a stored calibration. Keep a wide guard (four
+ * FFT bins in width, 25% NBW) around a fully measured incumbent. No assumed
+ * monotonicity of the undocumented filter controls: visit every setting. */
+static inline bool cal_filter_contender(unsigned width, unsigned nbw, unsigned minimum, unsigned best_nbw)
+{
+    return width + 2500u >= minimum && (!best_nbw || (uint64_t)nbw * 4u <= (uint64_t)best_nbw * 5u);
+}
+static inline bool cal_filter_screen_agrees(unsigned w0, unsigned n0, unsigned w1, unsigned n1)
+{
+    unsigned dw = w0 > w1 ? w0 - w1 : w1 - w0;
+    unsigned dn = n0 > n1 ? n0 - n1 : n1 - n0;
+    return n0 && n1 && dw <= 2500u && (uint64_t)dn * 4u <= n1;
+}
 static inline const char *cal_channel_quiet(const uint8_t *s, unsigned windows, bool recent_sync,
                                           unsigned *env, int *clip)
 {
@@ -36,4 +50,17 @@ static inline bool cal_setting_quiet(unsigned env, int clip) { return env <= dsp
 static inline bool cal_setting_carrier(unsigned env, int clip)
 {
     return env > dsp_quiet_limit(clip) + DSP_QUIET_CARRIER_X100;
+}
+/* DC batch gate: whether a quiet-test result means a carrier. Low gain rows
+ * hold receiver noise of only a few quantizer steps; quantization lifts its
+ * envelope statistic above the quiet limit (board 2026-10-26, VTX off and
+ * video output proven not to raise the floor: G69 env 1.22, F stopped at
+ * G68..G73 as carrier_detected) or puts it in the centre cells ("origin").
+ * The row search measures such rows itself (flat when below one step), so
+ * as in the filter sweep only a definite carrier stops the batch. */
+static inline bool cal_dc_gate_carrier(const char *why, unsigned env, int clip)
+{
+    if (!why || !strcmp(why, "origin")) return false;
+    if (!strcmp(why, "envelope")) return cal_setting_carrier(env, clip);
+    return true;
 }

@@ -660,6 +660,36 @@ do not treat model-only proposals or unused counters as physical validation.
    update this ledger and its linked evidence. Credit Twotoz
    and the relevant C5VRX contributors for the prior research being extended.
 
+## Manual calibration policy (PR #272, operator update 2026-10-26)
+
+This overrides the older automatic startup/servo/next-boot-repair descriptions.
+Boot loads a fixed baseline or exact saved settings. No automatic RF sweep,
+DC search or VTX wait at boot. The sole boot actuator is sampling alignment
+under the existing splash, with a 600 ms observation deadline, once only.
+Passive multi-block evidence may recommend calibration; missing tables and
+unknown evidence alone never warn. Menu/F calibrates one normal filter; B is
+explicit full RF optimization. C/web download is read-only and framed/checksummed.
+Keep the report schema/provenance, all final verification/fallbacks and the
+10-second boot target/instrumentation. See docs/FASTER_CALIBRATION.md.
+DC base map + live servo (operator decision 2026-10-26): with the baseline
+filter, rows without own codes are filled from `main/dco_preset.h` (generated
+by `tools/dco_preset.py` from board reports; one board so far; never edit by
+hand) as template rows. Live, the per-row DC servo of main (`servo_service`,
+`dc_servo.h`) trims every held row with the VTX on or off and adopts a
+template/base-map row it holds within 0.3 cells as an own row. Calibration is
+recommended only at the servo's trim limit, without a row, after a fault, or
+after 30 s of qualified DC above 1.5 cells. See docs/FASTER_CALIBRATION.md.
+
+## Startup calibration acceleration (2026-10-25, hardware pending)
+
+`docs/FASTER_CALIBRATION.md` records the startup-only fast search extensions:
+short DC probes with full verification/fallback; all-setting filter screening
+with full contender and winner checks; confirmed three-position phase fast path
+with nine-position fallback; exact-context fresh DC noise reuse; 2 s absent-VTX
+grace with unchanged deviation evidence. Preserve the fallback and final
+measurement boundaries. Do not report hardware speedup or filter equivalence
+from host tests alone; keep the board-proven DC settle and IDLE yields.
+
 ## Design flexibility and optimization priority
 
 C5VRX is intentionally flexible. Historical implementations, names, data

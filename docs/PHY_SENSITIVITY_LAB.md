@@ -216,3 +216,10 @@ FNV-1a hash identifies it, and console `I` still exports single snapshots.
   and `test/test_sense_lab_tool.py` (verdicts, combining runs, record format
   against the firmware source). The firmware build is CI evidence only
   until a board run is recorded here.
+
+## Console compatibility with live phase repair
+
+Console `S` followed by a suite key selects this lab. The standalone RX
+sampling-phase slip introduced in PR #272 is now `!`; it does not start a
+lab or wait for a suite key. `T` still reports the phase state. Older bench
+scripts that sent `S` for a single slip must send `!` on this firmware.

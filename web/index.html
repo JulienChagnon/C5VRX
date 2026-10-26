@@ -348,7 +348,21 @@
                   <h2>CALIBRATE</h2>
                   <dl class="readouts"><div><dt>Calibration</dt><dd data-value="calibrate">—</dd></div></dl>
                   <p class="hint">On the ground only. Video stops for up to two minutes; switch the VTX off for the best result.</p>
-                  <button type="button" class="command-button" data-command="F" data-hint="Calibrate on the ground? Live video stops for up to two minutes. VTX off is best." disabled>Calibrate receiver <kbd>F</kbd></button>
+                  <p>Calibration runs only when requested. A brief warning appears when repeated measurements show a poor baseline.</p>
+                  <button type="button" class="command-button" data-command="F" data-hint="Calibrate this filter on the ground? Live video stops while its DC rows are checked and repaired. VTX off measures all gains." disabled>Calibrate receiver <kbd>F</kbd></button>
+                  <button type="button" class="command-button" data-command="B" data-hint="Run full RF optimization on the ground? Searches every filter setting and prepares all filter profiles. Video stops; allow up to eight minutes." disabled>Full RF optimization <kbd>B</kbd></button>
+                  <div class="calibration-report">
+                    <h3>Share calibration data</h3>
+                    <p>Download a report to send to the C5VRX team. Reading it does not calibrate or change settings. Connect the receiver below first.</p>
+                    <label for="calibrationBoard">Board name (optional)</label>
+                    <input id="calibrationBoard" type="text" maxlength="80" placeholder="e.g. Xiao C5 #2">
+                    <label for="calibrationVtx">VTX during this capture</label>
+                    <select id="calibrationVtx"><option value="unknown">Not specified</option><option value="off">Off</option><option value="on">On</option></select>
+                    <label for="calibrationNotes">Notes (optional)</label>
+                    <textarea id="calibrationNotes" maxlength="2000" rows="2" placeholder="Power supply, antenna, VTX/camera, before or after calibration"></textarea>
+                    <button type="button" class="action primary" id="btnCalibrationReport" disabled>Download calibration report</button>
+                    <p id="calibrationReportStatus" role="status">Reports include a stable board ID, firmware, saved tables and current measurements. Unknown values stay marked as unknown.</p>
+                  </div>
                 </div>
                 <div role="tabpanel" id="pane-output" aria-labelledby="menu-output" hidden>
                   <h2>OUTPUT LEVEL</h2>
@@ -407,7 +421,7 @@
               </dl>
               <p class="hint">Test on the ground. U80P64-R1 uses one fixed demodulator table; live VTX matching changes the analog filter, not kp or LP. Live OUTPUT, format and profile changes share a five-second firmware cooldown.</p>
               <div class="command-buttons">
-                <button type="button" class="command-button" data-command="A" data-hint="Toggle automatic live VTX profile switching? This setting is saved; profile changes can briefly interrupt video." disabled>Toggle live VTX matching <kbd>A</kbd></button>
+                <button type="button" class="command-button" data-command="A" data-hint="Toggle automatic live VTX profile switching for this session? Each boot starts report-only; profile changes can briefly interrupt video." disabled>Toggle live VTX matching <kbd>A</kbd></button>
                 <button type="button" class="command-button" data-command="L" data-hint="Run the bench-only IQ lane comparison? Live video stops for about three seconds." disabled>Compare IQ lanes <kbd>L</kbd></button>
                 <button type="button" class="command-button" data-command="`" data-hint="Reboot into USB download mode for flashing? Video stops and the terminal disconnects." disabled>USB download mode <kbd>`</kbd></button>
               </div>

@@ -387,13 +387,20 @@ esp_err_t phy_dco_search(bool (*measure)(int dc[2]), phy_dco_result_t *res)
  * (rows ~1 dB apart) the start is within the linear range. */
 esp_err_t phy_dco_search_from(bool (*measure)(int dc[2]), const int start[2], phy_dco_result_t *res)
 {
+    return phy_dco_search_verified(measure, measure, start, res);
+}
+
+esp_err_t phy_dco_search_verified(bool (*measure)(int dc[2]), bool (*verify)(int dc[2]),
+                                 const int start[2], phy_dco_result_t *res)
+{
     memset(res, 0, sizeof(*res));
 #ifndef C5VRX_PHY_PINNED
+    (void)verify;
     (void)measure;
     (void)start;
     return ESP_ERR_NOT_SUPPORTED;
 #else
-    if (!measure) return ESP_ERR_INVALID_ARG;
+    if (!measure || !verify) return ESP_ERR_INVALID_ARG;
     phy_begin();
     uint16_t live[PBUS_BLOCKS][2];
     read_live(live);
@@ -414,9 +421,15 @@ esp_err_t phy_dco_search_from(bool (*measure)(int dc[2]), const int start[2], ph
         int di = base[0] > 511 - DCO_PROBE ? -DCO_PROBE : DCO_PROBE;
         int dq = base[1] > 511 - DCO_PROBE ? -DCO_PROBE : DCO_PROBE;
         int mi[2] = {0, 0}, mq[2] = {0, 0};
-        dco_apply(base[0] + di, base[1]);
-        bool ok = measure(mi);
-        if (ok) { dco_apply(base[0], base[1] + dq); ok = measure(mq); }
+        /* A centred seed needs confirmation, not two response probes. */
+        const int centred_limit = verify != measure ? 300 : DCO_DONE_MCELLS;
+        const bool centred = dco_cost(before) <= centred_limit * centred_limit;
+        bool ok = true;
+        if (!centred) {
+            dco_apply(base[0] + di, base[1]);
+            ok = measure(mi);
+            if (ok) { dco_apply(base[0], base[1] + dq); ok = measure(mq); }
+        }
         dco_apply(base[0], base[1]);
         float j[4] = {0, 0, 0, 0};
         if (ok) {
@@ -435,6 +448,14 @@ esp_err_t phy_dco_search_from(bool (*measure)(int dc[2]), const int start[2], ph
                 best[0] = cur[0]; best[1] = cur[1];
                 best_dc[0] = err[0]; best_dc[1] = err[1];
             }
+        }
+        /* Never store a residual measured at an intermediate trial. The
+         * short callback guides the search only; verification sees the
+         * actual winning codes with the original long observation. */
+        if (ok) {
+            dco_apply(best[0], best[1]);
+            ok = verify(best_dc);
+            if (verify != measure && dco_cost(best_dc) > 300 * 300) ok = false;
         }
         if (ok) {
             res->measured = true;
@@ -465,18 +486,29 @@ esp_err_t phy_dco_search_from(bool (*measure)(int dc[2]), const int start[2], ph
  * small I/Q cross-coupling. */
 static int dco_flat_axis(bool (*measure)(int dc[2]), int cur[2], int axis, int base, bool *ok)
 {
-    int lo = dco_clamp(base - DCO_RANGE, base), hi = dco_clamp(base + DCO_RANGE, base), m[2];
-    cur[axis] = lo; dco_apply(cur[0], cur[1]);
-    if (!measure(m)) { *ok = false; return base; }
-    const bool lo_pos = m[axis] > 0;
-    const int lo_abs = m[axis] < 0 ? -m[axis] : m[axis];
-    cur[axis] = hi; dco_apply(cur[0], cur[1]);
-    if (!measure(m)) { *ok = false; return base; }
-    if ((m[axis] > 0) == lo_pos) {          /* no flip in range: keep the nearer end */
-        const int hi_abs = m[axis] < 0 ? -m[axis] : m[axis];
-        *ok = false;
-        return hi_abs < lo_abs ? hi : lo;
+    int lo = 0, hi = 0, m[2];
+    bool lo_pos = false, bracket = false;
+    /* Neighbouring gains usually differ by only a few codes. Grow the
+     * bracket instead of measuring the full +/-96 range for every axis.
+     * The maximum range and adjacent-code bisection remain unchanged. */
+    const int centre = cur[axis];
+    for (int radius = 8; ; radius = radius * 2 > DCO_RANGE ? DCO_RANGE : radius * 2) {
+        lo = dco_clamp((radius == DCO_RANGE ? base : centre) - radius, base);
+        hi = dco_clamp((radius == DCO_RANGE ? base : centre) + radius, base);
+        cur[axis] = lo; dco_apply(cur[0], cur[1]);
+        if (!measure(m)) { *ok = false; return base; }
+        lo_pos = m[axis] > 0;
+        const int lo_abs = m[axis] < 0 ? -m[axis] : m[axis];
+        cur[axis] = hi; dco_apply(cur[0], cur[1]);
+        if (!measure(m)) { *ok = false; return base; }
+        if ((m[axis] > 0) != lo_pos) { bracket = true; break; }
+        if (radius == DCO_RANGE) {
+            const int hi_abs = m[axis] < 0 ? -m[axis] : m[axis];
+            *ok = false;
+            return hi_abs < lo_abs ? hi : lo;
+        }
     }
+    if (!bracket) { *ok = false; return base; }
     while (hi - lo > 1) {
         const int mid = (lo + hi) / 2;
         cur[axis] = mid; dco_apply(cur[0], cur[1]);
@@ -488,9 +520,15 @@ static int dco_flat_axis(bool (*measure)(int dc[2]), int cur[2], int axis, int b
 
 esp_err_t phy_dco_search_flat(bool (*measure)(int dc[2]), phy_dco_result_t *res)
 {
+    return phy_dco_search_flat_from(measure, NULL, res);
+}
+
+esp_err_t phy_dco_search_flat_from(bool (*measure)(int dc[2]), const int start[2], phy_dco_result_t *res)
+{
     memset(res, 0, sizeof(*res));
 #ifndef C5VRX_PHY_PINNED
     (void)measure;
+    (void)start;
     return ESP_ERR_NOT_SUPPORTED;
 #else
     if (!measure) return ESP_ERR_INVALID_ARG;
@@ -503,7 +541,8 @@ esp_err_t phy_dco_search_flat(bool (*measure)(int dc[2]), phy_dco_result_t *res)
     if (measure(before)) {
         debug = true;
         enter_debug(live);
-        const int base[2] = {live[2][1], live[3][1]};
+        const int base[2] = {start ? dco_clamp(start[0], start[0]) : live[2][1],
+                             start ? dco_clamp(start[1], start[1]) : live[3][1]};
         int cur[2] = {base[0], base[1]}, err[2] = {before[0], before[1]};
         bool ok = true;
         for (unsigned round = 0; round < 2u && ok; ++round)

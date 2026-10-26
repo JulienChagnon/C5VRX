@@ -24,6 +24,8 @@ export class ReceiverConsole {
     this.pending = '';
     this.version = '';
     this.current = false;
+    this.calibrationDump = false;
+    this.calibrationHealth = "unknown";
     this.directMenu = false;
     this.gainControl = false;
     this.dacTest = false;
@@ -54,6 +56,9 @@ export class ReceiverConsole {
   }
 
   line(line, now, events) {
+    if (line.startsWith('CAL_HEALTH ')) this.calibrationHealth = fields(line).state || 'unknown';
+    if (line.startsWith('CAL_NEEDED ')) this.calibrationHealth = 'bad';
+    if (line.startsWith('FIRMWARE ')) this.calibrationDump = fields(line).cal_dump === '1';
     const version = line.match(/^C5VRX5 (?:version=(\S+)|(\S+) ready:)/);
     if (version) {
       this.current = true;
@@ -226,6 +231,7 @@ export class ReceiverConsole {
   }
 
   supports(key) {
+    if (key === 'C' || key === 'B') return this.current && this.calibrationDump;
     if (key === 'G') return this.current && this.gainControl;
     if (key === 'Z') return this.current && this.dacTest;
     if (['m', 'K', 'k', 'j', 'P', 'O', 'H', 'U'].includes(key)) return false;
