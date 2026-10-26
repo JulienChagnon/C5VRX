@@ -124,11 +124,20 @@ void receiver_resume(void);
 void receiver_set_gain(uint8_t gain);
 void receiver_print(void);
 void receiver_print_map(void);   /* console M: GAINMAP line */
-/* Gain mode: GAIN_MODE_AUTO (Direct Gain V6), GAIN_MODE_MAX (table maximum)
- * or a fixed gain index 20..max. Fixed modes skip the controller entirely;
- * paused owners (calibration, scan) still write and the mode returns after. */
-#define GAIN_MODE_AUTO 0u
-#define GAIN_MODE_MAX  255u
+/* Gain mode: GAIN_MODE_AUTO (KEEL-1, gain.c), the research AGC models
+ * GAIN_MODE_LEVEL / GAIN_MODE_RSSI (agc.h, for a board comparison),
+ * GAIN_MODE_MAX (table maximum) or a fixed gain index 20..max. Fixed modes
+ * skip the controller entirely; paused owners (calibration, scan) still
+ * write and the mode returns after. */
+#define GAIN_MODE_AUTO  0u
+#define GAIN_MODE_RSSI  253u
+#define GAIN_MODE_LEVEL 254u
+#define GAIN_MODE_MAX   255u
+/* A mode with an automatic controller (not a fixed gain). */
+static inline bool receiver_gain_mode_auto(uint8_t mode)
+{
+    return mode == GAIN_MODE_AUTO || mode == GAIN_MODE_LEVEL || mode == GAIN_MODE_RSSI;
+}
 uint8_t receiver_gain_mode(void);
 void receiver_set_gain_mode(uint8_t mode, bool save);
 uint8_t receiver_gain_mode_next(uint8_t mode);

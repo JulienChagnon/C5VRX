@@ -1,6 +1,6 @@
 idf_component_register(
     SRCS
-        "main.c" "rf.c" "phy.c" "arc_phy.c" "transport.c" "gain.c" "receiver.c"
+        "main.c" "rf.c" "phy.c" "arc_phy.c" "transport.c" "gain.c" "agc.c" "receiver.c"
         "control.c" "calibration.c" "menu.c" "menu_ui.c" "menu_raster.c" "analog_video_detect.c"
         "settings.c" "console.c" "profile.c" "diag.c" "flightlog.c"
     INCLUDE_DIRS "."
