@@ -42,11 +42,14 @@ int phy_filter_calibrated_code(void);
  * unsupported; hw[8]/want[8] receive the bytes when not NULL. */
 int phy_filter_hw_mismatch(uint8_t hw[8], uint8_t want[8]);
 
-/* PR #244: fixed production digital RX filter, separate from the analog
- * capacitor/skirt setting. Only mode 0 is exposed; other modes remain lab
- * research. The vendor-selected ADC rate is preserved. Unsupported PHYs
- * refuse the write and report -1 for readback. */
-#define PHY_DFILT_MODE_DEFAULT 0
+/* Fixed production digital RX filter, separate from the analog
+ * capacitor/skirt setting. Mode 12 (0x600A0430[21:18]): VTX-on lab
+ * (console S suite 3, 5865 MHz, 2026-10-26) C/N +0.20/+0.28/+0.52 dB and
+ * fewer FM clicks than mode 0 in three runs; mode 0 had only been chosen on
+ * VTX-off noise (PR #244), where 12 reads ~1 dB more noise. Other modes
+ * remain lab research. The vendor-selected ADC rate is preserved.
+ * Unsupported PHYs refuse the write and report -1 for readback. */
+#define PHY_DFILT_MODE_DEFAULT 12
 bool phy_dfilt_apply_default(void);
 int phy_dfilt_hw_mode(void);
 

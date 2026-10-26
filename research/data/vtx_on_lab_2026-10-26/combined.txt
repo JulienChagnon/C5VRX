@@ -1,0 +1,214 @@
+== research/data/vtx_on_lab_2026-10-26/5865_all1.log
+   freq=5865 MHz gain=G73 baseline C/N=7.05 dB video SNR=1.90 dB clicks=0.343 pm end=COMPLETE
+   sham spread cn_db: rms=0.211 from 25 shams
+   sham spread video_snr_db: rms=0.646 from 3 shams
+   sham spread click_pm: rms=0.171 from 25 shams
+   sham spread video_cov: rms=0.055 from 25 shams
+   id   name                      verdict        d_cn_db  d_video  d_click  d_vcov  drift_cn
+   100  SHAM                      SHAM             -0.01       na   -0.034   -0.19  +0.02
+   101  NF_AUTO_0                 NO_EFFECT        +0.01    +0.87   -0.042   +0.00  -0.13
+   102  NF_AUTO_1                 NO_EFFECT        +0.11    -0.83   -0.023   -0.09  +0.01
+   103  NF_AUTO_2                 NO_EFFECT        +0.11    +0.20   -0.157   -0.03  -0.31
+   104  NF_AUTO_3                 NO_EFFECT        -0.48    +0.55   +0.099   +0.00  -0.55
+   105  NF_AUTO_4                 UNSTABLE         -0.39    -0.79   -0.073   +0.09  +2.55
+   106  NF_AUTO_5                 UNSTABLE         -0.22    -3.02   -1.091   -0.03  +3.67
+   107  SHAM                      SHAM             -0.50    -1.10   +0.469   +0.09  -1.99
+   108  NF_AUTO_6                 UNSTABLE         +3.37    -1.13  -11.414   -0.06  -11.52
+   109  NF_AUTO_7                 NOOP             -3.40       na   +7.136   -0.16  +8.13
+   110  NF_AUTO_8                 REJECTED_ENTRY      na       na       na      na  na
+   111  NF_AUTO_9                 REJECTED_ENTRY      na       na       na      na  na
+   112  NF_AUTO_A                 REJECTED_ENTRY      na       na       na      na  na
+   113  NF_AUTO_B                 REJECTED_ENTRY      na       na       na      na  na
+   114  SHAM                      SHAM             -0.00       na   +0.061   +0.00  +0.06
+   115  NF_AUTO_C                 REJECTED_ENTRY      na       na       na      na  na
+   116  NF_AUTO_D                 REJECTED_ENTRY      na       na       na      na  na
+   117  NF_AUTO_E                 REJECTED_ENTRY      na       na       na      na  na
+   118  NF_AUTO_F                 REJECTED_ENTRY      na       na       na      na  na
+   119  SHAM                      SHAM             -0.03       na   +0.049   -0.03  -0.14
+   200  SHAM                      SHAM             +0.04       na   +0.049   -0.03  +0.05
+   201  IQ_RX_0438_BIT29_OFF      WORSE            -0.48       na   -0.015   +0.00  -0.01
+   202  IQ_RX_0438_BIT30_OFF      NO_EFFECT        -0.27       na   -0.286   +0.00  -0.10
+   203  IQ_RX_0438_BIT31_OFF      NO_EFFECT        -0.11       na   -0.137   +0.00  -0.05
+   204  IQ_RX_0438_ALL_OFF        WORSE            -0.45       na   -0.099   +0.06  -0.00
+   205  IQ_TX_0C0C_BIT13_OFF      NO_EFFECT        -0.02       na   -0.031   +0.03  -0.05
+   206  IQ_TX_0C0C_BIT14_OFF      NO_EFFECT        +0.06       na   +0.027   +0.00  +0.02
+   207  SHAM                      SHAM             -0.05       na   +0.038   +0.00  +0.06
+   208  IQ_TX_0C0C_ALL_OFF        NO_EFFECT        -0.07       na   +0.091   +0.03  +0.03
+   209  IQ_RX_COEFF_A_ZERO        NO_EFFECT        -0.02       na   -0.004   +0.03  -0.11
+   210  IQ_RX_COEFF_B_ZERO        NO_EFFECT        +0.06       na   -0.031   -0.03  -0.13
+   211  IQ_CORR_ALL_OFF           WORSE            -0.43       na   -0.111   +0.00  +0.05
+   212  SHAM                      SHAM             +0.06       na   +0.038   +0.03  -0.05
+   300  SHAM                      SHAM             +0.05       na   -0.149   +0.00  +0.00
+   301  DFILT_MODE4               NO_EFFECT        +0.28       na   -0.008   +0.03  -0.09
+   302  DFILT_MODE8               NO_EFFECT        +0.06       na   +0.092   +0.03  +0.02
+   303  DFILT_MODE12              BETTER           +0.20       na   -0.515   +0.06  +0.05
+   304  SHAM                      SHAM             +0.02       na   -0.050   -0.03  +0.04
+   400  SHAM                      SHAM             +0.06       na   -0.160   +0.06  -0.11
+   401  CHAN_A_ARG0               NO_EFFECT        -0.01       na   -0.126   +0.00  +0.06
+   402  CHAN_A_ARG1               NOOP             +0.05       na   -0.126   +0.00  -0.02
+   403  CHAN_B_ARG0               NOOP             +0.05       na   +0.088   +0.03  -0.07
+   404  CHAN_B_ARG1               NO_EFFECT        -0.04       na   +0.027   +0.00  +0.11
+   405  PKDADC_BIT31_OFF          NO_EFFECT        -0.05       na   -0.076   +0.03  -0.08
+   406  BB_CCA_BIT30_OFF          NO_EFFECT        -0.04       na   +0.343   +0.00  +0.05
+   407  SHAM                      SHAM             -0.03       na   -0.019   -0.03  -0.01
+   408  MAC_CCA_DISABLE           NO_EFFECT        -0.02       na   +0.076   -0.03  +0.04
+   409  MAC_CCA_ENABLE            NOOP             +0.04       na   -0.046   +0.00  +0.03
+   410  FFT_FORCE_OFF             NOOP             -0.06       na   -0.019   +0.03  -0.11
+   411  FFT_FORCE_SCALE0          NO_EFFECT        +0.07       na   -0.210   +0.00  +0.11
+   412  RX11B_OPT_ARG0            NO_EFFECT        -0.10       na   +0.126   -0.03  +0.13
+   413  RX11B_OPT_ARG1            NOOP             -0.07       na   -0.031   +0.03  -0.07
+   414  SHAM                      SHAM             -0.01       na   +0.050   +0.00  -0.10
+   415  RXSENSE_ARG0              NO_EFFECT        -0.06       na   -0.061   -0.03  -0.13
+   416  RXSENSE_ARG1              NO_EFFECT        +0.08       na   -0.198   +0.00  +0.00
+   417  LLTF_MASK_00              NO_EFFECT        +0.00       na   -0.076   +0.03  +0.09
+   418  LLTF_MASK_10              NOOP             +0.01       na   +0.027   -0.06  +0.00
+   419  LLTF_MASK_01              NO_EFFECT        -0.10       na   -0.126   +0.03  -0.06
+   420  LLTF_MASK_11              NO_EFFECT        -0.00       na   -0.011   +0.16  +0.05
+   421  SHAM                      SHAM             +0.07       na   -0.050   -0.03  -0.10
+   422  RIFS_ARG0                 NO_EFFECT        -0.03       na   -0.187   +0.03  -0.01
+   423  RIFS_ARG1                 NOOP             -0.04       na   -0.023   +0.00  -0.02
+   424  VHT_ARG0                  NO_EFFECT        +0.05       na   -0.099   -0.03  -0.03
+   425  VHT_ARG1                  NOOP             -0.03       na   -0.080   +0.03  -0.04
+   426  RX11BLR_ARG0              NOOP             -0.07       na   +0.160   -0.03  +0.02
+   427  RX11BLR_ARG1              NO_EFFECT        -0.02       na   +0.279   +0.06  -0.09
+   428  SHAM                      SHAM             +0.06       na   -0.191   -0.03  -0.11
+   429  HEMU_RU26_VENDOR          NOOP             +0.06       na   +0.027   +0.00  +0.07
+   430  PWDET_VENDOR_CLEAR        NOOP             -0.04       na   +0.054   +0.00  +0.00
+   431  SHAM                      SHAM             -0.02       na   +0.202   -0.06  +0.04
+   500  SHAM                      SHAM             +0.01       na   +0.240   -0.03  -0.09
+   501  TXCLK_ARG0                NOOP             +0.03       na   -0.107   -0.03  -0.00
+   502  TXCLK_ARG1                NO_EFFECT        +0.04       na   -0.027   -0.03  -0.06
+   503  WIFI_ENABLE_ARG0          BREAKS_IQ           na       na       na      na  na
+   504  WIFI_ENABLE_ARG1          NOOP             -0.01       na   -0.244   +0.00  +0.16
+   505  SHAM                      SHAM             +0.01       na   -0.092   -0.03  +0.03
+   610  SHAM                      SHAM             +0.06       na   -0.252   -0.03  +0.09
+   611  ADC_SELECTOR0             NO_EFFECT        -0.02       na   +0.027   +0.00  -0.04
+   612  LO_CAP_PLUS1              NO_EFFECT        +0.11       na   -0.076   +0.03  -0.03
+   613  SHAM                      SHAM             -0.02       na   -0.149   -0.03  -0.08
+   710  SHAM                      SHAM             -0.03       na   -0.023   +0.00  +0.12
+   711  FILTER_CODE_M2            NO_EFFECT        -0.03       na   +0.000   +0.00  +0.05
+   712  FILTER_CODE_M1            NO_EFFECT        -0.01       na   +0.301   +0.00  +0.04
+   713  FILTER_CODE_P1            NO_EFFECT        +0.02       na   +0.015   -0.03  +0.05
+   714  FILTER_CODE_P2            NO_EFFECT        +0.01       na   +0.183   +0.03  -0.11
+   715  SHAM                      SHAM             -0.01       na   +0.027   +0.00  +0.01
+   800  SHAM                      SHAM             -0.02       na   +0.160   +0.00  -0.06
+   801  GAIN_ROW_67               WORSE            -0.86       na   +1.214   +0.00  +0.08
+   804  GAIN_ROW_79               WORSE            -0.24    -4.12   +2.694   -0.12  +0.61
+   805  SHAM                      SHAM             +0.00    -0.05   +0.393   -0.09  -1.02
+   900  SHAM                      SHAM             +0.91    +0.21   +0.038   +0.06  +0.00
+   901  DAC_OUTPUT_OFF            UNSTABLE         -1.18    -0.47   +0.259   +0.00  -0.56
+   902  DAC_OUTPUT_OFF            UNSTABLE         -0.70    -1.50   +0.427   -0.03  -1.71
+   903  SHAM                      SHAM             +0.08       na   -0.183   +0.03  +0.16
+   skip LO_CAP_MINUS1: outside_vendor_10_31
+   skip ULP_REFERENCE_CODE: disabled_equal_or_more_than_one_code
+   skip SPUR_SLOT0_OFF: slot0_inactive
+   skip GAIN_ROW_70: outside_table_or_no_dc_correction
+   skip GAIN_ROW_76: outside_table_or_no_dc_correction
+== research/data/vtx_on_lab_2026-10-26/5865_s3_2.log
+   freq=5865 MHz gain=G73 baseline C/N=5.89 dB video SNR=0.65 dB clicks=0.862 pm end=COMPLETE
+   sham spread cn_db: rms=0.029 from 2 shams
+   sham spread video_snr_db: rms=0.050 from 1 shams
+   sham spread click_pm: rms=0.085 from 2 shams
+   sham spread video_cov: rms=0.022 from 2 shams
+   id   name                      verdict        d_cn_db  d_video  d_click  d_vcov  drift_cn
+   300  SHAM                      SHAM             +0.04    +0.05   -0.107   +0.00  -0.01
+   301  DFILT_MODE4               BETTER           +0.19    +1.93   -0.160   +0.00  +0.01
+   302  DFILT_MODE8               NO_EFFECT        +0.11       na   -0.324   +0.09  +0.06
+   303  DFILT_MODE12              BETTER           +0.28    -0.14   -0.340   +0.06  +0.06
+   304  SHAM                      SHAM             -0.01       na   +0.054   +0.03  -0.01
+== research/data/vtx_on_lab_2026-10-26/5865_s3c_r5.log
+   freq=5865 MHz gain=G67 baseline C/N=14.85 dB video SNR=9.06 dB clicks=0.015 pm end=COMPLETE
+   WARN signal_strong baseline_cn_db=14.85: M2M4 saturates near 10-11 dB with 4-bit IQ; weaken the signal until the picture shows light snow (about 2-8 dB)
+   sham spread cn_db: rms=0.106 from 2 shams
+   sham spread video_snr_db: rms=0.159 from 2 shams
+   sham spread click_pm: rms=0.018 from 2 shams
+   sham spread video_cov: rms=0.091 from 2 shams
+   id   name                      verdict        d_cn_db  d_video  d_click  d_vcov  drift_cn
+   300  SHAM                      SHAM             +0.11    -0.04   -0.011   -0.12  +0.53
+   301  DFILT_MODE4               INCOMPLETE       +0.50    +0.61   -0.035   +0.14  +0.35
+   302  DFILT_MODE8               UNSTABLE         +0.19    +0.30   -0.015   +0.00  +0.65
+   303  DFILT_MODE12              BETTER           +0.52    +1.04   +0.011   +0.03  -0.07
+   304  SHAM                      SHAM             -0.11    +0.22   +0.023   +0.03  -0.44
+== research/data/vtx_on_lab_2026-10-26/5865_s1a_r1.log
+   freq=5865 MHz gain=G67 baseline C/N=15.92 dB video SNR=9.10 dB clicks=0.031 pm end=COMPLETE
+   WARN signal_strong baseline_cn_db=15.92: M2M4 saturates near 10-11 dB with 4-bit IQ; weaken the signal until the picture shows light snow (about 2-8 dB)
+   sham spread cn_db: rms=0.068 from 4 shams
+   sham spread video_snr_db: rms=0.242 from 4 shams
+   sham spread click_pm: rms=0.033 from 4 shams
+   sham spread video_cov: rms=0.072 from 4 shams
+   id   name                      verdict        d_cn_db  d_video  d_click  d_vcov  drift_cn
+   100  SHAM                      SHAM             -0.09    +0.01   -0.008   -0.06  -0.05
+   101  NF_AUTO_0                 UNSTABLE         +0.20    -0.38   +0.023   -0.06  +0.43
+   102  NF_AUTO_1                 BETTER           +0.28    +0.00   +0.027   -0.12  +0.08
+   103  NF_AUTO_2                 WORSE            -0.30    -0.07   -0.015   +0.16  +0.24
+   104  NF_AUTO_3                 WORSE            -0.22    -0.43   +0.015   -0.09  -0.18
+   105  NF_AUTO_4                 NO_EFFECT        +0.05    +0.17   +0.008   -0.12  +0.15
+   106  NF_AUTO_5                 WORSE            -0.18    -0.18   +0.023   -0.06  +0.26
+   107  SHAM                      SHAM             +0.01    -0.18   +0.000   +0.06  -0.63
+   108  NF_AUTO_6                 UNSTABLE         +0.12    +0.33   -0.011   -0.03  -0.05
+   109  NF_AUTO_7                 NOOP             +0.01    -0.19   +0.019   -0.06  +0.17
+   110  NF_AUTO_8                 REJECTED_ENTRY      na       na       na      na  na
+   111  NF_AUTO_9                 REJECTED_ENTRY      na       na       na      na  na
+   112  NF_AUTO_A                 REJECTED_ENTRY      na       na       na      na  na
+   113  NF_AUTO_B                 REJECTED_ENTRY      na       na       na      na  na
+   114  SHAM                      SHAM             +0.10    +0.39   -0.065   +0.06  -0.21
+   115  NF_AUTO_C                 REJECTED_ENTRY      na       na       na      na  na
+   116  NF_AUTO_D                 REJECTED_ENTRY      na       na       na      na  na
+   117  NF_AUTO_E                 REJECTED_ENTRY      na       na       na      na  na
+   118  NF_AUTO_F                 REJECTED_ENTRY      na       na       na      na  na
+   119  SHAM                      SHAM             -0.02    +0.22   -0.004   +0.09  +0.13
+== combined over runs (BETTER/WORSE must repeat; one run is a screening result)
+   ADC_SELECTOR0             SINGLE_RUN         5865:NO_EFFECT
+   BB_CCA_BIT30_OFF          SINGLE_RUN         5865:NO_EFFECT
+   CHAN_A_ARG0               SINGLE_RUN         5865:NO_EFFECT
+   CHAN_A_ARG1               SINGLE_RUN         5865:NOOP
+   CHAN_B_ARG0               SINGLE_RUN         5865:NOOP
+   CHAN_B_ARG1               SINGLE_RUN         5865:NO_EFFECT
+   DFILT_MODE12              REPRODUCED_BETTER  5865:BETTER 5865:BETTER 5865:BETTER
+   DFILT_MODE4               NOT_REPRODUCED     5865:NO_EFFECT 5865:BETTER 5865:INCOMPLETE
+   FFT_FORCE_OFF             SINGLE_RUN         5865:NOOP
+   FFT_FORCE_SCALE0          SINGLE_RUN         5865:NO_EFFECT
+   FILTER_CODE_M1            SINGLE_RUN         5865:NO_EFFECT
+   FILTER_CODE_M2            SINGLE_RUN         5865:NO_EFFECT
+   FILTER_CODE_P1            SINGLE_RUN         5865:NO_EFFECT
+   FILTER_CODE_P2            SINGLE_RUN         5865:NO_EFFECT
+   GAIN_ROW_67               SINGLE_RUN         5865:WORSE
+   GAIN_ROW_79               SINGLE_RUN         5865:WORSE
+   HEMU_RU26_VENDOR          SINGLE_RUN         5865:NOOP
+   IQ_CORR_ALL_OFF           SINGLE_RUN         5865:WORSE
+   IQ_RX_0438_ALL_OFF        SINGLE_RUN         5865:WORSE
+   IQ_RX_0438_BIT29_OFF      SINGLE_RUN         5865:WORSE
+   IQ_RX_0438_BIT30_OFF      SINGLE_RUN         5865:NO_EFFECT
+   IQ_RX_0438_BIT31_OFF      SINGLE_RUN         5865:NO_EFFECT
+   IQ_RX_COEFF_A_ZERO        SINGLE_RUN         5865:NO_EFFECT
+   IQ_RX_COEFF_B_ZERO        SINGLE_RUN         5865:NO_EFFECT
+   IQ_TX_0C0C_ALL_OFF        SINGLE_RUN         5865:NO_EFFECT
+   IQ_TX_0C0C_BIT13_OFF      SINGLE_RUN         5865:NO_EFFECT
+   IQ_TX_0C0C_BIT14_OFF      SINGLE_RUN         5865:NO_EFFECT
+   LLTF_MASK_00              SINGLE_RUN         5865:NO_EFFECT
+   LLTF_MASK_01              SINGLE_RUN         5865:NO_EFFECT
+   LLTF_MASK_10              SINGLE_RUN         5865:NOOP
+   LLTF_MASK_11              SINGLE_RUN         5865:NO_EFFECT
+   LO_CAP_PLUS1              SINGLE_RUN         5865:NO_EFFECT
+   MAC_CCA_DISABLE           SINGLE_RUN         5865:NO_EFFECT
+   MAC_CCA_ENABLE            SINGLE_RUN         5865:NOOP
+   NF_AUTO_1                 NOT_REPRODUCED     5865:NO_EFFECT 5865:BETTER
+   NF_AUTO_2                 NOT_REPRODUCED     5865:NO_EFFECT 5865:WORSE
+   NF_AUTO_3                 NOT_REPRODUCED     5865:NO_EFFECT 5865:WORSE
+   NF_AUTO_5                 NOT_REPRODUCED     5865:UNSTABLE 5865:WORSE
+   PKDADC_BIT31_OFF          SINGLE_RUN         5865:NO_EFFECT
+   PWDET_VENDOR_CLEAR        SINGLE_RUN         5865:NOOP
+   RIFS_ARG0                 SINGLE_RUN         5865:NO_EFFECT
+   RIFS_ARG1                 SINGLE_RUN         5865:NOOP
+   RX11BLR_ARG0              SINGLE_RUN         5865:NOOP
+   RX11BLR_ARG1              SINGLE_RUN         5865:NO_EFFECT
+   RX11B_OPT_ARG0            SINGLE_RUN         5865:NO_EFFECT
+   RX11B_OPT_ARG1            SINGLE_RUN         5865:NOOP
+   RXSENSE_ARG0              SINGLE_RUN         5865:NO_EFFECT
+   RXSENSE_ARG1              SINGLE_RUN         5865:NO_EFFECT
+   TXCLK_ARG0                SINGLE_RUN         5865:NOOP
+   TXCLK_ARG1                SINGLE_RUN         5865:NO_EFFECT
+   VHT_ARG0                  SINGLE_RUN         5865:NO_EFFECT
+   VHT_ARG1                  SINGLE_RUN         5865:NOOP
+   WIFI_ENABLE_ARG0          SINGLE_RUN         5865:BREAKS_IQ
+   WIFI_ENABLE_ARG1          SINGLE_RUN         5865:NOOP

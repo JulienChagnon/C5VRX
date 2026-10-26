@@ -214,8 +214,22 @@ FNV-1a hash identifies it, and console `I` still exports single snapshots.
 - Register names describe the recovered writes, not documented semantics.
 - Host tests: `test/test_sense_metrics.c` (metric behaviour on synthetic FM)
   and `test/test_sense_lab_tool.py` (verdicts, combining runs, record format
-  against the firmware source). The firmware build is CI evidence only
-  until a board run is recorded here.
+  against the firmware source).
+
+## 7. Board results (2026-10-26)
+
+First board runs at 5865 MHz, recorded in `docs/FINDINGS.md` ("VTX-on PHY
+lab, AFC window and digital mode 12") with the logs in
+`research/data/vtx_on_lab_2026-10-26/`.
+
+- **Stay away from the bench during a run.** A person within ~1-2 m moved
+  the carrier 4-11 dB (sham spread 2.7-2.9 dB C/N); with nobody near it
+  held +-0.1 dB and the sham spread fell to 0.12-0.21 dB. Start the tool,
+  leave, and come back after the `SENSLAB_END` time.
+- `no_vtx_video` refusals came from the AFC decoder finding too few syncs
+  in one descriptor (fixed in the same change); retry the suite.
+- Mode 12 reproduced BETTER; no other candidate repeated. The sweep is
+  one level on one channel.
 
 ## Console compatibility with live phase repair
 

@@ -2511,8 +2511,9 @@ static void calibration_task(void *arg)
  * the filter calibration, every DC table and the repair flags, and runs the
  * full first-boot calibration. Raise CAL_GENERATION whenever a firmware
  * changes what a stored calibration means. */
-/* 11p changes the transfer function/noise seen by the stored tables. */
-#define CAL_GENERATION 3u
+/* 3: 11p, 4: digital RX mode 12; each changes the transfer function/noise
+ * seen by the stored tables. */
+#define CAL_GENERATION 4u
 static void calibration_generation(void)
 {
     uint16_t stored = 0;

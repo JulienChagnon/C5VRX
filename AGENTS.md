@@ -628,8 +628,15 @@ VTX-on PHY sensitivity lab (console `S` + suite key, `main/sense_lab.c`,
 extends the PR #254 VTX-off noise lab with a weak VTX carrier present and
 scores carrier and noise together (M2M4 C/N, AFC-decoder video SNR, FM
 clicks) in STOCK-TEST-TEST-STOCK with shams. Bench only, pinned PHY only,
-every write restored and verified, nothing saved. Host tests and firmware
-build only; no board result yet, so no candidate is better or worse.
+every write restored and verified, nothing saved. Board 2026-10-26 (5865 MHz,
+docs/FINDINGS.md "VTX-on PHY lab, AFC window and digital mode 12"): only
+digital mode 12 reproduced better (+0.2-0.5 dB C/N, fewer clicks); a person
+at the bench moves the carrier 4-11 dB, so runs need the operator away.
+AFC window (same date): one 4092-byte descriptor holds a timing-confirmed
+B/W sync pair in only ~45 % of windows (board IQ replay), so the AFC never
+locked; the control loop measures the AFC on the 8190-byte contiguous
+snapshot instead (30/30 valid). Gain observation keeps the descriptor.
+Board lock/profile check pending.
 
 ### Instructions for future pipeline work
 
@@ -780,12 +787,14 @@ requirements by themselves**.
   RF calibration/noise/gain maps. See docs/FINDINGS.md "11p receive baseline".
   This is an operator-selected integration, not measured range acceptance.
 
-- Digital RX filter mode 0 is reapplied after every vendor restore on the
-  pinned PHY (PR #244 bench follow-up). Preserve the vendor ADC-rate choice;
-  other mode values and ADC-rate overrides are lab research. Readback and
-  calibration migration are required when changing the receive transfer
-  function. See `docs/FINDINGS.md`, "Digital RX filter mode 0" for evidence
-  boundaries; the reported noise reduction is not a proven range gain.
+- Digital RX filter mode 12 (`PHY_DFILT_MODE_DEFAULT`) is reapplied after
+  every vendor restore on the pinned PHY. Mode 0 (PR #244) was chosen on
+  VTX-off noise; the VTX-on lab (2026-10-26) reproduced mode 12 better.
+  Preserve the vendor ADC-rate choice; other mode values and ADC-rate
+  overrides are lab research. Readback and calibration migration are
+  required when changing the receive transfer function. See
+  `docs/FINDINGS.md`, "Digital RX filter mode 0" and "VTX-on PHY lab, AFC
+  window and digital mode 12"; measured at 5865 MHz only, not a range gain.
 
 - **Direct Gain V5 is the only gain owner.** There is no native hardware AGC
   in C5VRX-5 (removed with C5VRX-3, 2026-10-12): on a continuous carrier the

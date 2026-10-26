@@ -126,6 +126,7 @@ int main(void) {
     /* Old metadata, wrong duplicated labels, unset context all rejected. */
     dg_map_blob_t bad=saved_a; bad.version=4; assert(!dg_import_map(&s_gain,&bad));
     bad=saved_a; bad.version=5; assert(!dg_import_map(&s_gain,&bad)); /* before digital mode 0 */
+    bad=saved_a; bad.version=7; assert(!dg_import_map(&s_gain,&bad)); /* before digital mode 12 */
     bad=saved_a; bad.context_valid=0; assert(!dg_import_map(&s_gain,&bad));
     bad=saved_a; bad.freq_mhz=5805; assert(!dg_import_map(&s_gain,&bad));
     bad=saved_a; bad.lane_mode=1; assert(!dg_import_map(&s_gain,&bad));
