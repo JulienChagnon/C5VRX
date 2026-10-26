@@ -49,7 +49,7 @@ static struct {
     bool cn_checked;
 } s_gate = {.last_cn = CN_UNKNOWN_X10};
 static dev_monitor_t s_mon;                   /* continuous matching (live only) */
-static bool s_live_switch = true;             /* NVS prof_live: in-flight switch allowed */
+static bool s_live_switch = false;             /* NVS prof_live: in-flight switch allowed */
 static int s_switch_pending = -1;             /* profile a live switch waits for, -1 none */
 static uint32_t s_live_switches, s_live_switch_fail;
 
@@ -114,16 +114,15 @@ static void carrier_record(int dev_x100)
 bool profile_live_mode(void) { return s_live_switch; }
 void profile_set_live_mode(bool on)
 {
-    uint8_t v = on;
     s_live_switch = on;
     if (!on) s_switch_pending = -1;
-    (void)blob_store("prof_live", &v, 1);
 }
 
 void profile_load(void)
 {
-    uint8_t live;
-    if (blob_load("prof_live", &live, 1) && live <= 1u) s_live_switch = live != 0;
+    /* Calibration policy: a saved preference must not start automatic RF
+     * changes on the next boot. Console A is explicit for this session. */
+    s_live_switch = false;
     if (!blob_load("vtxdev", s_dev_table, sizeof(s_dev_table))) memset(s_dev_table, 0, sizeof(s_dev_table));
 }
 

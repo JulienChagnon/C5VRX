@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { CalibrationCapture } from './calibration-report.js';
 import { ReceiverConsole, MENU_COMMAND_KEYS } from './receiver-console.js';
 import { FlightLogCapture, decodeImage, summarize, secondsCsv } from './flight-log.js';
 
@@ -26,7 +27,7 @@ function harness(sourceName, packageType = 'merged', confirmed = true) {
   });
   const downloads = [], flashes = [], alerts = [], commands = [], lifecycle = [], resets = [];
   const context = vm.createContext({
-    console, URL, Date, TextDecoder, TextEncoder, ReceiverConsole, MENU_COMMAND_KEYS, setTimeout, clearTimeout,
+    console, URL, Date, TextDecoder, TextEncoder, CalibrationCapture, ReceiverConsole, MENU_COMMAND_KEYS, setTimeout, clearTimeout,
     FlightLogCapture, decodeImage, summarize, secondsCsv,
     setInterval: () => 0, clearInterval() {},
     document: { baseURI: 'https://c5vrx.com/', getElementById: get, visibilityState: 'visible',
@@ -209,6 +210,16 @@ test('controls stay locked until the post-flash disconnect completes', async () 
   await done;
   assert.equal(vm.runInContext('isFlashing || isConnected', h.context), false);
   assert.equal(h.get('btnTerminalConnect').disabled, false);
+});
+
+test('calibration report button requests only read-only C, never F/B or flash', async () => {
+  const h = harness('github');
+  vm.runInContext("serialConsole.state='connected'; receiverConsole.push('C5VRX5 version=5.0.0-pr.272\\nFIRMWARE id=pr272 cal_dump=1\\n');", h.context);
+  await h.get('btnCalibrationReport').handlers.click();
+  assert.deepEqual(h.commands, ['C']);
+  assert.equal(h.flashes.length, 0);
+  assert.equal(h.get('btnCalibrationReport').disabled, true);
+  vm.runInContext('clearTimeout(calibrationTimer); calibrationCapture.fail("test end");', h.context);
 });
 
 // A serial port that answers the download key the way a running receiver

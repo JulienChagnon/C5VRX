@@ -294,3 +294,8 @@ summary { cursor: pointer; color: #b0b7c1; min-height: 32px; }
   .kit-preview { grid-template-columns: 1fr; }
   .kit-preview figure { max-width: 100%; }
 }
+
+.calibration-report { display: grid; gap: .65rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border, #334155); }
+.calibration-report p, .calibration-report h3 { margin: 0; }
+.calibration-report input, .calibration-report select, .calibration-report textarea { width: 100%; box-sizing: border-box; }
+.calibration-report textarea { resize: vertical; font: inherit; }

@@ -86,7 +86,7 @@ static volatile int s_splash = -1;
 static void render_splash(void)
 {
     raster_restore();
-    menu_ui_render_splash(s_raster.ui, s_splash);
+    menu_ui_render_splash_health(s_raster.ui, s_splash, calibration_dc_needed(NULL, 0) != 0);
     sync_dma_c2m(s_raster.ui, sizeof(s_raster.ui));
 }
 

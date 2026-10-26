@@ -76,6 +76,7 @@ void menu_ui_render(menu_ui_rows_t ui, const menu_view_t *v);
 void menu_ui_render_status(menu_ui_rows_t ui, const menu_status_view_t *v);
 /* Boot screen: the C5VRX logo (menu_logo.h) over a loading bar, 0..100. */
 void menu_ui_render_splash(menu_ui_rows_t ui, int percent);
+void menu_ui_render_splash_health(menu_ui_rows_t ui, int percent, bool needs_calibration);
 
 /* Text that did not fit its box (clipped or shortened), since the last
  * render. The host test requires zero for every page. */

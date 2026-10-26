@@ -1701,6 +1701,62 @@ source links. It imports no experimental firmware or lab tooling and changes
 no production defaults. Noise-only variance changes are not RF sensitivity
 or range measurements.
 
+## Faster verified startup calibration (2026-10-25, hardware pending)
+
+Extends C5VRX by Twotoz and contributors' startup calibration, neighbouring-row
+repair and exact filter-context work. DC now uses short search probes with a
+full final measurement and exhaustive fallback; the filter grid screens every
+setting and fully measures contenders, with full-grid fallback and independent
+winner rechecks. A three-position phase fast path requires repeated confirmation;
+ambiguous evidence retains the nine-position scan. Fresh exact-context DC noise
+statistics can serve the startup gain map. Absent-VTX grace is 2 s instead of
+20 s; deviation sample/quality requirements remain unchanged.
+
+See [FASTER_CALIBRATION.md](FASTER_CALIBRATION.md) for bounds, tests and board
+comparison. This is host-tested search/control work, not a measured speedup,
+sensitivity gain or proof of unchanged filter selection on all C5 boards.
+
+## PR #272 policy update: baseline boot, manual calibration (2026-10-26)
+
+Operator requires a <=10-second boot target and calibration through the menu.
+The branch loads a fixed filter baseline/native or exact saved DC, removes
+RF/DC sweeps and automatic DC servo/adoption, and adds passive qualified health
+recommendations. Reset-dependent sampling alignment alone gets a bounded 600 ms
+opportunity under the existing splash. Menu F handles one filter; explicit B
+runs full optimization. Read-only C/web JSON export supports multi-board work.
+
+No measured population baseline has been invented; the gain-map preset still
+has zero contributing boards. Mock-PHY execution of actual main/PR DC searches
+shows 2.054x/1.407x/1.615x less scheduled waiting in three cases with equal final
+residuals. End-to-end board timing, residual distributions, standard-preset
+bandwidth and RF/video performance remain to be measured. This supersedes the
+initial PR #272 startup-policy note; docs/FASTER_CALIBRATION.md is current.
+
+## Wrong sampling phase after boot, live DC servo and base map (2026-10-26)
+
+Board b26ef545, A1 5865 MHz, VTX off, PR #272. Supersedes the "no automatic
+DC servo" part of the policy note above (operator decision the same day).
+
+- **Wrong sampling phase is a blind receiver.** Console `S` (one RX slip)
+  over 12 positions: 3 read mixed IQ bits, excess_mc2 4588-6597 against
+  44-62, with the IQ 989-998 per mille clipped. One boot in five stayed on
+  such a position after the splash (`SPHASE unverified excess_mc2=1883..3149`);
+  ten OUTPUT restarts never moved a settled phase. Nothing repaired a phase
+  found wrong after the boot check: `phase_service()` now runs the confirmed
+  scan live. Main has the same exposure; the host model puts mixed bits at
+  1.4-5 dB, the board shows near-total clipping. Range not yet measured.
+- **Live DC servo restored, gated on the phase.** On the four settled boots:
+  0.26-0.37 cells mean from starts up to 1.65 cells, learned slope 200-420
+  mcells/code. On the wrong-phase boot (before the gate) it walked I to its
+  -96 limit. Servo state is 36 rows in LP RAM: 5.2 KB more static HP RAM left
+  the USB console silent from boot (heap ~34 KB free after boot).
+- **DC batch stop at low gain.** F stopped at G68-G73 as carrier_detected on
+  quantized receiver noise (envelope 1.22); only a definite carrier stops it
+  now. 30/30 rows, code spread 0.8 per row within a session; between boot
+  sessions high-gain Q moved 10-15 codes (~1-2 cells), which the servo trims.
+- **Base map** `main/dco_preset.h` from nine F runs of one board, filled as
+  template rows in task context. Looking it up in the gain hook (which also
+  runs in the vendor RF restore) left the console silent from boot.
 
 ## AGC research: LEVEL, an input-level AGC, and an RSSI baseline (2026-10-25, PR #266)
 

@@ -27,7 +27,7 @@ def versioned(name):
 
 app = site / "app.js"
 source = app.read_text()
-for name in ("esptool.js", "serial-terminal.js", "receiver-console.js", "flight-log.js"):
+for name in ("esptool.js", "serial-terminal.js", "receiver-console.js", "flight-log.js", "calibration-report.js"):
     source = source.replace(f"'./{name}'", f"'./{versioned(name)}'")
 app.write_text(source)
 html = site / "index.html"

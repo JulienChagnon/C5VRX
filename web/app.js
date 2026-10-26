@@ -1,4 +1,5 @@
 import { ESPLoader, Transport } from './esptool.js';
+import { CalibrationCapture } from './calibration-report.js';
 import { SerialTerminal } from './serial-terminal.js';
 import { ReceiverConsole, MENU_COMMAND_KEYS } from './receiver-console.js';
 import { FlightLogCapture, decodeImage, summarize, secondsCsv } from './flight-log.js';
@@ -700,6 +701,9 @@ const MAX_LOG_CHARS = 120000;
 const REFRESH_AFTER = new Set(['b', 'c', 'v', 'o', 'e', 'x', 'g', 'K', 'k', 'j', 'P', 'A', 'G', 'U']);
 const REFRESH_DELAY_MS = 700;
 const receiverConsole = new ReceiverConsole();
+const calibrationCapture = new CalibrationCapture();
+let calibrationTimer = null;
+let calibrationRequest = null;
 let commandBusy = false;
 let refreshTimer = null;
 let logPending = '';
@@ -724,7 +728,7 @@ function receiverValues(v) {
     gainMode: v.gainMode,
     gain: v.gain ? `G${v.gain}` : '',
     menu: v.menu === null ? '' : v.menu ? 'OPEN' : 'CLOSED · LIVE VIDEO',
-    calibrate: v.busy ? 'RUNNING · VIDEO STOPPED' : v.stage || v.statusAt ? 'READY' : '',
+    calibrate: receiverConsole.calibrationHealth === 'bad' ? 'CALIBRATION RECOMMENDED' : v.busy ? 'RUNNING · VIDEO STOPPED' : v.stage || v.statusAt ? 'READY' : '',
     scan: v.scan,
     demod: v.demod,
     liveProfile: v.liveProfile === undefined ? '' : v.liveProfile ? 'ON' : 'OFF · REPORT ONLY',
@@ -789,6 +793,7 @@ function visibleLog(text) {
 
 function appendSerial(text) {
   flightLogFeed(text);
+  calibrationReportFeed(text);
   // Batch the log text: FIELD_DIAG and IQ dumps arrive in many small reads.
   logPending = (logPending + visibleLog(text)).slice(-MAX_LOG_CHARS);
   if (!logTimer) logTimer = setTimeout(flushLog, 50);
@@ -825,6 +830,11 @@ const serialConsole = new SerialTerminal({
       receiverConsole.reset();
     }
     if (state !== 'connected') {
+      if (calibrationCapture.active) {
+        calibrationCapture.fail('Receiver disconnected. Reconnect and download again.');
+        clearTimeout(calibrationTimer);
+        $('calibrationReportStatus').textContent = calibrationCapture.error;
+      }
       clearTimeout(refreshTimer);
       refreshTimer = null;
     }
@@ -855,6 +865,8 @@ function syncDeviceControls() {
   btnConnect.title = terminalConnected ? 'Releases the terminal and connects the flasher' : '';
   btnTerminalConnect.disabled = portBusy;
   syncFlightLogControls(terminalConnected);
+  $('btnCalibrationReport').disabled = !terminalConnected || commandBusy || calibrationCapture.active ||
+    receiverConsole.receiverBusy() || !receiverConsole.supports('C') || flightLog.active;
   btnTerminalConnect.textContent = terminalConnected ? 'Disconnect' : serialConsole.state === 'connecting' ? 'Connecting…' : 'Connect receiver';
   btnTerminalConnect.title = isConnected ? 'Releases the flasher and connects the terminal' : '';
   terminalBaud.disabled = !terminalIdle;
@@ -1159,4 +1171,41 @@ document.addEventListener('DOMContentLoaded', () => {
   renderReceiver();
   syncDeviceControls();
   fetchReleases();
+});
+
+// A dedicated read-only report, independent of the terminal log size limit.
+function calibrationReportFeed(text) {
+  if (!calibrationCapture.push(text)) return;
+  if (calibrationCapture.error) {
+    clearTimeout(calibrationTimer);
+    $('calibrationReportStatus').textContent = calibrationCapture.error;
+  } else if (calibrationCapture.done) {
+    clearTimeout(calibrationTimer);
+    const report = calibrationCapture.report(calibrationRequest || {});
+    const device = report.records.find(r => r.type === 'device');
+    const suffix = report.capturedAt.replace(/[:.]/g, '-');
+    download(`c5vrx-calibration-${device?.board_id || 'board'}-${suffix}.json`, JSON.stringify(report, null, 2), 'application/json');
+    $('calibrationReportStatus').textContent = 'Report downloaded. Send this JSON file to Leon. No calibration was started.';
+  }
+}
+
+$('btnCalibrationReport').addEventListener('click', async () => {
+  if (serialConsole.state !== 'connected' || commandBusy || calibrationCapture.active ||
+      receiverConsole.receiverBusy() || flightLog.active || !receiverConsole.supports('C')) return;
+  calibrationRequest = { boardLabel: $('calibrationBoard').value, vtx: $('calibrationVtx').value || 'unknown', notes: $('calibrationNotes').value };
+  calibrationCapture.start();
+  $('calibrationReportStatus').textContent = 'Reading calibration report…';
+  syncDeviceControls();
+  calibrationTimer = setTimeout(() => {
+    if (!calibrationCapture.active) return;
+    calibrationCapture.fail('Report timed out. Check the connection and firmware, then try again.');
+    $('calibrationReportStatus').textContent = calibrationCapture.error;
+    syncDeviceControls();
+  }, 30000);
+  if (!await serialConsole.send('C')) {
+    clearTimeout(calibrationTimer);
+    calibrationCapture.fail('Could not request the report. Reconnect and try again.');
+    $('calibrationReportStatus').textContent = calibrationCapture.error;
+    syncDeviceControls();
+  }
 });
