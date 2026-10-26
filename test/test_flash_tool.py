@@ -3,11 +3,17 @@ import contextlib
 import importlib.util
 import io
 from pathlib import Path
+import sys
 import tempfile
+import types
 import unittest
 from unittest import mock
 
-import serial as flash_serial
+# CI runs this with the container's plain python3, which has no pyserial, so
+# the monitor tests swap in this stand-in for the serial module.
+flash_serial = types.ModuleType("serial")
+flash_serial.SerialException = type("SerialException", (OSError,), {})
+flash_serial.SerialTimeoutException = type("SerialTimeoutException", (flash_serial.SerialException,), {})
 
 spec = importlib.util.spec_from_file_location("flash", Path(__file__).parents[1] / "tools/flash.py")
 flash = importlib.util.module_from_spec(spec)
@@ -129,7 +135,8 @@ class MonitorTest(unittest.TestCase):
     def monitor(self, port, keys):
         keys = list(keys)
         out = io.StringIO()
-        with mock.patch.object(flash_serial, "Serial", port), mock.patch.object(flash.time, "sleep"):
+        flash_serial.Serial = port
+        with mock.patch.dict(sys.modules, {"serial": flash_serial}), mock.patch.object(flash.time, "sleep"):
             flash.monitor("COM6", lambda: keys.pop(0) if keys else "\x1d", out)
         return out.getvalue()
 
