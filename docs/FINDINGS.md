@@ -60,8 +60,26 @@ under the scheduler hold, ending where the active descriptor began, so it
 covers the gain window); gain observation keeps the 4092-byte descriptor.
 Noise windows of both lengths still give no sync. A longer window passes
 the envelope-stationarity gate less often near the noise floor; AFC
-re-acquisition already waits for >= 6 dB C/N. Board check pending: lock,
-deviation measurement and the narrow profile, which all waited on the lock.
+re-acquisition already waits for >= 6 dB C/N.
+
+Board check of this firmware (same day, after one manual calibration with
+the VTX off): `DFILT want=12 hw_mode=12`, `cal_generation=4`, picture fine
+in the goggles. The source was now NTSC with a detected colour burst
+(`burst_x10` ~53, period 2542), deviation 0.73. `sync_valid_pct` averaged
+82 % (was ~30 %), but the AFC still did not lock: porch MAD 185-284 kHz
+with the median residual inside the deadband. Replay of 18 fresh snapshots
+and a mean frequency profile after the sync (`runs` not kept; method in
+`research/sync_window_replay.c`) show why: NTSC's back porch is ~1 us
+shorter than PAL's, so the porch window (3.4-4.4 us after the detected sync
+end, set for PAL) already reaches the active video. The estimate follows
+picture content, and it reads the VTX as centred while its flat porch sits
+at about -1620 kHz, ~600 kHz from the target. An earlier window (start
+~100 samples) reads -1605..-1627 kHz for NTSC and keeps PAL at MAD 44-60,
+but the NTSC MAD stays 100-135 kHz; a subcarrier-integer length (45
+samples) did not lower it, so the burst is not the remaining cause. On the
+earlier PAL snapshots the new window gives MAD 48 kHz and residual -44 kHz,
+inside the lock gates. The NTSC porch window is a follow-up; it predates
+this change.
 
 ## GPIO27 IQ loopback experiment (2026-10-25)
 
