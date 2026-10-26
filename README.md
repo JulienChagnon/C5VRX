@@ -195,7 +195,9 @@ KiCad ERC/DRC and schematic/PCB parity checks are clean; REV C has not been buil
   flashes without a line reset and restarts through the watchdog. If the
   board is already in the ROM loader (BOOT held while plugging in), add
   `--no-key`. `--app-only` flashes only the app image, which is faster
-  when the bootloader and partition table have not changed.
+  when the bootloader and partition table have not changed, and
+  `--monitor` then shows the console without resetting the chip (use it
+  instead of `idf.py flash monitor`).
 - **Local File** flashes your own `.bin`; **Legacy builds** contains archived
   C5VRX-3 firmware.
 
