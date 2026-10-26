@@ -328,6 +328,127 @@ btnConnect.addEventListener('click', async () => {
   else await connectDevice();
 });
 
+// The USB reset never reaches the ROM loader on a running C5VRX-5: it resets
+// the CPU but not the modem, whose dump writer keeps the loader from
+// answering, and the board stays hung until it is power-cycled (main/rf.c,
+// rf_reboot_to_download). The console key ` stops the writer, sets the
+// LP_AON force-download boot and restarts cleanly, so the key goes first;
+// a board already in the loader ignores the byte. tools/enter_download.py
+// does the same.
+const DOWNLOAD_KEY = 0x60;
+const DOWNLOAD_ACK = 'download_boot=requested';
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+// After flashing, the RTS reset brings an ESP32-C5 back up in the loader
+// (board 2026-10-25), and esptool.js has no C5 watchdog reset. These are
+// esptool's own LP watchdog writes for the C5 (esp32c3.py watchdog_reset,
+// esp32c6.py addresses): unlock, timeout, enable with a system reset.
+const LP_WDT_CONFIG0_REG = 0x600b1c00;
+const LP_WDT_CONFIG1_REG = 0x600b1c04;
+const LP_WDT_WPROTECT_REG = 0x600b1c18;
+const LP_WDT_WKEY = 0x50d83aa1;
+const LP_WDT_RESET_CONFIG = 0xd0000102;
+
+// Sends the key and says what came back: 'acknowledged', 'port closed' (the
+// restart took the port), 'other output' or 'no reply'. Bounded: a console
+// that does not read never blocks the write for more than a second.
+async function sendDownloadKey(selectedPort) {
+  await selectedPort.open({ baudRate: 115200 });
+  // DTR low with RTS high is the USB-JTAG chip reset. Chrome may raise both
+  // on open and drop them on close; dropped DTR-first while the receiver
+  // still runs, that is the reset that hangs it. Lower them now, RTS first,
+  // so closing changes nothing.
+  try {
+    await selectedPort.setSignals({ requestToSend: false });
+    await selectedPort.setSignals({ dataTerminalReady: false });
+  } catch { /* not supported: carry on */ }
+  const reader = selectedPort.readable.getReader();
+  const writer = selectedPort.writable.getWriter();
+  let seen = '', outcome = '', cancelling = false;
+  const decoder = new TextDecoder();
+  // The read only ends by itself when the restart takes the port; ending it
+  // here (cancel) says nothing about the board.
+  const reading = (async () => {
+    try {
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) { if (!cancelling) outcome = 'port closed'; return; }
+        seen = (seen + decoder.decode(value, { stream: true })).slice(-4096);
+        if (seen.includes(DOWNLOAD_ACK)) { outcome = 'acknowledged'; return; }
+      }
+    } catch {
+      if (!cancelling) outcome = 'port closed';
+    }
+  })();
+  try {
+    const writing = writer.write(new Uint8Array([DOWNLOAD_KEY])).catch(() => {});
+    await Promise.race([writing, wait(1000)]);
+    await Promise.race([reading, wait(1000)]);
+    // The firmware restarts ~50 ms after its reply: leave the port alone
+    // until it has.
+    if (outcome === 'acknowledged') await wait(500);
+  } finally {
+    cancelling = true;
+    // Bounded: a board that stopped reading never completes a pending write.
+    try { await Promise.race([writer.abort(), wait(500)]); } catch { /* the device may be gone */ }
+    try { await Promise.race([reader.cancel(), wait(500)]); } catch { /* the device may be gone */ }
+    try { reader.releaseLock(); } catch { /* still reading */ }
+    try { writer.releaseLock(); } catch { /* already released */ }
+    // A port that vanished with the restart may never finish closing.
+    try { await Promise.race([selectedPort.close(), wait(1000)]); } catch { /* the device may be gone */ }
+  }
+  return outcome || (seen ? 'other output' : 'no reply');
+}
+
+// If the restart drops the board off USB, Chrome hands it back as a new
+// SerialPort (a 'connect' event; the permission is kept). On the bench
+// (Windows, Chrome) the same port stayed valid; this is a guard.
+function watchReconnect() {
+  const watch = { vanished: false, back: null };
+  const onDisconnect = () => { watch.vanished = true; };
+  const onConnect = event => { watch.back = event.target; };
+  navigator.serial.addEventListener('disconnect', onDisconnect);
+  navigator.serial.addEventListener('connect', onConnect);
+  watch.stop = () => {
+    navigator.serial.removeEventListener('disconnect', onDisconnect);
+    navigator.serial.removeEventListener('connect', onConnect);
+  };
+  return watch;
+}
+
+async function portAfterRestart(previous, watch) {
+  for (let t = 0; t < 80 && watch.vanished && !watch.back; ++t) await wait(100);
+  watch.stop();
+  if (watch.back) return watch.back;
+  const info = previous.getInfo();
+  const same = p => p.getInfo().usbVendorId === info.usbVendorId && p.getInfo().usbProductId === info.usbProductId;
+  const ports = await navigator.serial.getPorts();
+  return (watch.vanished && ports.find(p => p !== previous && same(p))) || ports.find(p => p === previous) || ports.find(same) || previous;
+}
+
+async function handshake(selectedPort, mode) {
+  // esptool.js reopens the port (baud change) and closes it at the end.
+  // Lowering DTR and RTS (RTS first) after every open keeps those closes
+  // from passing through the chip reset; its USB reset sets them itself.
+  class QuietTransport extends Transport {
+    async connect(...args) {
+      await super.connect(...args);
+      try {
+        await this.device.setSignals({ requestToSend: false });
+        await this.device.setSignals({ dataTerminalReady: false });
+      } catch { /* not supported: carry on */ }
+    }
+  }
+  transport = new QuietTransport(selectedPort);
+  esploader = new ESPLoader({
+    transport,
+    baudrate: parseInt(selectBaud.value, 10) || 460800,
+    terminal,
+    romBaudrate: 115200,
+    debugLogging: false
+  });
+  await esploader.main(mode);
+}
+
 async function connectDevice() {
   if (isConnecting || isConnected || isFlashing || !['disconnected', 'connected'].includes(serialConsole.state) || !checkSerialSupport()) return;
   isConnecting = true;
@@ -337,19 +458,34 @@ async function connectDevice() {
     await serialConsole.disconnect();
     log('Opening the serial port selector…');
     port = await navigator.serial.requestPort();
-    statStatus.textContent = 'Connecting…';
-
-    transport = new Transport(port);
-    esploader = new ESPLoader({
-      transport,
-      baudrate: parseInt(selectBaud.value, 10) || 460800,
-      terminal,
-      romBaudrate: 115200,
-      debugLogging: false
-    });
-
-    log('Handshaking with the ESP32-C5 ROM bootloader…');
-    await esploader.main('usb_reset');
+    // esptool.js clears the log when the loader object is created: steps go
+    // to the status line and the route is logged once connected.
+    statStatus.textContent = 'Connecting… sending the download key';
+    const watch = watchReconnect();
+    let keyReply;
+    try { keyReply = await sendDownloadKey(port); } catch (err) { keyReply = `not sent: ${err.message || err}`; }
+    // A receiver that took the key restarts into the loader, which answers
+    // without any reset (board 2026-10-25: 3 of 3). The USB reset must not
+    // follow it: that hung the board. Without C5VRX firmware, or with BOOT
+    // held at power-up, nothing answers the key and the USB reset works.
+    const restarted = keyReply === 'acknowledged' || keyReply === 'port closed';
+    statStatus.textContent = `Connecting… waiting for the restart (download key: ${keyReply})`;
+    await wait(2000);
+    const previous = port;
+    port = await portAfterRestart(previous, watch);
+    keyReply += `; port ${port !== previous ? 'reconnected' : watch.vanished ? 'lost, reusing it' : 'kept'}`;
+    statStatus.textContent = `Connecting… bootloader handshake (download key: ${keyReply})`;
+    let route = 'download key';
+    try {
+      await handshake(port, 'no_reset');
+    } catch (err) {
+      if (restarted) throw new Error(`The receiver restarted into the bootloader but did not answer (${err.message || err}). Unplug it, plug it back in and connect again.`);
+      try { await transport.disconnect(); } catch { /* already closed */ }
+      statStatus.textContent = `Connecting… USB reset into the bootloader (download key: ${keyReply})`;
+      await handshake(port, 'usb_reset');
+      route = 'USB reset';
+    }
+    log(`Bootloader reached by ${route} (download key: ${keyReply}).`);
 
     isConnected = true;
     btnConnectText.textContent = 'Disconnect';
@@ -464,10 +600,25 @@ btnFlash.addEventListener('click', async () => {
 
     setProgress(100, 'Done. Restarting the receiver…');
     log('Flash written and verified. Resetting into the new firmware…');
+    let resetting = false;
     try {
-      await esploader.after('hard_reset');
+      await esploader.writeReg(LP_WDT_WPROTECT_REG, LP_WDT_WKEY);
+      await esploader.writeReg(LP_WDT_CONFIG1_REG, 2000);
+      resetting = true;   // the chip resets on this write and may not answer it
+      await esploader.writeReg(LP_WDT_CONFIG0_REG, LP_WDT_RESET_CONFIG);
     } catch {
-      // The reset pulse can close the USB-CDC port.
+      // No reply from a chip that is already resetting.
+    }
+    // Let the watchdog fire before the port closes: closing it changes the
+    // USB control lines, which reset the chip back into the loader first
+    // (board 2026-10-25; esptool also waits after this write).
+    if (resetting) await wait(1000);
+    if (!resetting) {
+      try {
+        await esploader.after('hard_reset');
+      } catch {
+        // The reset pulse can close the USB-CDC port.
+      }
     }
     progressStatusText.textContent = 'Done. Open Terminal to watch the receiver boot.';
     log('Flashing completed.');

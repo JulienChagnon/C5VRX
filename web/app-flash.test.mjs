@@ -24,7 +24,7 @@ function harness(sourceName, packageType = 'merged', confirmed = true) {
     element.dataset = { command: match[1], hint: match[2].match(/data-hint="([^"]+)"/)?.[1] };
     return element;
   });
-  const downloads = [], flashes = [], alerts = [], commands = [], lifecycle = [];
+  const downloads = [], flashes = [], alerts = [], commands = [], lifecycle = [], resets = [];
   const context = vm.createContext({
     console, URL, Date, TextDecoder, TextEncoder, ReceiverConsole, MENU_COMMAND_KEYS, setTimeout, clearTimeout,
     FlightLogCapture, decodeImage, summarize, secondsCsv,
@@ -41,7 +41,8 @@ function harness(sourceName, packageType = 'merged', confirmed = true) {
     },
     alert: message => alerts.push(message),
     fetch: async url => { downloads.push(url); return { ok: true, arrayBuffer: async () => new Uint8Array([1, 2, 3, 4]).buffer }; },
-    mockLoader: { writeFlash: async options => flashes.push(options), after: async () => {} }
+    mockLoader: { writeFlash: async options => flashes.push(options),
+      writeReg: async (...args) => resets.push(['writeReg', ...args]), after: async mode => resets.push(['after', mode]) }
   });
   vm.runInContext(source, context);
   for (const id of ['selectRelease', 'selectAlphaBuild']) get(id).value = '0';
@@ -57,7 +58,7 @@ function harness(sourceName, packageType = 'merged', confirmed = true) {
     ] };
     githubReleases = [rel]; githubAlphaBuilds = [rel];
   `, context);
-  return { get, context, downloads, flashes, alerts, commands, lifecycle, shortcuts, click: () => get('btnFlash').handlers.click() };
+  return { get, context, downloads, flashes, alerts, commands, lifecycle, resets, shortcuts, click: () => get('btnFlash').handlers.click() };
 }
 
 for (const remote of ['github', 'alpha']) {
@@ -198,7 +199,9 @@ test('controls stay locked until the post-flash disconnect completes', async () 
   let release;
   vm.runInContext('transport = { disconnect: () => new Promise(r => { globalThis.releaseDisconnect = r; }) };', h.context);
   const done = h.click();
-  await new Promise(resolve => setTimeout(resolve, 10));
+  // The watchdog reset waits a second before the port is released.
+  for (let t = 0; t < 300 && !vm.runInContext('globalThis.releaseDisconnect', h.context); ++t)
+    await new Promise(resolve => setTimeout(resolve, 10));
   assert.equal(vm.runInContext('isFlashing', h.context), true);
   assert.equal(h.get('btnTerminalConnect').disabled, true);
   release = vm.runInContext('releaseDisconnect', h.context);
@@ -206,4 +209,119 @@ test('controls stay locked until the post-flash disconnect completes', async () 
   await done;
   assert.equal(vm.runInContext('isFlashing || isConnected', h.context), false);
   assert.equal(h.get('btnTerminalConnect').disabled, false);
+});
+
+// A serial port that answers the download key the way a running receiver
+// does (reply), or not at all (a board in the ROM loader or a busy console).
+function mockPort(reply) {
+  const port = { written: [], getInfo: () => ({ usbVendorId: 0x303a, usbProductId: 0x1001 }), close: async () => {} };
+  port.open = async () => {
+    let wake = null, pending = null;
+    port.readable = { getReader: () => ({
+      read: () => new Promise(resolve => { if (pending) { resolve(pending); pending = null; } else wake = resolve; }),
+      cancel: async () => wake?.({ done: true }), releaseLock() {} }) };
+    port.writable = { getWriter: () => ({
+      write: async bytes => {
+        port.written.push(...bytes);
+        if (!reply) return;
+        const chunk = { value: new TextEncoder().encode(reply) };
+        if (wake) { const w = wake; wake = null; w(chunk); } else pending = chunk;
+      },
+      abort: async () => {} }) };
+  };
+  return port;
+}
+
+// reconnectAs: the port Chrome hands back after the restart drops the board
+// off USB ('disconnect' then 'connect' on navigator.serial).
+function connectHarness(port, failingModes, reconnectAs = null) {
+  const h = harness('alpha');
+  const modes = [], loaderPorts = [], listeners = { connect: new Set(), disconnect: new Set() };
+  vm.runInContext('isConnected = false; esploader = null;', h.context);
+  const serial = h.context.navigator.serial;
+  serial.addEventListener = (name, fn) => listeners[name]?.add(fn);
+  serial.removeEventListener = (name, fn) => listeners[name]?.delete(fn);
+  serial.requestPort = async () => port;
+  serial.getPorts = async () => [reconnectAs || port];
+  if (reconnectAs) {
+    const write = port.open;
+    port.open = async () => {
+      await write();
+      const writer = port.writable.getWriter();
+      port.writable.getWriter = () => ({ ...writer, write: async bytes => {
+        await writer.write(bytes);
+        for (const fn of listeners.disconnect) fn({ target: port });
+        setTimeout(() => { for (const fn of listeners.connect) fn({ target: reconnectAs }); }, 300);
+      } });
+    };
+  }
+  h.context.Transport = class { constructor(p) { this.port = p; loaderPorts.push(p); } async disconnect() {} };
+  h.context.ESPLoader = class {
+    constructor(options) { this.transport = options.transport; }
+    async main(mode) { modes.push(mode); if (failingModes.includes(mode)) throw new Error('no sync'); }
+  };
+  return { ...h, modes, loaderPorts, listeners, connect: () => h.get('btnConnect').handlers.click() };
+}
+
+test('a running receiver takes the key and its loader answers without any reset', async () => {
+  const port = mockPort('C5VRX5 download_boot=requested\r\n');
+  const h = connectHarness(port, []);
+  await h.connect();
+  assert.deepEqual(port.written, [0x60]);
+  assert.deepEqual(h.modes, ['no_reset']);
+  assert.equal(vm.runInContext('isConnected', h.context), true);
+  assert.equal(h.alerts.length, 0);
+});
+
+test('after the key, a silent loader is never USB-reset (that hung the board)', async () => {
+  const port = mockPort('C5VRX5 download_boot=requested\r\n');
+  const h = connectHarness(port, ['no_reset']);
+  await h.connect();
+  assert.deepEqual(h.modes, ['no_reset']);
+  assert.equal(vm.runInContext('isConnected', h.context), false);
+  assert.match(h.alerts[0], /Unplug it, plug it back in/);
+});
+
+test('no reply to the key (BOOT held, other firmware): the USB reset, as before', async () => {
+  const port = mockPort(null);
+  const h = connectHarness(port, ['no_reset']);
+  await h.connect();
+  assert.deepEqual(port.written, [0x60]);
+  assert.deepEqual(h.modes, ['no_reset', 'usb_reset']);
+  assert.equal(vm.runInContext('isConnected', h.context), true);
+});
+
+test('a port that cannot take the key still gets the loader', async () => {
+  const port = mockPort(null);
+  port.open = async () => { throw new Error('busy'); };
+  const h = connectHarness(port, ['no_reset']);
+  await h.connect();
+  assert.deepEqual(h.modes, ['no_reset', 'usb_reset']);
+  assert.equal(vm.runInContext('isConnected', h.context), true);
+});
+
+test('after the restart drops the board off USB, the loader talks to the reconnected port', async () => {
+  const port = mockPort('C5VRX5 download_boot=requested\r\n');
+  const back = mockPort(null);
+  const h = connectHarness(port, [], back);
+  await h.connect();
+  assert.deepEqual(h.modes, ['no_reset']);
+  assert.equal(h.loaderPorts.length, 1);
+  assert.equal(h.loaderPorts[0], back);
+  assert.equal(h.listeners.connect.size + h.listeners.disconnect.size, 0);   // listeners removed
+  assert.equal(vm.runInContext('isConnected', h.context), true);
+});
+
+test('after flashing, the LP watchdog restarts the C5 into the new firmware, not the RTS reset', async () => {
+  const h = harness('alpha');
+  await h.click();
+  assert.deepEqual(h.resets, [
+    ['writeReg', 0x600b1c18, 0x50d83aa1], ['writeReg', 0x600b1c04, 2000], ['writeReg', 0x600b1c00, 0xd0000102]]);
+});
+
+test('a loader that refuses the watchdog writes still gets the RTS reset', async () => {
+  const h = harness('alpha');
+  h.context.mockLoader.writeReg = async () => { throw new Error('write failed'); };
+  await h.click();
+  assert.deepEqual(h.resets, [['after', 'hard_reset']]);
 });
