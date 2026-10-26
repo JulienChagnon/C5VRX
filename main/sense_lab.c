@@ -224,6 +224,15 @@ static __attribute__((noreturn)) void fatal(const char *why)
     fflush(stdout);
     esp_restart();
 }
+/* A paused gain write releases the DC hold and the post-gain hook stays
+ * silent: re-hold the row's calibrated pair explicitly, then settle. */
+static void set_gain_held(uint8_t gain)
+{
+    receiver_set_gain(gain);
+    (void)calibration_dc_hold_current();
+    vTaskDelay(pdMS_TO_TICKS(100));
+}
+
 static bool capture(uint8_t *raw)
 {
     for (unsigned i = 0; i < 40u; ++i) {
@@ -371,14 +380,12 @@ static void run_gain(unsigned id, uint8_t row)
     memset(st, 0, sizeof(st));
     const char *why = measure_stage(id, 0, L.gain, true, &st[0]);
     if (!why) {
-        receiver_set_gain(row);
-        vTaskDelay(pdMS_TO_TICKS(100));
-        printf("SENSLAB_APPLY id=%u verified=%u\n", id, s_current_gain == row);
+        set_gain_held(row);
+        printf("SENSLAB_APPLY id=%u verified=%u dc_held=%u\n", id, s_current_gain == row, phy_dco_held());
         why = measure_stage(id, 1, row, false, &st[1]);
         if (!why) why = measure_stage(id, 2, row, false, &st[2]);
     }
-    receiver_set_gain(L.gain);
-    vTaskDelay(pdMS_TO_TICKS(100));
+    set_gain_held(L.gain);
     const char *back = context_fail(L.gain, true);
     printf("SENSLAB_RESTORE id=%u verified=%u%s%s\n", id, !back, back ? " reason=" : "", back ? back : "");
     if (back) { why = back; L.stop = true; }
@@ -572,7 +579,7 @@ static bool screen_gain(uint8_t entry)
     for (unsigned step = 0; step < 6u; ++step) {
         const int g = (int)entry - 2 * (int)step;
         if (g < 20) break;
-        if (s_current_gain != (uint8_t)g) { receiver_set_gain((uint8_t)g); vTaskDelay(pdMS_TO_TICKS(100)); }
+        if (s_current_gain != (uint8_t)g) set_gain_held((uint8_t)g);
         if (!calibration_dc_ok((uint8_t)g)) { printf("SENSLAB_GAIN gain=%d skip=no_dc_correction\n", g); continue; }
         double rail = 0.0, m2 = 0.0;
         unsigned got = 0;
@@ -650,7 +657,7 @@ void sense_lab_run(bool quiet)
         }
     }
     s_active = NULL;
-    receiver_set_gain(entry_gain);
+    if (s_current_gain != entry_gain) set_gain_held(entry_gain);
     phy_end();
     receiver_resume();
     free(L.raw);

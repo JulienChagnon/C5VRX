@@ -873,6 +873,14 @@ static void dco_hold_for_scan(void)
     (void)phy_dco_hold(dco_trimmed((unsigned)r, 0), dco_trimmed((unsigned)r, 1));   /* the live trim too */
 }
 
+/* Bench labs (sense_lab.c) write gains while paused too: the same explicit
+ * hold, so TEST and STOCK rows keep their calibrated DC. */
+bool calibration_dc_hold_current(void)
+{
+    dco_hold_for_scan();
+    return phy_dco_held();
+}
+
 static bool dco_measure(int dc[2])
 {
     window_stats_t w;

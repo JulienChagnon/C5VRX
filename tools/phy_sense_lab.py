@@ -29,6 +29,10 @@ METRICS = {
     'cn_db': (+1, 0.10),
     'video_snr_db': (+1, 0.20),
     'click_pm': (-1, 0.05),
+    # Share of captures in which the AFC decoder found syncs (1 or 0 per
+    # capture). video_snr_db alone would drop a TEST that loses sync
+    # entirely and score the candidate on the other metrics.
+    'video_cov': (+1, 0.10),
 }
 EXTRA = ('origin_pm', 'rail_pm')
 CAPTURES_PER_STAGE = 16
@@ -78,7 +82,9 @@ def parse(lines):
             prof = run['profiles'].get(pid)
             if prof is None or step not in prof['caps']:
                 continue
-            prof['caps'][step].append({k: num(fields.get(k)) for k in (*METRICS, *EXTRA)})
+            values = {k: num(fields.get(k)) for k in (*METRICS, *EXTRA) if k != 'video_cov'}
+            values['video_cov'] = 0.0 if values['video_snr_db'] is None else 1.0
+            prof['caps'][step].append(values)
         elif tag == 'SENSLAB_APPLY' and current is not None:
             current['applied'] = fields.get('verified') == '1'
         elif tag == 'SENSLAB_RESTORE':
@@ -217,12 +223,12 @@ def report(path, run, profiles, spread, out):
         s = spread[metric]
         rms = 'na' if s['rms'] is None else f"{s['rms']:.3f}"
         out.write(f"   sham spread {metric}: rms={rms} from {s['n']} shams\n")
-    out.write("   id   name                      verdict        d_cn_db  d_video  d_click  drift_cn\n")
+    out.write("   id   name                      verdict        d_cn_db  d_video  d_click  d_vcov  drift_cn\n")
     for p in profiles:
         drift = p['d'].get('cn_db') or {}
         dr = drift.get('drift')
         out.write(f"   {p['id']:<4} {p['name'][:25]:<25} {p['verdict']:<14} {fmt(p['d'], 'cn_db')}  "
-                  f"{fmt(p['d'], 'video_snr_db')}  {fmt(p['d'], 'click_pm', 7, 3)}  "
+                  f"{fmt(p['d'], 'video_snr_db')}  {fmt(p['d'], 'click_pm', 7, 3)}  {fmt(p['d'], 'video_cov', 6, 2)}  "
                   f"{'na' if dr is None else f'{dr:+.2f}'}\n")
     for s in run['skips']:
         out.write(f"   skip {s.get('name')}: {s.get('reason')}\n")

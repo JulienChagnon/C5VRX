@@ -33,6 +33,7 @@ carrier present** and scores, per capture, what reaches the demodulator:
 | `cn_db` | M2M4 carrier-to-noise from the second and fourth moments of the IQ (constant-envelope FM in Gaussian noise: S = sqrt(2 M2² − M4), N = M2 − S) | A setting that scales carrier and noise together leaves it unchanged; a real sensitivity change moves it |
 | `video_snr_db` | Demodulated video SNR of the existing AFC decoder (`afc.h` `afc2_snr_x10`): sync-to-blanking distance over the spread of the instantaneous frequency on the sync tips and back porch | What the goggles get after FM detection, independent of picture content |
 | `click_pm` | Adjacent-sample phase steps above ¾π, per mille (the largest FM step is 1.41 rad) | FM threshold clicks: the sparkles and lost syncs at the range edge |
+| `video_cov` (tool) | Share of captures in which the decoder found syncs | A candidate that loses sync cannot hide behind better C/N |
 | `origin_pm`, `rail_pm` | Samples in the four origin cells / on a signed-nibble rail | Diagnostics: weak signal / folding risk |
 
 Host model (`test/test_sense_metrics.c`, synthetic NTSC-like FM, 4-bit
@@ -95,7 +96,9 @@ no-ops (`noop=1`) and are reported, not scored.
   AFC, gain, DC servo, filter or tuning write can land between STOCK and
   TEST.
 - Fixed gain: the highest row at or below the live gain with a calibrated
-  DC row and no rail pile-up (`rail_pm` ≤ 2). The DC pair, frequency,
+  DC row and no rail pile-up (`rail_pm` ≤ 2). Every gain write in the lab re-holds
+  that row's calibrated DC pair explicitly (the post-gain hook is silent
+  while the receiver is paused). The DC pair, frequency,
   offset, physical RF/BB/fine tuple, filter bytes and the profile's own
   bits are checked before and after every capture.
 - A TEST write that does not read back is `REJECTED_ENTRY`; a TEST setting
@@ -154,7 +157,7 @@ Per run, each candidate gets one verdict:
 
 | Verdict | Meaning |
 | --- | --- |
-| `BETTER` / `WORSE` | At least one metric moved beyond max(3 SE, 2 × sham RMS, floor) and none moved the other way. Floors: 0.10 dB `cn_db`, 0.20 dB `video_snr_db`, 0.05 ‰ clicks |
+| `BETTER` / `WORSE` | At least one metric moved beyond max(3 SE, 2 × sham RMS, floor) and none moved the other way. Floors: 0.10 dB `cn_db`, 0.20 dB `video_snr_db`, 0.05 ‰ clicks, 0.10 video coverage |
 | `MIXED` | Metrics disagree (e.g. more C/N but more clicks) |
 | `NO_EFFECT` | Within the comparison's own spread |
 | `UNSTABLE` | STOCK before/after or the two TEST blocks differ by more than the threshold (fade, movement): repeat |
