@@ -1017,6 +1017,13 @@ static const char *noise_check(unsigned *env_out, int *clip_out)
 }
 
 static bool noise_like(void) { return noise_check(NULL, NULL) == NULL; }
+static bool carrier_like(void)
+{
+    unsigned env = 0;
+    int clip = 0;
+    const char *why = noise_check(&env, &clip);
+    return cal_dc_gate_carrier(why, env, clip);
+}
 
 /* A search needs noise wide enough to dither the quantizer: >= 3 cells
  * per axis each with >= 5 % of the samples. A failed probe is not a floor:
@@ -1207,7 +1214,7 @@ static void dco_repair_rows(int64_t deadline)
                  * the search inside its linear range. */
                 if (n < (int)s_dco.lo || n > (int)s_dco.hi || s_dco.e[g].valid || s_dco.e[n].valid != DCO_ROW_OK ||
                     g < (int)s_dco_floor) continue;
-                if (esp_timer_get_time() > deadline || !noise_like()) return;
+                if (esp_timer_get_time() > deadline || carrier_like()) return;
                 const int seed[2] = {s_dco.e[n].code[0], s_dco.e[n].code[1]};
                 ++s_dco_repairs;
                 if (dco_quiet_search((uint8_t)g, seed) == NOISE_MEASURABLE && s_dco.e[g].valid == DCO_ROW_OK) {
@@ -1243,7 +1250,14 @@ static const char *dco_quiet_rows(bool manual, bool refine, int64_t deadline, co
         snprintf(line2, sizeof(line2), "ABOUT %u S LEFT, THEN LIVE VIDEO", left);
         status_screen("CALIBRATING DC", line1, line2, rows ? (int)(done * 100u / rows) : 0);
         if (esp_timer_get_time() > deadline) { why = "timeout"; break; }
-        if (!noise_like()) { why = "carrier_detected"; break; }   /* VTX switched on / leaking */
+        unsigned env = 0;
+        int clip = 0;
+        const char *quiet = noise_check(&env, &clip);
+        if (cal_dc_gate_carrier(quiet, env, clip)) {   /* VTX switched on / leaking */
+            printf("DCO gate row=%d gain=%u reason=%s env_x100=%u clip_pm=%d\n", g, s_current_gain, quiet, env, clip);
+            why = "carrier_detected";
+            break;
+        }
         /* Only own, converged, unbanned rows of this exact filter/channel
          * seed the next row; a template is never calibration evidence. */
         const bool own = s_dco.e[g].valid == DCO_ROW_OK && !dco_mask_get(s_dco_templ, (unsigned)g) &&

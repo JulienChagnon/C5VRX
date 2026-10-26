@@ -1,6 +1,7 @@
 /* C5VRX by Twotoz and contributors: exact shared filter-measurement math.
  * No prior DC calibration is required; failed copies contribute no samples. */
 #pragma once
+#include <string.h>
 #include "dsp.h"
 typedef struct {
     float psd[DSP_FFT_N];
@@ -49,4 +50,17 @@ static inline bool cal_setting_quiet(unsigned env, int clip) { return env <= dsp
 static inline bool cal_setting_carrier(unsigned env, int clip)
 {
     return env > dsp_quiet_limit(clip) + DSP_QUIET_CARRIER_X100;
+}
+/* DC batch gate: whether a quiet-test result means a carrier. Low gain rows
+ * hold receiver noise of only a few quantizer steps; quantization lifts its
+ * envelope statistic above the quiet limit (board 2026-10-26, VTX off and
+ * video output proven not to raise the floor: G69 env 1.22, F stopped at
+ * G68..G73 as carrier_detected) or puts it in the centre cells ("origin").
+ * The row search measures such rows itself (flat when below one step), so
+ * as in the filter sweep only a definite carrier stops the batch. */
+static inline bool cal_dc_gate_carrier(const char *why, unsigned env, int clip)
+{
+    if (!why || !strcmp(why, "origin")) return false;
+    if (!strcmp(why, "envelope")) return cal_setting_carrier(env, clip);
+    return true;
 }

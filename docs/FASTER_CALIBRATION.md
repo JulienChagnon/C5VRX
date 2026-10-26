@@ -115,3 +115,19 @@ manual search internals, not total boot. F also skips the 130-setting search and
 up to two extra DC tables compared with main's F, but actual total speedup needs
 hardware `BOOT_TIMING`, `CAL_MANUAL` and `CAL_STEP` logs. There is no numerical
 whole-calibration/range claim without those measurements.
+
+## Board result: low-gain DC gate (2026-10-26)
+
+One board (b26ef545), A1 5865 MHz, VTX off, video output proven not to raise
+the floor (console N: +0.11 dB on vs off). With 1ce49d0 every F stopped the DC
+batch at G68..G73 as `carrier_detected`, leaving 14-15 low-gain rows missing
+and the stop row varying per run. Gate log: `reason=envelope env_x100=122`
+at G69. Receiver noise of a few quantizer steps lifts the envelope statistic
+above the quiet limit (1.15) or reads `origin`; it is not a carrier. The DC
+batch and row repair now stop only on a definite carrier, the filter sweep's
+rule (`cal_dc_gate_carrier`; a carrier still stops it from ~2 dB C/N in the
+host model). Result over three F runs: 30/30 rows (`result=done`), pooled
+code std I 0.81 / Q 0.83 (was 1.30 / 0.90 over the partial maps), measured
+width 13125 kHz each run, F 32-37 s (more rows measured). One board only;
+no range claim. Uncalibrated, this board showed 3.7/1.7 cells live DC at G83
+before F.

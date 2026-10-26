@@ -103,6 +103,31 @@ int main(void)
     assert(!strcmp(cal_channel_quiet(s, 24, false, NULL, NULL), "origin"));
     memset(s, 0x77, sizeof(s));
     assert(!strcmp(cal_channel_quiet(s, 24, false, NULL, NULL), "rails"));
-    puts("PASS: issue #199 DC/noise, 100 synthetic settings, weak FM, missing probes, sync/origin/rails");
+    assert(cal_dc_gate_carrier("rails", 0, 400) && cal_dc_gate_carrier("video_sync", 0, 0));
+    /* Low gain rows, VTX off (board 2026-10-26: G68/G69/G70 noise ~0.35..0.57
+     * cells^2, G69 envelope 1.22): quantized receiver noise reads "origin" or
+     * a slightly raised envelope, never a definite carrier. */
+    static const double low_var[] = {0.25, 0.35, 0.45, 0.57, 0.75, 0.95};
+    for (unsigned v = 0; v < 6; ++v) {
+        for (unsigned k = 0; k < 24u * 256u; ++k) {
+            int i = cell(sqrt(low_var[v]) * gauss()), q = cell(sqrt(low_var[v]) * gauss());
+            s[k] = (uint8_t)(((i & 15) << 4) | (q & 15));
+        }
+        unsigned e = 0;
+        int c = 0;
+        const char *why = cal_channel_quiet(s, 24, false, &e, &c);
+        assert(!cal_dc_gate_carrier(why, e, c));
+    }
+    assert(!cal_dc_gate_carrier(NULL, 0, 0) && !cal_dc_gate_carrier("envelope", 122, 0));
+    /* A VTX switched on mid batch still stops it (definite from ~2 dB C/N,
+     * the filter sweep's rule; checked here with margin at 6..12 dB). */
+    for (int cn = 6; cn <= 12; cn += 3) {
+        make(s, .55, cn);
+        unsigned e = 0;
+        int c = 0;
+        const char *why = cal_channel_quiet(s, 24, false, &e, &c);
+        assert(cal_dc_gate_carrier(why, e, c));
+    }
+    puts("PASS: issue #199 DC/noise, 100 synthetic settings, weak FM, missing probes, sync/origin/rails, low-gain quantized noise is no DC-batch carrier");
     return 0;
 }
