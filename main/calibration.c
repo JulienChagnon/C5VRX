@@ -23,6 +23,7 @@
  * deviation, diag.c). A step that cannot run (no quiet channel, menu open,
  * ...) keeps the safe default and is tried again on the next boot. */
 #include "receiver.h"
+#include "sense_lab.h"
 #include "cn_auto.h"
 #include "calibration_noise.h"
 #include <math.h>
@@ -2046,6 +2047,7 @@ static void calibration_task(void *arg)
         if (s_manual_requested && !s_menu_active) { s_manual_requested = false; startup_phase(true); continue; }
         if (s_lane_requested && !s_menu_active) { s_lane_requested = false; lane_compare(); continue; }
         if (s_selfnoise_requested && !s_menu_active) { s_selfnoise_requested = false; self_noise_test(); continue; }
+        if (sense_lab_pending() && !s_menu_active) { sense_lab_run(quiet_owner()); continue; }
         dco_service();
         dc_health_service();
         drift_service();

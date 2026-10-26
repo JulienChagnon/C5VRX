@@ -623,6 +623,14 @@ the cause but is not established. WIDE profile own 16 MHz rows (kp 0.85, LP
 a narrow filter measured <= 11 MHz; FIELD_DIAG logs kp_x100/lp. Simulation
 and host tests; board check pending.
 
+VTX-on PHY sensitivity lab (console `S` + suite key, `main/sense_lab.c`,
+`main/sense_lab_logic.h`, `tools/phy_sense_lab.py`, docs/PHY_SENSITIVITY_LAB.md):
+extends the PR #254 VTX-off noise lab with a weak VTX carrier present and
+scores carrier and noise together (M2M4 C/N, AFC-decoder video SNR, FM
+clicks) in STOCK-TEST-TEST-STOCK with shams. Bench only, pinned PHY only,
+every write restored and verified, nothing saved. Host tests and firmware
+build only; no board result yet, so no candidate is better or worse.
+
 ### Instructions for future pipeline work
 
 IQLaneFusion research extends U85 and the older adaptive-lane/history work:

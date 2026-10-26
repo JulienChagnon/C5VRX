@@ -1,6 +1,7 @@
 /* C5VRX-5 by Twotoz and the C5VRX contributors: USB serial console.
  * Polled, never paces the realtime path. */
 #include "receiver.h"
+#include "sense_lab.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include "esp_app_desc.h"
@@ -97,6 +98,7 @@ static void help(void)
            "  F calibrate (startup steps again; video stops), L bench IQ lane comparison (video stops ~3 s),\n"
            "  N bench: noise floor with the video output on vs off (VTX off; video stops ~0.3 s x4),\n"
            "  Z DAC self-test (bench: test pattern, then one flat level per pin for a multimeter),\n"
+           "  S + suite key: bench PHY sensitivity lab with the VTX ON (docs/PHY_SENSITIVITY_LAB.md),\n"
            "  ` reboot to USB download (flashing)\n");
 }
 
@@ -132,8 +134,17 @@ static void console_task(void *arg)
     (void)arg;
     for (;;) {
         uint8_t c;
+        static int64_t sense_until;   /* S waits 5 s for the suite key */
         while (xQueueReceive(s_keys, &c, pdMS_TO_TICKS(100)) == pdTRUE) {
+            if (sense_until && esp_timer_get_time() < sense_until && sense_lab_suite_valid((char)c)) {
+                sense_until = 0;
+                sense_lab_request((char)c);
+                printf("SENSLAB queued suite=%c (runs in the calibration task; keep the VTX and antennas still)\n", c);
+                continue;
+            }
+            sense_until = 0;
             switch (c) {
+            case 'S': sense_lab_help(); sense_until = esp_timer_get_time() + 5000000; break;
             case 'T': status(); break;
             case 'I': snapshot(); break;
             case 'F': filter_request(); break;
