@@ -1887,6 +1887,48 @@ static void gain_map_service(void)
     }
 }
 
+/* Live sampling-phase repair (operator decision 2026-10-26: a wrong phase
+ * found later must fix itself). Board bench, b26ef545, VTX off: 3 of 12 slip
+ * positions read mixed IQ bits (excess 4588-6597 against 44-62 clean, the IQ
+ * 989-998 per mille clipped: no usable picture), and one boot in five stayed
+ * there after the splash. The boot check only aligns once under the splash.
+ * Here, three consecutive monitor blocks far above the limit run the existing
+ * confirmed scan (three, then nine positions), which ends on the cleanest one.
+ * A failed scan backs off 30 s, doubling to 16 min. */
+#define PHASE_REPAIR_EXCESS 1500
+#define PHASE_REPAIR_BLOCKS 3u
+#define PHASE_REPAIR_BACKOFF_US 30000000LL
+#define PHASE_REPAIR_BACKOFF_MAX_US 960000000LL
+static uint32_t s_phase_repairs, s_phase_repair_fails;
+static void phase_service(void)
+{
+    static unsigned bad;
+    static int64_t next_us, backoff_us = PHASE_REPAIR_BACKOFF_US;
+    static uint32_t blocks;
+    if (s_startup || s_boot_phase_pending || !quiet_owner() || rf_lane() != RF_LANE_ULTRAFINE) return;
+    if (blocks == s_health_blocks + s_health_rejected) return;           /* no new monitor block */
+    blocks = s_health_blocks + s_health_rejected;
+    if (s_sphase_excess < PHASE_REPAIR_EXCESS) { bad = 0; return; }
+    if (++bad < PHASE_REPAIR_BLOCKS) return;
+    const int64_t now = esp_timer_get_time();
+    if (now < next_us) return;
+    bad = 0;
+    const int before = s_sphase_excess;
+    ++s_phase_repairs;
+    const sphase_verdict_t v = sphase_scan();
+    s_sphase_state = v == SPHASE_SETTLED ? "settled" : "unverified";
+    if (v == SPHASE_SETTLED) {
+        backoff_us = PHASE_REPAIR_BACKOFF_US;
+        next_us = now + 10000000LL;
+    } else {
+        ++s_phase_repair_fails;
+        next_us = now + backoff_us;
+        backoff_us = backoff_us * 2 > PHASE_REPAIR_BACKOFF_MAX_US ? PHASE_REPAIR_BACKOFF_MAX_US : backoff_us * 2;
+    }
+    printf("SPHASE live_repair excess_before=%d verdict=%s excess_after=%d repairs=%lu fails=%lu\n", before,
+           sphase_verdict_name(v), s_sphase_excess, (unsigned long)s_phase_repairs, (unsigned long)s_phase_repair_fails);
+}
+
 /* VTX deviation for the receive profile (profile.c): measured fresh on
  * this boot's carrier while the DEFAULT picture keeps running (a stored
  * deviation is not a VTX identity); only the switch to a matched profile
@@ -2405,48 +2447,6 @@ static void calibration_boot(void)
     s_boot_policy_ms = (esp_timer_get_time() - boot_t0) / 1000;
     printf("CAL_BOOT mode=baseline ms=%lld searches=0 sweeps=0 dc_trim=0 boot_phase_budget_ms=600\n",
            (esp_timer_get_time() - boot_t0) / 1000);
-}
-
-/* Live sampling-phase repair (operator decision 2026-10-26: a wrong phase
- * found later must fix itself). Board bench, b26ef545, VTX off: 3 of 12 slip
- * positions read mixed IQ bits (excess 4588-6597 against 44-62 clean, the IQ
- * 989-998 per mille clipped: no usable picture), and one boot in five stayed
- * there after the splash. The boot check only aligns once under the splash.
- * Here, three consecutive monitor blocks far above the limit run the existing
- * confirmed scan (three, then nine positions), which ends on the cleanest one.
- * A failed scan backs off 30 s, doubling to 16 min. */
-#define PHASE_REPAIR_EXCESS 1500
-#define PHASE_REPAIR_BLOCKS 3u
-#define PHASE_REPAIR_BACKOFF_US 30000000LL
-#define PHASE_REPAIR_BACKOFF_MAX_US 960000000LL
-static uint32_t s_phase_repairs, s_phase_repair_fails;
-static void phase_service(void)
-{
-    static unsigned bad;
-    static int64_t next_us, backoff_us = PHASE_REPAIR_BACKOFF_US;
-    static uint32_t blocks;
-    if (s_startup || s_boot_phase_pending || !quiet_owner() || rf_lane() != RF_LANE_ULTRAFINE) return;
-    if (blocks == s_health_blocks + s_health_rejected) return;           /* no new monitor block */
-    blocks = s_health_blocks + s_health_rejected;
-    if (s_sphase_excess < PHASE_REPAIR_EXCESS) { bad = 0; return; }
-    if (++bad < PHASE_REPAIR_BLOCKS) return;
-    const int64_t now = esp_timer_get_time();
-    if (now < next_us) return;
-    bad = 0;
-    const int before = s_sphase_excess;
-    ++s_phase_repairs;
-    const sphase_verdict_t v = sphase_scan();
-    s_sphase_state = v == SPHASE_SETTLED ? "settled" : "unverified";
-    if (v == SPHASE_SETTLED) {
-        backoff_us = PHASE_REPAIR_BACKOFF_US;
-        next_us = now + 10000000LL;
-    } else {
-        ++s_phase_repair_fails;
-        next_us = now + backoff_us;
-        backoff_us = backoff_us * 2 > PHASE_REPAIR_BACKOFF_MAX_US ? PHASE_REPAIR_BACKOFF_MAX_US : backoff_us * 2;
-    }
-    printf("SPHASE live_repair excess_before=%d verdict=%s excess_after=%d repairs=%lu fails=%lu\n", before,
-           sphase_verdict_name(v), s_sphase_excess, (unsigned long)s_phase_repairs, (unsigned long)s_phase_repair_fails);
 }
 
 static void calibration_task(void *arg)
