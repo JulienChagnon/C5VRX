@@ -5,6 +5,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+/* Boot filter without a matching saved calibration (FASTER_CALIBRATION.md);
+ * main/dco_preset.h is measured with it. */
+#define CAL_BASELINE_FILTER_CODE  16
+#define CAL_BASELINE_FILTER_SKIRT 32
+#define CAL_BASELINE_FILTER_BW20  false
 #define CAL_BAD_DC_MCELLS 1500
 #define CAL_CONFIRM_BLOCKS 3u
 #define CAL_EVIDENCE_GAP_US 2000000LL

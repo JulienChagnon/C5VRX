@@ -75,6 +75,7 @@ jobs:
           cc -O2 -std=c11 -Wall -Wextra -Werror -I../main test_menu_ui.c ../main/menu_ui.c -o /tmp/test_menu_ui
           /tmp/test_menu_ui
           python3 ../tools/menu_font.py --check
+          python3 ../tools/dco_preset.py --check ../main/dco_preset.h ../research/data/dco_preset_2026-10-26/*.txt
           cc -O2 -std=c11 -Wall -Wextra -Werror -I../main test_agc_table.c ../main/arc_phy.c -o /tmp/test_agc_table
           /tmp/test_agc_table | tail -1
           cc -O2 -std=c11 -Wall -Wextra -Werror -DEXPECT_FADE_HOLD -I../main test_gain_fade.c \

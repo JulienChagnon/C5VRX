@@ -9,6 +9,7 @@
 #include "cn_auto.h"
 #include "calibration_noise.h"
 #include "calibration_policy.h"
+#include "dco_preset.h"
 #include <math.h>
 #include <stdarg.h>
 #include "esp_chip_info.h"
@@ -641,7 +642,10 @@ bool filter_setting(int filter_class, rf_filter_t *out)
     const filter_entry_t *e = filter_class == FILTER_NARROW ? &s_filter_cal.narrow :
                               filter_class == FILTER_WIDE ? &s_filter_cal.wide : &s_filter_cal.normal;
     if (s_filter_cal.version != FILTER_VERSION || !e->valid) {
-        if (filter_class == FILTER_NORMAL) { *out = (rf_filter_t){16, 32, false}; return true; }
+        if (filter_class == FILTER_NORMAL) {
+            *out = (rf_filter_t){CAL_BASELINE_FILTER_CODE, CAL_BASELINE_FILTER_SKIRT, CAL_BASELINE_FILTER_BW20};
+            return true;
+        }
         return false;
     }
     if (!e->nbw_khz) return false;      /* never measured: not a usable class */
@@ -926,40 +930,61 @@ static int dco_trimmed(unsigned g, unsigned axis)
     return v < 0 ? 0 : v > 511 ? 511 : v;
 }
 
-/* The row whose codes gain g holds: its own, or for a missing row the
- * nearest converged one within 6 rows (the codes of neighbouring rows differ
- * by a few; the chip's own codes left 4+ cells at G83 on 5805 MHz).
- * -1 = nothing to hold. */
-#define DCO_BORROW_ROWS 6
-static uint32_t s_dco_borrowed;
-static int dco_hold_row(uint8_t g)
+/* DC base map in the firmware (main/dco_preset.h, tools/dco_preset.py):
+ * measured boards' codes of the baseline filter. Operator decision
+ * 2026-10-26: a board without its own row held the chip's own DC, which read
+ * 3.7/1.7 cells at G83 on an uncalibrated board; three F runs of a board
+ * agreed within ~0.8 code per row. Only for the exact baseline context; it
+ * is never an own/OK row, F replaces it, and it is no calibration evidence. */
+static uint32_t s_dco_preset_holds;
+static bool dco_preset_codes(uint8_t g, int code[2])
 {
-    if (g < s_dco.lo || g > s_dco.hi || s_dco_banned[g] || s_dco.freq != rf_frequency_mhz()) return -1;
-    if (s_dco.e[g].valid == DCO_ROW_OK && !dco_mask_get(s_dco_templ, g)) return g;
+    if (!DCO_PRESET_BOARDS || g < DCO_PRESET_LO || g > DCO_PRESET_HI || s_dco.lo != DCO_PRESET_LO ||
+        s_dco.hi != DCO_PRESET_HI || s_dco.iq_scale_sel != DCO_PRESET_IQ_SCALE || DCO_VERSION != DCO_PRESET_VERSION ||
+        live_filter_key() != dco_filter_key(CAL_BASELINE_FILTER_CODE, CAL_BASELINE_FILTER_SKIRT, CAL_BASELINE_FILTER_BW20))
+        return false;
+    const int16_t *row = c5vrx5_dco_preset[g - DCO_PRESET_LO];
+    if (row[0] < 0 || row[1] < 0) return false;
+    code[0] = row[0];
+    code[1] = row[1];
+    return true;
+}
 
-    return -1;
+/* The codes gain g holds: its own converged row (with its live trim), else
+ * the base map. False = nothing to hold. */
+static bool dco_hold_codes(uint8_t g, int code[2], bool *preset)
+{
+    *preset = false;
+    if (g < s_dco.lo || g > s_dco.hi || s_dco_banned[g] || s_dco.freq != rf_frequency_mhz()) return false;
+    if (s_dco.e[g].valid == DCO_ROW_OK && !dco_mask_get(s_dco_templ, g)) {
+        code[0] = dco_trimmed(g, 0);
+        code[1] = dco_trimmed(g, 1);
+        return true;
+    }
+    return *preset = dco_preset_codes(g, code);
 }
 
 void dco_post_gain(uint8_t g)
 {
     if (receiver_paused()) return;
-    const int r = dco_hold_row(g);
-    if (r < 0) return;
-    if (phy_dco_hold(dco_trimmed((unsigned)r, 0), dco_trimmed((unsigned)r, 1)) == ESP_OK) {
+    int code[2];
+    bool preset;
+    if (!dco_hold_codes(g, code, &preset)) return;
+    if (phy_dco_hold(code[0], code[1]) == ESP_OK) {
         ++s_dco_hook_holds;
-        s_dco_borrowed += r != (int)g;
+        s_dco_preset_holds += preset;
     }
 }
 
 /* Sampling-phase probes run with the gain worker paused, where the post-gain
- * hook stays silent: hold the current gain's stored row explicitly so the
- * scan sees the same DC as live video. */
+ * hook stays silent: hold the current gain's codes explicitly so the scan
+ * sees the same DC as live video. */
 static void dco_hold_for_scan(void)
 {
     dco_select();
-    const int r = dco_hold_row(s_current_gain);
-    if (r < 0) return;
-    (void)phy_dco_hold(dco_trimmed((unsigned)r, 0), dco_trimmed((unsigned)r, 1));   /* the live trim too */
+    int code[2];
+    bool preset;
+    if (dco_hold_codes(s_current_gain, code, &preset)) (void)phy_dco_hold(code[0], code[1]);   /* the live trim too */
 }
 
 /* Reuse the exact noise statistics of accepted, quiet DC verification
@@ -2070,7 +2095,10 @@ static void calibration_dump(void)
     cal_dump_line(&d, "{\"type\":\"dc_hardware\",\"valid\":%s,\"gain\":%u,\"bank1_i\":%d,\"bank1_q\":%d,"
         "\"bank2_i\":%d,\"bank2_q\":%d}", banks_valid ? "true" : "false", s_current_gain, bank1[0], bank1[1], bank2[0], bank2[1]);
     cal_dump_line(&d, "{\"type\":\"policy\",\"auto_calibration\":false,\"auto_dc_trim\":false,"
-        "\"baseline_code\":16,\"baseline_skirt\":32,\"baseline_bw20\":false,\"boot_blocking_ms\":%lld,\"boot_phase_ms\":%lld,\"last_manual_ms\":%lld,\"last_manual_full\":%s,\"health_observation_us\":%lld}",
+        "\"baseline_code\":%d,\"baseline_skirt\":%d,\"baseline_bw20\":%s,\"dc_preset_boards\":%u,\"dc_preset_holds\":%lu,"
+        "\"boot_blocking_ms\":%lld,\"boot_phase_ms\":%lld,\"last_manual_ms\":%lld,\"last_manual_full\":%s,\"health_observation_us\":%lld}",
+        CAL_BASELINE_FILTER_CODE, CAL_BASELINE_FILTER_SKIRT, CAL_BASELINE_FILTER_BW20 ? "true" : "false",
+        (unsigned)DCO_PRESET_BOARDS, (unsigned long)s_dco_preset_holds,
         s_boot_policy_ms, s_boot_phase_ms, s_manual_ms, s_last_manual_full ? "true" : "false", s_health_us);
     const filter_entry_t *filters[] = {&s_filter_cal.normal, &s_filter_cal.narrow, &s_filter_cal.wide};
     for (unsigned k = 0; k < 3u; ++k) {
@@ -2275,7 +2303,7 @@ void calibration_start(void)
         s_filter_result = "loaded";
     } else {
         memset(&s_filter_cal, 0, sizeof(s_filter_cal));
-        const rf_filter_t baseline = {16, 32, false};
+        const rf_filter_t baseline = {CAL_BASELINE_FILTER_CODE, CAL_BASELINE_FILTER_SKIRT, CAL_BASELINE_FILTER_BW20};
         s_filter_result = rf_set_filter(baseline) ? "baseline_unmeasured" : "baseline_not_applied";
     }
     ESP_ERROR_CHECK(xTaskCreate(calibration_task, "calibration", 8192, NULL, 1, NULL) == pdPASS ?
@@ -2324,10 +2352,11 @@ void calibration_print(void)
            dco_template_rows(), s_dco_seed_mhz, (unsigned long)s_dco_seeds, stored, DCO_SLOTS);
     for (unsigned k = 0; k < DCO_SLOTS; ++k) if (s_dco_index.freq[k]) printf(" %u", s_dco_index.freq[k]);
     printf("\n");
-    printf("DCO_REPAIR bad_dropped=%lu repairs=%lu repair_fails=%lu borrowed_holds=%lu (unconverged rows dropped, "
-           "searched from a converged neighbour; a missing row holds the nearest converged one's codes)\n",
-           (unsigned long)s_dco_bad_dropped, (unsigned long)s_dco_repairs, (unsigned long)s_dco_repair_fails,
-           (unsigned long)s_dco_borrowed);
+    printf("DCO_REPAIR bad_dropped=%lu repairs=%lu repair_fails=%lu (unconverged rows dropped, "
+           "searched from a converged neighbour)\n",
+           (unsigned long)s_dco_bad_dropped, (unsigned long)s_dco_repairs, (unsigned long)s_dco_repair_fails);
+    printf("DCO_PRESET boards=%u gains=%u..%u holds=%lu (base map in the firmware: a row without own codes holds it)\n",
+           (unsigned)DCO_PRESET_BOARDS, DCO_PRESET_LO, DCO_PRESET_HI, (unsigned long)s_dco_preset_holds);
     printf("DCO_BAN unbans=%lu (a railing hold is released for 2-32 s, then held again)\n", (unsigned long)s_dco_unbans);
     printf("DCO_ADOPT disabled=manual_only\n");
     for (unsigned g = s_dco.lo; g <= s_dco.hi && g <= ARC_VENDOR_GAIN_MAX; ++g)
