@@ -150,6 +150,7 @@ extern volatile bool s_scan_active;
 extern volatile unsigned s_scan_progress;
 extern volatile int s_cfo_khz;
 extern volatile bool s_afc_locked;
+extern volatile bool s_afc_enabled;
 extern volatile std_mode_t s_std_mode;
 extern volatile video_standard_t s_video_std;      /* standard the menu emits */
 extern volatile bool s_detected_std_valid;
@@ -176,7 +177,7 @@ bool calibration_in_startup(void);
 /* Calibrated analog filter classes: normal (>= 12 MHz, the default),
  * narrow (>= 10 MHz, low-deviation VTXs), wide (>= 16 MHz, wide VTXs).
  * false when that class was not calibrated. */
-enum { FILTER_NORMAL, FILTER_NARROW, FILTER_WIDE };
+enum { FILTER_NORMAL, FILTER_NARROW, FILTER_WIDE, FILTER_XNARROW };   /* XNARROW: menu only */
 bool filter_setting(int filter_class, rf_filter_t *out);
 /* The DC table of filter f is complete on the current channel (startup). */
 bool calibration_dc_ready(rf_filter_t f);
@@ -222,6 +223,7 @@ unsigned calibration_filter_nbw_khz(void);   /* measured noise bandwidth of the 
 uint32_t receiver_sentinel_forwarded(void);
 void receiver_level_feed(const uint8_t *window, size_t bytes);   /* the menu's control windows */
 unsigned calibration_narrow_width_khz(void);   /* measured -3 dB width, 0 = none */
+unsigned calibration_filter_width_khz(void);   /* measured -3 dB width of the active filter, 0 unknown */
 const char *calibration_sphase_state(void);
 bool calibration_sphase_settled(void);
 /* DC correction in place for this gain: held, or not needed (outside the
@@ -236,6 +238,7 @@ void self_noise_request(void);   /* bench: noise floor with the video output on 
 
 /* ---- menu.c ---- */
 extern volatile int s_menu_cursor;
+extern volatile int s_cal_sub;   /* CALIBRATE submenu cursor, -1 = closed */
 bool menu_open(void);
 void menu_close(void);
 void menu_render(void);
@@ -275,6 +278,10 @@ void profile_live_begin(void);
 const char *profile_reason(void);
 void profile_set_reason(const char *reason);
 void profile_print(void);
+/* Menu FILTER: PROFILE_SELECT_AUTO or the chosen profile (this boot only). */
+int profile_selected(void);
+bool profile_selectable(int profile);      /* calibrated filter with its own DC table (DEFAULT: always) */
+int profile_select_cycle(void);            /* hold on FILTER / console f: next choice, applied */
 bool profile_live_mode(void);              /* live profile switch on (NVS prof_live) */
 void profile_set_live_mode(bool on);
 

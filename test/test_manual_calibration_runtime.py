@@ -196,4 +196,97 @@ int main(void){window_stats_t w;
 }
 ''')
 
+ def test_stored_dc_tables_ready_after_reboot(self):
+  s=(ROOT/'main/calibration.c').read_text()
+  top=s[s.index('#define DCO_VERSION'):s.index('static void dco_load_table(const dco_want_t *w);')]
+  ready=s[s.index('#define DCO_READY_MAX'):s.index('static void dco_startup_profiles(')]
+  run(r'''
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wunused-function"
+#include <assert.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "dco_slots.h"
+#include "dco_preset.h"
+#define ARC_VENDOR_GAIN_MAX 89u
+#define PROBE_BYTES 256u
+#define RTC_FAST_ATTR
+typedef struct { int8_t code; uint8_t skirt; bool bw20; } rf_filter_t;
+typedef struct { uint8_t max_index, band5; } arc_gain_table_t;
+static const arc_gain_table_t s_tab = {83, 1};
+static const arc_gain_table_t *rf_gain_table(void) { return &s_tab; }
+static uint8_t arc_gain_highest_rf_stage_start(const arc_gain_table_t *t) { (void)t; return 54; }
+static unsigned char phy_param[700] = {[650] = 3};
+static uint16_t s_freq = 5865;
+static rf_filter_t s_live = {56, 32, false};
+static uint16_t rf_frequency_mhz(void) { return s_freq; }
+static rf_filter_t rf_filter(void) { return s_live; }
+static int dco_preset_class_of(uint16_t key) {
+ for (unsigned c = 0; c < DCO_PRESET_CLASSES; ++c) {
+  const dco_filter_preset_t *p = &c5vrx5_filter_preset[c];
+  if (dco_filter_key(p->code, (int)p->skirt, p->bw20 != 0) == key) return (int)c;
+ }
+ return -1;
+}
+static struct { char key[16]; uint8_t data[1024]; size_t size; } s_nvs[16];
+static bool blob_store(const char *k, const void *d, size_t n) {
+ for (unsigned i = 0; i < 16; ++i)
+  if (!s_nvs[i].size || !strcmp(s_nvs[i].key, k)) {
+   snprintf(s_nvs[i].key, sizeof(s_nvs[i].key), "%s", k);
+   memcpy(s_nvs[i].data, d, n); s_nvs[i].size = n; return true;
+  }
+ return false;
+}
+static bool blob_load(const char *k, void *d, size_t n) {
+ for (unsigned i = 0; i < 16; ++i)
+  if (s_nvs[i].size == n && !strcmp(s_nvs[i].key, k)) { memcpy(d, s_nvs[i].data, n); return true; }
+ return false;
+}
+''' + top + ready + r'''
+static void save_filter(rf_filter_t f, bool complete, bool templ, bool bad) {
+ s_live = f; s_dco_serving = live_filter_key(); s_dco_serving_valid = true;
+ memset(&s_dco, 0, sizeof(s_dco)); memset(s_dco_templ, 0, sizeof(s_dco_templ));
+ dco_context(&s_dco, s_freq);
+ for (unsigned g = s_dco.lo; g <= s_dco.hi; ++g)
+  s_dco.e[g] = (dco_entry_t){{200, 200}, {bad && g == 70 ? 1500 : 50, 0}, complete || g != 70 ? DCO_ROW_OK : 0};
+ if (templ) dco_mask_put(s_dco_templ, 70, true);
+ assert(dco_save());
+}
+int main(void) {
+ /* Preset filters are DC-ready out of the box from the firmware base map. */
+ const rf_filter_t p_norm = {56, 32, false}, p_nar = {63, 24, true}, p_wide = {62, 8, false}, p_xn = {63, 0, true};
+ assert(calibration_dc_ready(p_norm) && calibration_dc_ready(p_nar) &&
+        calibration_dc_ready(p_wide) && calibration_dc_ready(p_xn));
+ /* Custom calibrated filters persist their DC-ready state across reboot via NVS. */
+ const rf_filter_t normal = {48, 32, false}, narrow = {60, 24, true}, wide = {56, 8, false}, xn = {60, 0, true};
+ assert(!calibration_dc_ready(normal) && !calibration_dc_ready(narrow) &&
+        !calibration_dc_ready(wide) && !calibration_dc_ready(xn));
+ dco_index_init(&s_dco_index); s_dco_index_loaded = true;
+ save_filter(normal, true, false, false);
+ save_filter(narrow, true, false, false);
+ save_filter(wide, true, false, false);
+ save_filter(xn, true, false, false);
+ assert(calibration_dc_ready(normal) && calibration_dc_ready(narrow) &&
+        calibration_dc_ready(wide) && calibration_dc_ready(xn));
+ /* Simulate a reboot: all RAM state cleared, only NVS blobs remain. */
+ memset(&s_dco, 0, sizeof(s_dco)); memset(&s_dco_index, 0, sizeof(s_dco_index));
+ memset(s_dco_ready, 0, sizeof(s_dco_ready)); s_dco_index_loaded = false;
+ s_live = normal;
+ dco_index_load();
+ assert(calibration_dc_ready(normal) && calibration_dc_ready(narrow) &&
+        calibration_dc_ready(wide) && calibration_dc_ready(xn));
+ /* Incomplete, template-seeded or unconverged custom tables in NVS are not ready. */
+ save_filter(narrow, false, false, false);
+ save_filter(wide, true, true, false);
+ save_filter(xn, true, false, true);
+ memset(s_dco_ready, 0, sizeof(s_dco_ready)); s_dco_index_loaded = false;
+ dco_index_load();
+ assert(calibration_dc_ready(normal) && !calibration_dc_ready(narrow) &&
+        !calibration_dc_ready(wide) && !calibration_dc_ready(xn));
+}
+''')
+
 if __name__=='__main__':unittest.main()

@@ -232,6 +232,24 @@ int main(void)
               left_at >= 0 && left_at - 300000000LL <= 30000000LL + 15000000LL && active == PROFILE_WIDE, detail);
         check("live switch run: no flapping", switches == 2u, detail);
     }
+    /* Menu FILTER: the full cycle, and uncalibrated classes skipped. */
+    {
+        int s = PROFILE_SELECT_AUTO, seen[5], k = 0;
+        for (; k < 5; ++k) { s = profile_select_next(s, true, true, true); seen[k] = s; }
+        check("menu filter: AUTO -> XNARROW -> NARROW -> NORMAL -> WIDE -> AUTO",
+              seen[0] == PROFILE_XNARROW && seen[1] == PROFILE_NARROW && seen[2] == PROFILE_DEFAULT &&
+              seen[3] == PROFILE_WIDE && seen[4] == PROFILE_SELECT_AUTO, "");
+        check("menu filter: XNARROW is never an automatic choice",
+              profile_class(50, true, true) != PROFILE_XNARROW && profile_flog_code(PROFILE_XNARROW) == 2u, "");
+        check("menu filter: no narrow/wide filter -> AUTO <-> NORMAL",
+              profile_select_next(PROFILE_SELECT_AUTO, false, false, false) == PROFILE_DEFAULT &&
+              profile_select_next(PROFILE_DEFAULT, false, false, false) == PROFILE_SELECT_AUTO, "");
+        check("menu filter: only wide calibrated skips NARROW",
+              profile_select_next(PROFILE_SELECT_AUTO, false, false, true) == PROFILE_DEFAULT &&
+              profile_select_next(PROFILE_DEFAULT, false, false, true) == PROFILE_WIDE, "");
+        check("menu filter: an unknown value restarts the cycle",
+              profile_select_next(PROFILE_RETIRED_KP050, true, true, true) == PROFILE_XNARROW, "");
+    }
     printf("%s (%d failures)\n", s_fail ? "FAILED" : "PASSED", s_fail);
     return s_fail != 0;
 }

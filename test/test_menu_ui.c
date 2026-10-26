@@ -40,18 +40,20 @@ static void check(const char *name, bool dac)
 static menu_view_t base(void)
 {
     return (menu_view_t){
-        .channel = "R1", .freq_mhz = 5658, .band = 0, .channel_in_band = 0, .band_name = "RACEBAND R",
+        .cal_sub = -1, .channel = "R1", .freq_mhz = 5658, .band = 0, .channel_in_band = 0, .band_name = "RACEBAND R",
         .band_letters = "RABEFL", .band_count = 6, .signal = 72, .video = true, .level_valid = true,
         .level_above_noise = true, .level_dbm = -71, .dc_need = "", .std_mode = 0, .std_out_pal = true,
         .detected_valid = true, .detected_pal = true, .output = 1, .output_name = "1.5x", .gain_mode = "AUTO",
-        .gain_auto = true, .gain = 42, .gain_max = 78,
+        .gain_auto = true, .gain = 42, .gain_max = 78, .filter_mode = "AUTO", .filter_active = "NORMAL",
+        .filter_width_khz = 14375, .narrow_ok = true, .wide_ok = true, .deviation_x100 = 73, .offset_khz = 81,
+        .cn_x10 = 124, .firmware = "5.0.0-afcwin",
     };
 }
 
 int main(int argc, char **argv)
 {
-    static const char *const names[MENU_ITEMS] = {"band", "channel", "scan", "video", "calibrate", "output",
-                                                  "gain", "dac", "exit"};
+    static const char *const names[MENU_ITEMS] = {"band", "channel", "scan", "video", "filter", "afc", "calibrate",
+                                                  "output", "gain", "dac", "exit"};
     s_dir = argc > 1 ? argv[1] : NULL;
     char name[64];
     for (int i = 0; i < MENU_ITEMS; ++i) {
@@ -83,6 +85,40 @@ int main(int argc, char **argv)
         v = base(); v.cursor = MENU_OUTPUT; v.output = k; v.output_name = outputs[k];
         snprintf(name, sizeof(name), "output_%u", k);
         menu_ui_render(ui, &v); check(name, false);
+    }
+    /* FILTER: every choice, unknown width/deviation, missing classes, the
+     * widest offset and C/N strings; firmware: the longest version string. */
+    static const char *const modes[5] = {"AUTO", "XNARROW", "NARROW", "NORMAL", "WIDE"};
+    for (unsigned k = 0; k < 5; ++k) {
+        v = base(); v.cursor = MENU_FILTER; v.filter_mode = modes[k]; v.filter_active = k ? modes[k] : "NORMAL";
+        v.filter_recommended = k == 1 ? "NORMAL" : NULL;
+        snprintf(name, sizeof(name), "filter_%u", k);
+        menu_ui_render(ui, &v); check(name, false);
+    }
+    v = base(); v.cursor = MENU_FILTER; v.filter_width_khz = 0; v.deviation_x100 = -1; v.video = false;
+    v.narrow_ok = v.wide_ok = false; menu_ui_render(ui, &v); check("filter_unknown", false);
+    v = base(); v.cursor = MENU_FILTER; v.filter_mode = "NARROW"; v.filter_active = "NARROW";
+    v.filter_width_khz = 19950; v.offset_khz = -2500; v.deviation_x100 = 400; v.wide_ok = false;
+    menu_ui_render(ui, &v); check("filter_worst", false);
+    v = base(); v.cursor = MENU_AFC; v.afc_off = true;
+    menu_ui_render(ui, &v); check("afc_off", false);
+    v.cursor = MENU_FILTER; menu_ui_render(ui, &v); check("filter_afc_off", false);
+    v = base(); v.cursor = MENU_CHANNEL; v.level_dbm = -100; v.cn_x10 = -305; menu_ui_render(ui, &v); check("cn_negative", false);
+    v.cn_x10 = 455; menu_ui_render(ui, &v); check("cn_high", false);
+    v.cn_x10 = -990; menu_ui_render(ui, &v); check("cn_unknown", false);
+    v = base(); v.cursor = MENU_EXIT; v.firmware = "5.0.0-pr.9999"; menu_ui_render(ui, &v); check("exit_fw", false);
+    /* CALIBRATE submenu: every row, with the DC warning. */
+    for (int k = 0; k < MENU_CAL_ITEMS; ++k) {
+        v = base(); v.cursor = MENU_CALIBRATE; v.cal_sub = k; v.dc_cal = k == 0;
+        snprintf(name, sizeof(name), "cal_sub_%d", k);
+        menu_ui_render(ui, &v); check(name, false);
+    }
+    /* Scrolling: the cursor row is drawn (white pill) at every position. */
+    for (int i = 0; i < MENU_ITEMS; ++i) {
+        v = base(); v.cursor = i; menu_ui_render(ui, &v);
+        bool pill = false;
+        for (unsigned y = 0; y < MENU_UI_LINES && !pill; ++y) pill = ui[y][2] == MENU_INK_WHITE;
+        assert(pill);
     }
     /* Status screens: every title/line calibration.c and profile.c show. */
     static const menu_status_view_t status[] = {

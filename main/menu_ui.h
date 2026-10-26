@@ -13,8 +13,12 @@
 #include <stdint.h>
 #include "menu_raster.h"
 
-enum { MENU_BAND, MENU_CHANNEL, MENU_SCAN, MENU_VIDEO, MENU_CALIBRATE, MENU_OUTPUT, MENU_GAIN, MENU_DAC,
-       MENU_EXIT, MENU_ITEMS };
+enum { MENU_BAND, MENU_CHANNEL, MENU_SCAN, MENU_VIDEO, MENU_FILTER, MENU_AFC, MENU_CALIBRATE, MENU_OUTPUT, MENU_GAIN,
+       MENU_DAC, MENU_EXIT, MENU_ITEMS };
+#define MENU_VISIBLE_ROWS 9   /* the list scrolls when it has more items */
+/* CALIBRATE submenu (hold on CALIBRATE): QUICK = the active filter and its
+ * DC rows (console F), FULL = every filter class (console B), BACK. */
+enum { MENU_CAL_QUICK, MENU_CAL_FULL, MENU_CAL_BACK, MENU_CAL_ITEMS };
 
 /* DAC codes (blanking 20, sync 0 never appears in the UI rows). */
 enum {
@@ -29,6 +33,7 @@ enum {
 
 typedef struct {
     int cursor;                     /* MENU_* */
+    int cal_sub;                    /* MENU_CAL_* while the CALIBRATE submenu is open, else -1 */
     /* Tuning. */
     const char *channel;            /* "R1" */
     unsigned freq_mhz;
@@ -39,7 +44,9 @@ typedef struct {
     unsigned band_count;
     /* Link. */
     int signal;                     /* 0..100 */
-    bool video;                     /* AFC locked on video */
+    bool video;                     /* confirmed video sync within the last 0.5 s */
+    bool afc_locked;                /* AFC centred and locked (FILTER card) */
+    bool afc_off;                   /* AFC disabled (returns tuner to 0 kHz offset) */
     bool level_valid, level_above_noise;
     int level_dbm;
     /* Range warnings, shown in place of the link state. */
@@ -61,6 +68,17 @@ typedef struct {
     bool gain_auto;
     unsigned gain;                  /* active gain index */
     unsigned gain_max;              /* table maximum */
+    /* Analog filter (menu FILTER). */
+    const char *filter_mode;        /* "AUTO", "XNARROW", "NARROW", "NORMAL", "WIDE" */
+    const char *filter_active;      /* active class: "XNARROW", "NARROW", "NORMAL", "WIDE" */
+    const char *filter_recommended; /* what AUTO picks for the measured VTX deviation, NULL unknown */
+    unsigned filter_width_khz;      /* measured -3 dB width of the active filter, 0 unknown */
+    bool narrow_ok, wide_ok;        /* class calibrated with its own DC table */
+    /* VTX and link quality. */
+    int deviation_x100;             /* measured this session, < 0 unknown */
+    int offset_khz;                 /* AFC tuning offset */
+    int cn_x10;                     /* C/N estimate x10, <= -990 unknown */
+    const char *firmware;           /* "5.0.123" */
 } menu_view_t;
 
 typedef struct {

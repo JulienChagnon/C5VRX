@@ -50,6 +50,7 @@ static bool menu_open_checked(void)
 {
     if (!menu_open()) return false;
     s_menu_cursor = 0;
+    s_cal_sub = -1;
     return true;
 }
 volatile int s_signal_strength;
@@ -57,6 +58,7 @@ volatile bool s_scan_active;
 volatile unsigned s_scan_progress;
 volatile int s_cfo_khz;
 volatile bool s_afc_locked;
+volatile bool s_afc_enabled = true;
 volatile std_mode_t s_std_mode = STD_MODE_AUTO;
 volatile video_standard_t s_video_std = VIDEO_STD_NTSC;
 volatile bool s_detected_std_valid;
@@ -251,13 +253,48 @@ static void cycle_video_standard(void)
     settings_save();
 }
 
+/* AFC OFF returns the synthesizer to the exact channel centre (0 kHz offset). */
+static void toggle_afc(void)
+{
+    s_afc_enabled = !s_afc_enabled;
+    s_afc_locked = false;
+    s_cfo_khz = 0;
+    if (!s_afc_enabled && rf_offset_khz() != 0) {
+        rf_set_offset_khz(0);
+        s_last_gain_write_us = esp_timer_get_time();
+        ++s_gain_epoch;
+    }
+    ++s_control_epoch;
+    const uint8_t off = !s_afc_enabled;
+    (void)blob_store("afc_off", &off, 1);
+    printf("[AFC] mode=%s offset_khz=%d\n", s_afc_enabled ? "ON" : "OFF", rf_offset_khz());
+}
+
+/* Press: the next row, in the CALIBRATE submenu while it is open. */
+static void menu_next(void)
+{
+    if (s_cal_sub >= 0) s_cal_sub = (s_cal_sub + 1) % MENU_CAL_ITEMS;
+    else s_menu_cursor = (s_menu_cursor + 1) % MENU_ITEMS;
+    menu_render();
+}
+
 static void menu_action(void)
 {
+    if (s_cal_sub >= 0) {   /* CALIBRATE submenu: QUICK = console F, FULL = console B */
+        const int k = s_cal_sub;
+        s_cal_sub = -1;
+        if (k == MENU_CAL_QUICK) { menu_close(); filter_request(); return; }        /* runs once the menu is closed */
+        if (k == MENU_CAL_FULL) { menu_close(); filter_request_full(); return; }
+        menu_render();
+        return;
+    }
     switch (s_menu_cursor) {
     case MENU_BAND: rf_next_band(); after_retune(); break;
     case MENU_CHANNEL: rf_next_channel(); after_retune(); break;
     case MENU_SCAN: scan(); break;
-    case MENU_CALIBRATE: menu_close(); filter_request(); return;   /* runs once the menu is closed */
+    case MENU_FILTER: (void)profile_select_cycle(); break;
+    case MENU_AFC: toggle_afc(); break;
+    case MENU_CALIBRATE: s_cal_sub = MENU_CAL_QUICK; break;   /* opens the QUICK / FULL / BACK submenu */
     case MENU_OUTPUT: (void)transport_set_output((transport_output() + 1u) % OUTPUT_LEVELS); break;
     case MENU_GAIN: receiver_set_gain_mode(receiver_gain_mode_next(receiver_gain_mode()), true); break;
     case MENU_DAC: menu_dac_step(); break;
@@ -283,13 +320,14 @@ static void command(int c, unsigned *menu_idle)
     /* DAC self-test: open the menu on DAC TEST, then step like a hold. */
     case 'Z':
         if (!s_menu_active && !menu_open_checked()) break;
-        if (s_menu_cursor != MENU_DAC) { s_menu_cursor = MENU_DAC; menu_render(); }
+        if (s_menu_cursor != MENU_DAC || s_cal_sub >= 0) { s_cal_sub = -1; s_menu_cursor = MENU_DAC; menu_render(); }
         else menu_dac_step();
         break;
     case 'o': if (s_menu_active) menu_close(); else (void)menu_open_checked(); break;
     case 'e': menu_close(); break;  /* idempotent web-menu EXIT */
     case 'v': cycle_video_standard(); break;
-    case 'n': if (s_menu_active) { s_menu_cursor = (s_menu_cursor + 1) % MENU_ITEMS; menu_render(); } break;
+    case 'f': (void)profile_select_cycle(); if (s_menu_active) menu_render(); break;   /* menu FILTER hold */
+    case 'n': if (s_menu_active) menu_next(); break;
     case 'x': if (s_menu_active) menu_action(); break;
     case 'c': rf_next_channel(); after_retune(); break;
     case 'b': rf_next_band(); after_retune(); break;
@@ -372,7 +410,7 @@ static void control_task(void *arg)
             }
         } else if (btn) {
             if (!long_fired && btn >= 2) {
-                if (s_menu_active) { s_menu_cursor = (s_menu_cursor + 1) % MENU_ITEMS; menu_render(); }
+                if (s_menu_active) menu_next();
                 else { rf_next_channel(); after_retune(); }
             }
             btn = 0;
@@ -458,16 +496,22 @@ static void control_task(void *arg)
             s_afc_evidence.residual_khz=r.porch_khz-afc.target_khz;
         }
         if (valid) { s_last_video_us = now; standard_vote(r.standard); profile_observe(&r); }
+        if (!s_afc_enabled && rf_offset_khz() != 0) {
+            rf_set_offset_khz(0);
+            s_last_gain_write_us = esp_timer_get_time();
+            ++s_gain_epoch;
+        }
         bool was = s_afc_locked;
-        if (copied) s_afc_locked = afc2_native_lock(s_afc_locked, valid, afc2_ctrl_can_lock(&afc, true), afc.n, &afc_lost);
+        if (!s_afc_enabled) { s_afc_locked = false; afc_lost = 0; }
+        else if (copied) s_afc_locked = afc2_native_lock(s_afc_locked, valid, afc2_ctrl_can_lock(&afc, true), afc.n, &afc_lost);
         if (was && !s_afc_locked) afc2_ctrl_reacquire(&afc);
         /* Re-acquisition retunes only on a strong carrier: at the range edge
          * the porch estimate is pulled toward the receiver centre and would
          * walk the offset the wrong way (cn_estimate.h, afc_bias.py). A weak
          * window still feeds the estimate history, it just cannot step. */
         const int cn_x10 = receiver_obs_cn_x10();
-        const char *afc_held = s_afc_locked ? "sticky_lock" : !valid ? "window" : s_menu_active ? "menu" : "actuator";
-        if (!s_afc_locked && valid && !s_menu_active &&
+        const char *afc_held = !s_afc_enabled ? "afc_off" : s_afc_locked ? "sticky_lock" : !valid ? "window" : s_menu_active ? "menu" : "actuator";
+        if (s_afc_enabled && !s_afc_locked && valid && !s_menu_active &&
             phy_try_actuator(phy_generation())) {
             int32_t step = 0;
             const bool strong = receiver_obs_cn_x10() >= AFC_MIN_CN_X10;   /* noise-referenced power C/N */
@@ -529,6 +573,8 @@ void control_start(void)
     };
     gpio_config(&cfg);
     if (!blob_load("last_std", &s_last_std, 1)) s_last_std = 0xFF;
+    uint8_t afc_off = 0;
+    if (blob_load("afc_off", &afc_off, 1)) s_afc_enabled = !afc_off;
     int8_t sign;
     if (blob_load("afc_sign", &sign, 1) && (sign == 1 || sign == -1)) {
         s_afc_sign = sign;
@@ -549,9 +595,13 @@ void control_start(void)
  * without a status request. Read-only. */
 void control_print_beat(void)
 {
-    printf("STATUS channel=%s freq=%u afc_locked=%u standard=%s detected=%s signal=%d menu=%u mode=%s demod=%s "
+    /* video: confirmed sync within 0.5 s (the web menu's VIDEO/SEARCH);
+     * afc_locked alone said SEARCH over a good picture without a lock. */
+    const int64_t video_at = s_last_video_us;
+    printf("STATUS channel=%s freq=%u afc_locked=%u video=%u standard=%s detected=%s signal=%d menu=%u mode=%s demod=%s "
            "output=%s live=%u busy=%u fw=%s\n",
            rf_channel()->name, rf_frequency_mhz(), s_afc_locked,
+           video_at && esp_timer_get_time() - video_at < 500000,
            s_std_mode == STD_MODE_AUTO ? "AUTO" : s_std_mode == STD_MODE_PAL ? "PAL" : "NTSC",
            s_detected_std_valid ? (s_detected_std == VIDEO_STD_PAL ? "PAL" : "NTSC") : "none",
            s_signal_strength, s_menu_active, profile_name(profile_active()), transport_program_name(), transport_output_name(),

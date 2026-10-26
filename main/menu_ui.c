@@ -1,9 +1,10 @@
 /* C5VRX-5 by Twotoz and the C5VRX contributors: menu picture (menu_ui.h).
  *
- * Layout on the 384 x 56 grid: one settings list, all nine rows visible at
- * once (a row of text plus a row of air each), label left and value right,
- * the selected row on a white pill. A live card on the right keeps the
- * frequency, signal and level in view, and says in one word what a long
+ * Layout on the 384 x 56 grid: one settings list, nine rows visible at once
+ * (a row of text plus a row of air each; more items scroll), label left and
+ * value right, the selected row on a white pill. A live card on the right
+ * keeps the frequency, signal, level and C/N in view (FILTER: width, VTX
+ * deviation and AFC; EXIT: firmware), and says in one word what a long
  * press does. One button: press = next row, hold = change it. */
 #include "menu_ui.h"
 #include <stdio.h>
@@ -155,14 +156,23 @@ static int badge(const char *s, int x, int y, uint8_t fill, uint8_t ink)
 /* ---- settings list ---- */
 
 static const char *const s_items[MENU_ITEMS] = {
-    "BAND", "CHANNEL", "SCAN", "VIDEO", "CALIBRATE", "OUTPUT", "GAIN", "DAC TEST", "EXIT",
+    "BAND", "CHANNEL", "SCAN", "VIDEO", "FILTER", "AFC", "CALIBRATE", "OUTPUT", "GAIN", "DAC TEST", "EXIT",
 };
+
+/* "14.4M" (MHz; the FILTER card spells it out), or "--" while the active
+ * filter has no measured width. */
+static const char *width_text(unsigned khz, char *buf, size_t size)
+{
+    if (!khz) return "--";
+    snprintf(buf, size, "%u.%uM", (khz + 50u) / 1000u, (khz + 50u) % 1000u / 100u);
+    return buf;
+}
 
 /* The value a row shows: main text plus an optional grey note (the live
  * state behind an AUTO setting). Actions show none. */
 static void row_value(const menu_view_t *v, int item, const char **value, const char **note)
 {
-    static char band[2];
+    static char band[2], width[16];
     *value = *note = NULL;
     switch (item) {
     case MENU_BAND:
@@ -175,6 +185,11 @@ static void row_value(const menu_view_t *v, int item, const char **value, const 
         *value = v->std_mode == 1 ? "NTSC" : v->std_mode == 2 ? "PAL" : "AUTO";
         if (v->std_mode == 0) *note = v->detected_valid ? (v->detected_pal ? "PAL" : "NTSC") : "--";
         break;
+    case MENU_FILTER:
+        *value = v->filter_mode;
+        *note = width_text(v->filter_width_khz, width, sizeof(width));
+        break;
+    case MENU_AFC: *value = v->afc_off ? "OFF" : "ON"; break;
     case MENU_CALIBRATE: if (v->dc_cal) *value = "DC!"; break;
     case MENU_OUTPUT: *value = v->output_name; break;
     case MENU_GAIN: *value = v->gain_mode; break;
@@ -182,10 +197,26 @@ static void row_value(const menu_view_t *v, int item, const char **value, const 
     }
 }
 
+/* Nine rows fit; with more items the list scrolls so the cursor stays in
+ * view, and a thin bar beside it shows where the window is. */
+static int list_first(int cursor)
+{
+    const int last = MENU_ITEMS - MENU_VISIBLE_ROWS;
+    const int first = cursor - (MENU_VISIBLE_ROWS - 1);
+    return last <= 0 || first <= 0 ? 0 : first > last ? last : first;
+}
+
 static void list(const menu_view_t *v)
 {
-    for (int i = 0; i < MENU_ITEMS; ++i) {
-        const int y = 1 + i * LIST_PITCH;
+    const int first = list_first(v->cursor);
+    const int rows = MENU_ITEMS < MENU_VISIBLE_ROWS ? MENU_ITEMS : MENU_VISIBLE_ROWS;
+    if (MENU_ITEMS > MENU_VISIBLE_ROWS) {
+        const int track = rows * LIST_PITCH - 1, thumb = track * rows / MENU_ITEMS;
+        rect(LIST_W + 4, 0, 2, track, MENU_INK_TRACK);
+        rect(LIST_W + 4, (track - thumb) * first / (MENU_ITEMS - rows), 2, thumb, MENU_INK_GREY);
+    }
+    for (int i = first; i < first + rows; ++i) {
+        const int y = 1 + (i - first) * LIST_PITCH;
         const bool on = i == v->cursor;
         if (on) pill(0, y - 1, LIST_W, 7, MENU_INK_WHITE);
         const char *value, *note;
@@ -217,15 +248,90 @@ static void card_tuning(const menu_view_t *v)
     snprintf(buf, sizeof(buf), "%u", v->freq_mhz);
     text_box(buf, CARD_X, 12, CARD_W, ALIGN_LEFT, FONT_BIG, MENU_INK_WHITE);
     int x = text(v->channel, CARD_X, 26, MENU_INK_WHITE) + 8;
-    char band[16];   /* "RACEBAND R" -> "RACEBAND": the letter is in the channel */
-    snprintf(band, sizeof(band), "%s", v->band_name ? v->band_name : "");
-    char *space = strchr(band, ' ');
-    if (space) *space = 0;
-    text_box(band, x, 26, CARD_R - x, ALIGN_LEFT, FONT_TEXT, MENU_INK_GREY);
+    if (v->cn_x10 > -990) {   /* C/N (dB): the margin to the picture's edge, where the band name was */
+        const int cn = v->cn_x10 > 999 ? 99 : (v->cn_x10 + (v->cn_x10 >= 0 ? 5 : -5)) / 10;
+        snprintf(buf, sizeof(buf), "C/N %d", cn);
+        text_box(buf, x, 26, CARD_R - x, ALIGN_LEFT, FONT_TEXT, MENU_INK_WHITE);
+    } else {
+        char band[16];   /* "RACEBAND R" -> "RACEBAND": the letter is in the channel */
+        snprintf(band, sizeof(band), "%s", v->band_name ? v->band_name : "");
+        char *space = strchr(band, ' ');
+        if (space) *space = 0;
+        text_box(band, x, 26, CARD_R - x, ALIGN_LEFT, FONT_TEXT, MENU_INK_GREY);
+    }
     if (v->level_valid && v->level_above_noise) snprintf(buf, sizeof(buf), "%d DBM", v->level_dbm);
     else snprintf(buf, sizeof(buf), v->level_valid ? "NOISE" : "NO LEVEL");
     meter(CARD_X, 35, CARD_W, v->signal);
     text_box(buf, CARD_X, 39, CARD_W, ALIGN_LEFT, FONT_TEXT, MENU_INK_GREY);
+}
+
+/* FILTER: the measured width large, the class and what decides it, and
+ * the VTX facts that matter for the choice (deviation, AFC). */
+static void card_filter(const menu_view_t *v)
+{
+    char buf[32];
+    if (v->filter_width_khz) snprintf(buf, sizeof(buf), "%u.%u", (v->filter_width_khz + 50u) / 1000u,
+                                      (v->filter_width_khz + 50u) % 1000u / 100u);
+    else snprintf(buf, sizeof(buf), "--");
+    const int x = text_box(buf, CARD_X, 12, CARD_W - 24, ALIGN_LEFT, FONT_BIG, MENU_INK_WHITE);
+    text("MHZ", x + 4, 18, MENU_INK_GREY);
+    /* AUTO: the class it chose. A fixed choice (shown in the list) gets
+     * what AUTO would pick for the measured VTX instead. A class missing
+     * from the hold cycle has no calibrated filter yet (CALIBRATE > FULL). */
+    if (!strcmp(v->filter_mode, "AUTO")) {
+        text_box(v->filter_active, CARD_X, 26, CARD_W, ALIGN_LEFT, FONT_TEXT, MENU_INK_WHITE);
+    } else {
+        snprintf(buf, sizeof(buf), "REC %s", v->filter_recommended ? v->filter_recommended : "--");
+        const bool same = v->filter_recommended && !strcmp(v->filter_recommended, v->filter_mode);
+        text_box(buf, CARD_X, 26, CARD_W, ALIGN_LEFT, FONT_TEXT, same ? MENU_INK_GREY : MENU_INK_WHITE);
+    }
+    if (v->deviation_x100 >= 0) snprintf(buf, sizeof(buf), "DEV %d.%02d", v->deviation_x100 / 100,
+                                         v->deviation_x100 % 100);
+    else snprintf(buf, sizeof(buf), "DEV --");
+    text_box(buf, CARD_X, 33, CARD_W, ALIGN_LEFT, FONT_TEXT, MENU_INK_GREY);
+    if (v->afc_off) snprintf(buf, sizeof(buf), "AFC OFF");
+    else if (v->afc_locked) snprintf(buf, sizeof(buf), "AFC %+dK", v->offset_khz);
+    else snprintf(buf, sizeof(buf), "AFC NO LOCK");
+    text_box(buf, CARD_X, 40, CARD_W, ALIGN_LEFT, FONT_TEXT, (!v->afc_off && v->afc_locked) ? MENU_INK_WHITE : MENU_INK_GREY);
+}
+
+/* CALIBRATE submenu: the title, then QUICK / FULL / BACK in the list's
+ * style; the card says what the selected one does and how long it takes. */
+static const char *const s_cal_items[MENU_CAL_ITEMS] = {"QUICK", "FULL", "BACK"};
+
+static void cal_list(const menu_view_t *v)
+{
+    text_box("CALIBRATE", 9, 1, LIST_W - 18, ALIGN_LEFT, FONT_TEXT, MENU_INK_DIM);
+    rect(9, 8, LIST_W - 18, 1, MENU_INK_RULE);
+    for (int i = 0; i < MENU_CAL_ITEMS; ++i) {
+        const int y = 1 + (i + 2) * LIST_PITCH;
+        const bool on = i == v->cal_sub;
+        if (on) pill(0, y - 1, LIST_W, 7, MENU_INK_WHITE);
+        text_box(s_cal_items[i], 9, y, 100, ALIGN_LEFT, FONT_TEXT, on ? MENU_INK_BLACK : MENU_INK_GREY);
+        if (i == MENU_CAL_QUICK && v->dc_cal)
+            text_box("DC!", 0, y, LIST_W - 8, ALIGN_RIGHT, FONT_TEXT, on ? MENU_INK_BLACK : MENU_INK_WHITE);
+    }
+}
+
+static void card_cal(const menu_view_t *v)
+{
+    static const char *const lines[MENU_CAL_ITEMS][3] = {
+        {"THIS FILTER", "AND DC ROWS", "ABOUT 30 S"},
+        {"ALL FILTERS", "VTX OFF", "1-2 MIN"},
+        {"MAIN MENU", "", ""},
+    };
+    const int k = v->cal_sub < 0 || v->cal_sub >= MENU_CAL_ITEMS ? MENU_CAL_BACK : v->cal_sub;
+    text_box(lines[k][0], CARD_X, 14, CARD_W, ALIGN_LEFT, FONT_TEXT, MENU_INK_WHITE);
+    text_box(lines[k][1], CARD_X, 22, CARD_W, ALIGN_LEFT, FONT_TEXT, MENU_INK_GREY);
+    text_box(lines[k][2], CARD_X, 33, CARD_W, ALIGN_LEFT, FONT_TEXT, MENU_INK_DIM);
+}
+
+/* EXIT: which build is running. */
+static void card_info(const menu_view_t *v)
+{
+    text_box("FIRMWARE", CARD_X, 14, CARD_W, ALIGN_LEFT, FONT_TEXT, MENU_INK_GREY);
+    text_box(v->firmware ? v->firmware : "?", CARD_X, 22, CARD_W, ALIGN_LEFT, FONT_TEXT, MENU_INK_WHITE);
+    text_box("C5VRX-5", CARD_X, 35, CARD_W, ALIGN_LEFT, FONT_TEXT, MENU_INK_DIM);
 }
 
 static void card_scan(const menu_view_t *v)
@@ -258,11 +364,12 @@ static void card_dac(void)
 /* What a long press does, one word. */
 static const char *hold_action(const menu_view_t *v)
 {
+    if (v->cal_sub >= 0) return v->cal_sub == MENU_CAL_BACK ? "BACK" : "START";
     switch (v->cursor) {
-    case MENU_BAND: case MENU_CHANNEL: case MENU_OUTPUT: case MENU_GAIN: return "NEXT";
+    case MENU_BAND: case MENU_CHANNEL: case MENU_FILTER: case MENU_OUTPUT: case MENU_GAIN: return "NEXT";
     case MENU_SCAN: return v->scan_active ? NULL : "SCAN";
-    case MENU_VIDEO: return "CHANGE";
-    case MENU_CALIBRATE: return "START";
+    case MENU_VIDEO: case MENU_AFC: return "CHANGE";
+    case MENU_CALIBRATE: return "OPEN";
     case MENU_DAC: return "STEP";
     default: return "EXIT";
     }
@@ -273,11 +380,15 @@ void menu_ui_render(menu_ui_rows_t ui, const menu_view_t *v)
     s_ui = ui;
     menu_ui_overflow = 0;
     memset(ui, MENU_INK_BLACK, sizeof(menu_ui_rows_t));
-    list(v);
+    if (v->cal_sub >= 0) cal_list(v);
+    else list(v);
     pill(CARD_X - 7, 0, W - CARD_X + 7, H, MENU_INK_PANEL);
     card_status(v);
-    if (v->cursor == MENU_DAC) card_dac();
+    if (v->cal_sub >= 0) card_cal(v);
+    else if (v->cursor == MENU_DAC) card_dac();
     else if (v->scan_active) card_scan(v);
+    else if (v->cursor == MENU_FILTER) card_filter(v);
+    else if (v->cursor == MENU_EXIT) card_info(v);
     else card_tuning(v);
     const char *hold = hold_action(v);
     if (hold) {

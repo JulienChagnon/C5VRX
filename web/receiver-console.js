@@ -9,7 +9,7 @@ export const BAND_NAMES = {
 export const KP_MODES = ['OFF', 'AUTO kp', 'AUTO kp+LP (legacy firmware)'];
 // Keys the firmware routes through control.c command(): ignored while a
 // calibration/lane-test status screen owns the picture.
-export const MENU_COMMAND_KEYS = new Set(['o', 'e', 'v', 'n', 'x', 'c', 'b', 's', 'g', 'A', 'U', 'G', 'Q', 'Z']);
+export const MENU_COMMAND_KEYS = new Set(['o', 'e', 'v', 'f', 'n', 'x', 'c', 'b', 's', 'g', 'A', 'U', 'G', 'Q', 'Z']);
 
 const FIELDS = /(?:^|\s)(\w+)=([^\s]+)/g;
 const fields = (line, target = {}) => {
@@ -204,7 +204,9 @@ export class ReceiverConsole {
       freq: c.freq || '',
       band: band ? BAND_NAMES[band] || band : '',
       signal: Number.isFinite(signal) ? Math.max(0, Math.min(100, signal)) : null,
-      locked: c.afc_locked === undefined ? null : c.afc_locked === '1',
+      // VIDEO/SEARCH: confirmed sync (STATUS video=); older firmware only
+      // reports the AFC lock, which stays 0 over a good unlocked picture.
+      locked: c.video !== undefined ? c.video === '1' : c.afc_locked === undefined ? null : c.afc_locked === '1',
       standard: c.standard || '',
       detected: c.detected === undefined ? '' : c.detected === 'none' ? 'NO VIDEO' : c.detected,
       output: this.output.level || '',
@@ -235,6 +237,6 @@ export class ReceiverConsole {
     if (key === 'G') return this.current && this.gainControl;
     if (key === 'Z') return this.current && this.dacTest;
     if (['m', 'K', 'k', 'j', 'P', 'O', 'H', 'U'].includes(key)) return false;
-    return ['T', 'h', '?'].includes(key) || (this.current && (!['v', 'e'].includes(key) || this.directMenu));
+    return ['T', 'h', '?'].includes(key) || (this.current && (!['v', 'e', 'f'].includes(key) || this.directMenu));
   }
 }

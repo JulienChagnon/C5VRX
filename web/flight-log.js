@@ -21,7 +21,8 @@ export const EVENTS = { 1: 'channel', 2: 'profile', 3: 'kp', 4: 'cal_start', 5: 
   15: 'output_gap', 16: 'output_unlock' };
 export const DROPOUT = ['CALIBRATION_OR_PHY', 'FAST_EVIDENCE_LOSS', 'AT_RF_FLOOR', 'DEMOD_CLIFF', 'UNKNOWN'];
 export const SPHASE = ['unverified', 'settled', 'drifted', 'unsettled', 'noise_limited', 'probe_failed'];
-export const PROFILES = ['DEFAULT', 'MATCHED', 'NARROW', 'WIDE'];
+// 2: kp0.5 NARROW until 2026-10-23, the menu's XNARROW filter since 2026-10-26.
+export const PROFILES = ['DEFAULT', 'MATCHED', 'XNARROW', 'WIDE'];
 export const RX_STATES = ['', 'ACQUIRE', 'TRACK', 'EDGE', 'RECOVER', 'FAULT', 'OWNED'];
 export const RX_REASONS = ['none', 'no_carrier', 'weak_signal', 'dc_clipping', 'overload', 'dc_residual', 'sync_loss_with_rf', 'owned', 'fault', 'low_picture_snr'];
 export const RESET_REASONS = ['unknown', 'power-on', 'external', 'software', 'panic', 'interrupt watchdog',

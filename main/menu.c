@@ -6,12 +6,15 @@
 #include "receiver.h"
 #include <stdio.h>
 #include <string.h>
+#include "esp_app_desc.h"
 #include "esp_attr.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "rf.h"
 #include "dac_check.h"
 #include "menu_ui.h"
+#include "profile_logic.h"
 
 void transport_start_chain(dma_descriptor_t *first);
 void transport_stop_chain(void);
@@ -28,6 +31,7 @@ static DMA_ATTR __attribute__((aligned(64))) menu_raster_t s_raster;
 static dma_descriptor_t *s_chunks[NODE_CHUNKS];
 static unsigned s_chunk_count, s_node_capacity, s_node_count;
 volatile int s_menu_cursor;
+volatile int s_cal_sub = -1;   /* MENU_CAL_* while the CALIBRATE submenu is open */
 /* Status screen: a full-screen message on the menu raster (calibration). */
 static volatile bool s_status;
 static char s_status_title[40], s_status_line1[48], s_status_line2[48];
@@ -173,12 +177,18 @@ void menu_render(void)
     /* Range warnings take the place of the link state: they cost range
      * without any sign in the picture. */
     const bool dc_cal = calibration_dc_needed(dc_need, sizeof(dc_need)) != 0;
+    const int selected = profile_selected(), active = profile_active();
+    static const char *const s_class[PROFILES] = {"NORMAL", "NARROW", "NARROW", "WIDE", "XNARROW"};
+    const int dev = profile_live_deviation_x100();   /* what AUTO would pick from the measured VTX */
     const menu_view_t v = {
-        .cursor = s_menu_cursor,
+        .cursor = s_menu_cursor, .cal_sub = s_cal_sub,
         .channel = ch->name, .freq_mhz = ch->freq_mhz,
         .band = index / 8u, .channel_in_band = index % 8u, .band_name = rf_band_name(index / 8u),
         .band_letters = "RABEFL", .band_count = FPV_BANDS,
-        .signal = s_signal_strength, .video = s_afc_locked,
+        /* VIDEO = confirmed sync just now; it used to read the AFC lock, so
+         * a picture without lock showed SEARCH (operator, 2026-10-26). */
+        .signal = s_signal_strength, .afc_locked = s_afc_locked, .afc_off = !s_afc_enabled,
+        .video = s_last_video_us && esp_timer_get_time() - s_last_video_us < 500000,
         .level_valid = lv.valid, .level_above_noise = lv.above_noise, .level_dbm = (lv.carrier_dbm_x10 - 5) / 10,
         .dc_cal = dc_cal, .dc_need = dc_need, .gain_fixed = !receiver_gain_mode_auto(mode),
         .scan_active = s_scan_active, .scan_progress = s_scan_progress,
@@ -187,6 +197,13 @@ void menu_render(void)
         .output = transport_output(), .output_name = transport_output_name(),
         .gain_mode = receiver_gain_mode_name(mode, gain_mode, sizeof(gain_mode)), .gain_auto = receiver_gain_mode_auto(mode),
         .gain = s_current_gain, .gain_max = rf_gain_table()->max_index,
+        .filter_mode = selected == PROFILE_SELECT_AUTO ? "AUTO" : s_class[selected],
+        .filter_active = active >= 0 && active < PROFILES ? s_class[active] : "?",
+        .filter_width_khz = calibration_filter_width_khz(),
+        .narrow_ok = profile_selectable(PROFILE_NARROW), .wide_ok = profile_selectable(PROFILE_WIDE),
+        .filter_recommended = dev > 0 ? s_class[profile_for_deviation(dev)] : NULL,
+        .deviation_x100 = dev, .offset_khz = rf_offset_khz(),
+        .cn_x10 = receiver_obs_cn_x10(), .firmware = esp_app_get_description()->version,
     };
     menu_ui_render(s_raster.ui, &v);
     sync_dma_c2m(s_raster.ui, sizeof(s_raster.ui));
@@ -306,6 +323,7 @@ void menu_close(void)
     transport_resume_live();
     free_nodes();       /* GDMA no longer references the chain */
     s_menu_active = false;
+    s_cal_sub = -1;
     s_dac_step = DAC_STEP_PATTERN;
     ++s_control_epoch;
 }

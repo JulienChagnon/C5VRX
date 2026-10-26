@@ -334,6 +334,11 @@ bool calibration_sphase_settled(void)
 /* Wide VTXs (deviation >= 1.6): the 12 MHz class clips their spectrum
  * (research/data/wide.txt). */
 #define FILTER_WIDE_KHZ    16000u
+/* XNARROW (menu FILTER only, never automatic): the setting with the smallest
+ * -3 dB width, operator 2026-10-26. Mode 12 sweep: BW20 code 63 skirt 0 at
+ * 10.6 MHz, though its noise bandwidth (11.7 MHz) is no lower than NARROW's;
+ * the floor keeps a broken probe from winning. */
+#define FILTER_XNARROW_MIN_KHZ 8000u
 /* Quiet test: dsp_quiet_reason() (dsp.h). */
 #define QUIET_NO_SYNC_US   2000000LL
 /* s_last_video_us starts at 0: "no sync seen yet" is not recent sync. */
@@ -355,6 +360,13 @@ typedef struct {
     uint16_t calibrated_nbw_khz;
 } filter_blob_t;
 static filter_blob_t s_filter_cal;
+/* XNARROW in its own blob ("filter_xn"): the v6 filter blob and every board
+ * calibration made with it stay valid; XNARROW comes with the next FULL. */
+typedef struct {
+    uint8_t version;
+    filter_entry_t xnarrow;
+} filter_xn_blob_t;
+static filter_xn_blob_t s_filter_xn;
 static uint16_t s_original_mhz;
 static const char *s_filter_result = "never";
 
@@ -497,6 +509,8 @@ bool filter_calibrate(bool automatic)
     unsigned narrow_nbw = ok && width >= FILTER_NARROW_KHZ ? cal_nbw : 0, narrow_width = width;
     rf_filter_t wide = calibrated;
     unsigned wide_nbw = ok && width >= FILTER_WIDE_KHZ ? cal_nbw : 0, wide_width = width;
+    rf_filter_t xnarrow = calibrated;   /* smallest -3 dB width, then lower noise bandwidth */
+    unsigned xnarrow_nbw = ok && width >= FILTER_XNARROW_MIN_KHZ ? cal_nbw : 0, xnarrow_width = width;
     static const int8_t codes[FILTER_CODES] = {PHY_FILTER_CALIBRATED, 0, 8, 16, 24, 32, 40, 48, 52, 56, 60, 62, 63};
     static const uint8_t skirts[FILTER_SKIRTS] = {0, 8, 16, 24, 32};
     /* First pass screens all 130 settings. Any screen/full discrepancy
@@ -521,11 +535,16 @@ bool filter_calibrate(bool automatic)
                     if (quiet && nbw && width >= FILTER_WIDE_KHZ && (!wide_nbw || nbw < wide_nbw)) {
                         wide = f; wide_nbw = nbw; wide_width = width;
                     }
+                    if (quiet && nbw && width >= FILTER_XNARROW_MIN_KHZ &&
+                        (!xnarrow_nbw || width < xnarrow_width || (width == xnarrow_width && nbw < xnarrow_nbw))) {
+                        xnarrow = f; xnarrow_nbw = nbw; xnarrow_width = width;
+                    }
                 }
         if (!screen_fault || !ok || pass == 1u) break;
         printf("FILTER_CAL screen=fallback_full\n");
-        best = narrow = wide = calibrated;
+        best = narrow = wide = xnarrow = calibrated;
         best_nbw = best_width = narrow_nbw = narrow_width = wide_nbw = wide_width = 0;
+        xnarrow_nbw = xnarrow_width = 0;
         s_cal_total += 2u * FILTER_CODES * FILTER_SKIRTS;
     }
     /* Re-check on the calibrated bytes before trusting the sweep. */
@@ -533,11 +552,11 @@ bool filter_calibrate(bool automatic)
         fail = carrier ? "carrier_detected" : "recheck_not_quiet";
     /* Independent full rechecks of each distinct winner. Screening never
      * relaxes the stored width requirement, quiet gate or final precision. */
-    rf_filter_t winners[3] = {best, narrow, wide};
-    unsigned *widths[3] = {&best_width, &narrow_width, &wide_width};
-    unsigned *nbws[3] = {&best_nbw, &narrow_nbw, &wide_nbw};
-    static const unsigned minimum[3] = {FILTER_MIN_KHZ, FILTER_NARROW_KHZ, FILTER_WIDE_KHZ};
-    for (unsigned k = 0; ok && k < 3u; ++k) {
+    rf_filter_t winners[4] = {best, narrow, wide, xnarrow};
+    unsigned *widths[4] = {&best_width, &narrow_width, &wide_width, &xnarrow_width};
+    unsigned *nbws[4] = {&best_nbw, &narrow_nbw, &wide_nbw, &xnarrow_nbw};
+    static const unsigned minimum[4] = {FILTER_MIN_KHZ, FILTER_NARROW_KHZ, FILTER_WIDE_KHZ, FILTER_XNARROW_MIN_KHZ};
+    for (unsigned k = 0; ok && k < 4u; ++k) {
         if (!*nbws[k]) continue;
         bool duplicate = false;
         for (unsigned j = 0; j < k; ++j)
@@ -583,6 +602,12 @@ bool filter_calibrate(bool automatic)
         if (!rf_set_filter(best)) { ok = false; fail = "best_not_applied"; }
         else if (!blob_store("filter", &cal, sizeof(cal))) { ok = false; fail = "nvs_failed"; }
         else s_filter_cal = cal;
+        const filter_xn_blob_t xn = {FILTER_VERSION, {xnarrow_nbw ? 1u : 0u, xnarrow.bw20, xnarrow.skirt,
+                                                      xnarrow.code, KHZ16(xnarrow_width), KHZ16(xnarrow_nbw)}};
+        if (ok) {   /* optional class: a failed store only leaves XNARROW out of the menu */
+            if (blob_store("filter_xn", &xn, sizeof(xn))) s_filter_xn = xn;
+            else printf("FILTER_CAL warning: XNARROW not stored\n");
+        }
     }
     if (ok) {
         s_filter_result = "stored";
@@ -592,6 +617,8 @@ bool filter_calibrate(bool automatic)
                best.code, best.skirt, best_width, best_nbw, narrow.bw20 ? "BW20" : "BW40", narrow.code,
                narrow.skirt, narrow_width, narrow_nbw, wide.bw20 ? "BW20" : "BW40", wide.code, wide.skirt,
                wide_width, wide_nbw, cal_nbw);
+        printf("FILTER_CAL xnarrow bw=%s code=%d skirt=%u width_khz=%u nbw_khz=%u\n", xnarrow.bw20 ? "BW20" : "BW40",
+               xnarrow.code, xnarrow.skirt, xnarrow_width, xnarrow_nbw);
     } else {
         if (!rf_set_filter(previous)) printf("FILTER_CAL error: previous filter not applied\n");
         s_filter_result = fail ? fail : "sweep_failed";
@@ -611,6 +638,31 @@ bool filter_calibrate(bool automatic)
 
 const char *calibration_filter_result(void) { return s_filter_result; }
 
+static filter_entry_t filter_class_entry(int filter_class)
+{
+    const filter_entry_t *e = filter_class == FILTER_XNARROW ? &s_filter_xn.xnarrow :
+                              filter_class == FILTER_NARROW ? &s_filter_cal.narrow :
+                              filter_class == FILTER_WIDE ? &s_filter_cal.wide : &s_filter_cal.normal;
+    const uint8_t ver = filter_class == FILTER_XNARROW ? s_filter_xn.version : s_filter_cal.version;
+    if (ver == FILTER_VERSION && e->valid && e->nbw_khz) return *e;
+    if (DCO_PRESET_BOARDS && filter_class >= 0 && (unsigned)filter_class < DCO_PRESET_CLASSES) {
+        const dco_filter_preset_t *p = &c5vrx5_filter_preset[filter_class];
+        return (filter_entry_t){1u, p->bw20, p->skirt, p->code, p->width_khz, p->nbw_khz};
+    }
+    if (filter_class == FILTER_NORMAL)
+        return (filter_entry_t){1u, CAL_BASELINE_FILTER_BW20, CAL_BASELINE_FILTER_SKIRT, CAL_BASELINE_FILTER_CODE, 0u, 0u};
+    return (filter_entry_t){0};
+}
+
+static int dco_preset_class_of(uint16_t key)
+{
+    for (unsigned c = 0; c < DCO_PRESET_CLASSES; ++c) {
+        const dco_filter_preset_t *p = &c5vrx5_filter_preset[c];
+        if (dco_filter_key(p->code, (int)p->skirt, p->bw20 != 0) == key) return (int)c;
+    }
+    return -1;
+}
+
 /* Width class of the active analog filter, for model tables keyed on it
  * (cn_estimate.h): 10 narrow, 12 normal, 16 wide, 20 the chip's own ~20 MHz. */
 int calibration_filter_class_mhz(void)
@@ -619,11 +671,14 @@ int calibration_filter_class_mhz(void)
     /* The sweep can select the same setting for normal and narrow (board:
      * both 13.125 MHz). Prefer normal, and do not call a measured >11 MHz
      * narrow entry 10 MHz. */
-    if (s_filter_cal.normal.valid && filter_setting(FILTER_NORMAL, &f) && rf_filter_equal(f, now))
-        return s_filter_cal.normal.width_khz < 11000u ? 10 : s_filter_cal.normal.width_khz >= 15000u ? 16 : 12;
+    const filter_entry_t normal = filter_class_entry(FILTER_NORMAL);
+    const filter_entry_t narrow = filter_class_entry(FILTER_NARROW);
+    if (normal.valid && filter_setting(FILTER_NORMAL, &f) && rf_filter_equal(f, now))
+        return normal.width_khz && normal.width_khz < 11000u ? 10 : normal.width_khz >= 15000u ? 16 : 12;
     if (filter_setting(FILTER_NARROW, &f) && rf_filter_equal(f, now))
-        return s_filter_cal.narrow.width_khz > 11000u ? 12 : 10;
+        return narrow.width_khz > 11000u ? 12 : 10;
     if (filter_setting(FILTER_WIDE, &f) && rf_filter_equal(f, now)) return 16;
+    if (filter_setting(FILTER_XNARROW, &f) && rf_filter_equal(f, now)) return 10;
     return 20;
 }
 
@@ -631,31 +686,40 @@ int calibration_filter_class_mhz(void)
  * when unknown: C/N-AUTO converts to the 20 MHz scale with it. */
 unsigned calibration_filter_nbw_khz(void)
 {
-    rf_filter_t f, now = rf_filter();
-    if (filter_setting(FILTER_NORMAL, &f) && rf_filter_equal(f, now) && s_filter_cal.normal.valid) return s_filter_cal.normal.nbw_khz;
-    if (filter_setting(FILTER_NARROW, &f) && rf_filter_equal(f, now) && s_filter_cal.narrow.valid) return s_filter_cal.narrow.nbw_khz;
-    if (filter_setting(FILTER_WIDE, &f) && rf_filter_equal(f, now) && s_filter_cal.wide.valid) return s_filter_cal.wide.nbw_khz;
-    return s_filter_cal.calibrated_nbw_khz;
+    static const int classes[4] = {FILTER_NORMAL, FILTER_NARROW, FILTER_WIDE, FILTER_XNARROW};
+    const rf_filter_t now = rf_filter();
+    for (unsigned c = 0; c < 4u; ++c) {
+        rf_filter_t f;
+        const filter_entry_t e = filter_class_entry(classes[c]);
+        if (e.valid && filter_setting(classes[c], &f) && rf_filter_equal(f, now)) return e.nbw_khz;
+    }
+    return s_filter_cal.calibrated_nbw_khz ? s_filter_cal.calibrated_nbw_khz : DCO_PRESET_CAL_NBW_KHZ;
+}
+
+/* Measured -3 dB width of the active filter (menu FILTER), 0 when unknown. */
+unsigned calibration_filter_width_khz(void)
+{
+    static const int classes[4] = {FILTER_NORMAL, FILTER_NARROW, FILTER_WIDE, FILTER_XNARROW};
+    const rf_filter_t now = rf_filter();
+    for (unsigned c = 0; c < 4u; ++c) {
+        rf_filter_t f;
+        const filter_entry_t e = filter_class_entry(classes[c]);
+        if (e.valid && filter_setting(classes[c], &f) && rf_filter_equal(f, now)) return e.width_khz;
+    }
+    return 0u;
 }
 
 unsigned calibration_narrow_width_khz(void)
 {
-    return s_filter_cal.narrow.valid ? s_filter_cal.narrow.width_khz : 0u;
+    const filter_entry_t e = filter_class_entry(FILTER_NARROW);
+    return e.valid ? e.width_khz : 0u;
 }
 
 bool filter_setting(int filter_class, rf_filter_t *out)
 {
-    const filter_entry_t *e = filter_class == FILTER_NARROW ? &s_filter_cal.narrow :
-                              filter_class == FILTER_WIDE ? &s_filter_cal.wide : &s_filter_cal.normal;
-    if (s_filter_cal.version != FILTER_VERSION || !e->valid) {
-        if (filter_class == FILTER_NORMAL) {
-            *out = (rf_filter_t){CAL_BASELINE_FILTER_CODE, CAL_BASELINE_FILTER_SKIRT, CAL_BASELINE_FILTER_BW20};
-            return true;
-        }
-        return false;
-    }
-    if (!e->nbw_khz) return false;      /* never measured: not a usable class */
-    *out = (rf_filter_t){e->code, e->skirt, e->bw20 != 0};
+    const filter_entry_t e = filter_class_entry(filter_class);
+    if (!e.valid) return false;
+    *out = (rf_filter_t){e.code, e.skirt, e.bw20 != 0};
     return true;
 }
 
@@ -804,6 +868,9 @@ static unsigned dco_drop_bad(dco_table_t *t)
 }
 
 static void dco_slot_key(unsigned slot, char key[8]) { snprintf(key, 8, "dco%u", slot); }
+static bool dco_table_complete(const dco_table_t *t, const dco_mask_t templ, uint16_t freq, uint16_t key);
+static void dco_ready_put(uint16_t freq, uint16_t key, bool ready);
+static void dco_ready_load(void);
 
 static bool dco_load_slot(unsigned slot, dco_table_t *out)
 {
@@ -818,11 +885,14 @@ static bool dco_save(void)
     const uint16_t filt = s_dco_serving_valid ? s_dco_serving :
                           dco_filter_key(s_dco.filter_code, s_dco.filter_skirt, s_dco.filter_bw20);
     const unsigned slot = dco_slot_for_store(&s_dco_index, s_dco.freq, filt);
+    const uint16_t old_freq = s_dco_index.freq[slot], old_filt = s_dco_index.filt[slot];
     dco_slot_key(slot, key);
     if (!blob_store(key, &s_dco, sizeof(s_dco))) return false;
     dco_index_touch(&s_dco_index, slot, s_dco.freq, filt);
     memcpy(s_dco_index.templ[slot], s_dco_templ, sizeof(s_dco_templ));
     if (!blob_store("dco_idx", &s_dco_index, sizeof(s_dco_index))) return false;
+    if (old_freq && (old_freq != s_dco.freq || old_filt != filt)) dco_ready_put(old_freq, old_filt, false);
+    dco_ready_put(s_dco.freq, filt, dco_table_complete(&s_dco, s_dco_templ, s_dco.freq, filt));
     s_dco_seed_mhz = 0;
     return true;
 }
@@ -831,7 +901,10 @@ static void dco_index_load(void)
 {
     if (s_dco_index_loaded) return;
     s_dco_index_loaded = true;
-    if (blob_load("dco_idx", &s_dco_index, sizeof(s_dco_index)) && s_dco_index.version == DCO_INDEX_VERSION) return;
+    if (blob_load("dco_idx", &s_dco_index, sizeof(s_dco_index)) && s_dco_index.version == DCO_INDEX_VERSION) {
+        dco_ready_load();
+        return;
+    }
     dco_index_init(&s_dco_index);
     /* Version 2 (one table per frequency): keep the measured tables, each
      * under the filter its header records. */
@@ -849,6 +922,7 @@ static void dco_index_load(void)
         s_dco_index.next_seq = v2.next_seq;
         memset(&s_dco, 0, sizeof(s_dco));
         if (blob_store("dco_idx", &s_dco_index, sizeof(s_dco_index))) printf("DCO index upgraded to per-filter slots\n");
+        dco_ready_load();
         return;
     }
     /* Adopt the single table of earlier builds as the first slot. */
@@ -898,9 +972,12 @@ static void dco_load_table(const dco_want_t *w)
         if (dco_drop_bad(&s_dco)) printf("DCO table freq=%u: unconverged rows dropped (searched again)\n", freq);
         return;
     }
-    /* No own table: start from the nearest one, the same filter first. */
+    /* No own table: start from the nearest one, the same filter first.
+     * Preset filters have their own per-class firmware base map, so they only
+     * borrow from a stored table of the exact same filter on another channel. */
     const int near = dco_nearest_slot(&s_dco_index, freq, w->key);
-    if (near >= 0 && dco_load_slot((unsigned)near, &s_dco)) {
+    const bool allow_near = near >= 0 && (s_dco_index.filt[near] == w->key || !DCO_PRESET_BOARDS || dco_preset_class_of(w->key) < 0);
+    if (allow_near && dco_load_slot((unsigned)near, &s_dco)) {
         const uint16_t from = s_dco.freq;
         s_dco.freq = freq;
         (void)dco_drop_bad(&s_dco);
@@ -957,21 +1034,21 @@ static uint32_t s_dco_preset_holds;
 static void dco_preset_fill(void)
 {
     memset(s_dco_preset, 0, sizeof(s_dco_preset));
-    if (!DCO_PRESET_BOARDS || s_dco.lo != DCO_PRESET_LO || s_dco.hi != DCO_PRESET_HI ||
-        s_dco.iq_scale_sel != DCO_PRESET_IQ_SCALE || DCO_VERSION != DCO_PRESET_VERSION ||
-        s_dco_serving != dco_filter_key(CAL_BASELINE_FILTER_CODE, CAL_BASELINE_FILTER_SKIRT, CAL_BASELINE_FILTER_BW20))
+    const int cls = dco_preset_class_of(s_dco_serving);
+    if (!DCO_PRESET_BOARDS || cls < 0 || s_dco.lo != DCO_PRESET_LO || s_dco.hi != DCO_PRESET_HI ||
+        s_dco.iq_scale_sel != DCO_PRESET_IQ_SCALE || DCO_VERSION != DCO_PRESET_VERSION)
         return;
     unsigned n = 0;
     for (unsigned g = DCO_PRESET_LO; g <= DCO_PRESET_HI; ++g) {
-        const int16_t *row = c5vrx5_dco_preset[g - DCO_PRESET_LO];
+        const int16_t *row = c5vrx5_dco_preset_class[cls][g - DCO_PRESET_LO];
         if (s_dco.e[g].valid || row[0] < 0 || row[1] < 0) continue;
         s_dco.e[g] = (dco_entry_t){{row[0], row[1]}, {0, 0}, DCO_ROW_OK};
         dco_mask_put(s_dco_templ, g, true);
         dco_mask_put(s_dco_preset, g, true);
         ++n;
     }
-    if (n) printf("DCO preset freq=%u rows=%u boards=%u (firmware base map: trimmed live, adopted when held)\n",
-                  s_dco.freq, n, (unsigned)DCO_PRESET_BOARDS);
+    if (n) printf("DCO preset freq=%u class=%d rows=%u boards=%u (firmware base map: trimmed live, adopted when held)\n",
+                  s_dco.freq, cls, n, (unsigned)DCO_PRESET_BOARDS);
 }
 
 /* The codes gain g holds: its row (own, template or base map) with its live
@@ -1308,7 +1385,7 @@ static const char *dco_quiet_rows(bool manual, bool refine, int64_t deadline, co
         if (esp_timer_get_time() > deadline) { why = "timeout"; break; }
         unsigned env = 0;
         int clip = 0;
-        const char *quiet = noise_check(&env, &clip);
+        const char *quiet = g >= 70 ? noise_check(&env, &clip) : NULL;
         if (cal_dc_gate_carrier(quiet, env, clip)) {   /* VTX switched on / leaking */
             printf("DCO gate row=%d gain=%u reason=%s env_x100=%u clip_pm=%d\n", g, s_current_gain, quiet, env, clip);
             why = "carrier_detected";
@@ -1316,13 +1393,14 @@ static const char *dco_quiet_rows(bool manual, bool refine, int64_t deadline, co
         }
         /* Only own, converged, unbanned rows of this exact filter/channel
          * seed the next row; a template is never calibration evidence. */
-        const bool own = s_dco.e[g].valid == DCO_ROW_OK && !dco_mask_get(s_dco_templ, (unsigned)g) &&
+        const bool own = !manual && s_dco.e[g].valid == DCO_ROW_OK && !dco_mask_get(s_dco_templ, (unsigned)g) &&
             !s_dco_banned[g];
+        const bool top_linear = manual && g == (int)s_dco.hi && s_dco.e[g].valid == DCO_ROW_OK && !s_dco_banned[g];
         const bool neighbour = g < (int)s_dco.hi && s_dco.e[g + 1].valid == DCO_ROW_OK &&
             !dco_mask_get(s_dco_templ, (unsigned)g + 1u) && !s_dco_banned[g + 1];
-        const int seed[2] = {own ? s_dco.e[g].code[0] : neighbour ? s_dco.e[g + 1].code[0] : 0,
-                             own ? s_dco.e[g].code[1] : neighbour ? s_dco.e[g + 1].code[1] : 0};
-        const int r = dco_quiet_search((uint8_t)g, own || neighbour ? seed : NULL);
+        const int seed[2] = {own ? s_dco.e[g].code[0] : top_linear ? s_dco.e[g].code[0] + 6 : neighbour ? s_dco.e[g + 1].code[0] : 0,
+                             own ? s_dco.e[g].code[1] : top_linear ? s_dco.e[g].code[1] - 6 : neighbour ? s_dco.e[g + 1].code[1] : 0};
+        const int r = dco_quiet_search((uint8_t)g, own || top_linear || neighbour ? seed : NULL);
         if (r == NOISE_PROBE_FAILED) { why = "probe_failed"; break; }
         if (r == NOISE_BELOW_STEP) { why = "floor"; break; }     /* the rest needs no correction */
         ++done;
@@ -1490,40 +1568,77 @@ static void dco_startup(bool manual, int64_t deadline)
            dco_template_rows(), s_dco_floor);
 }
 
-/* DC readiness per physical filter on the current channel, summarised after
- * every startup DC pass: a profile switch may only narrow onto a filter whose
- * table is complete there (no missing or template rows, measured with that
- * filter); otherwise it would fly on codes of another filter. */
-#define DCO_READY_MAX 3u
+/* DC readiness per physical filter on the current channel, loaded from the
+ * stored NVS slots at boot and updated after every DC pass / save: a profile
+ * switch or menu FILTER choice may only select a filter whose table is
+ * complete there (no missing or template rows, measured with that filter);
+ * otherwise it would fly on codes of another filter. */
+#define DCO_READY_MAX DCO_SLOTS
 static struct { uint16_t freq, key; bool ready; } s_dco_ready[DCO_READY_MAX];
+
+static bool dco_table_complete(const dco_table_t *t, const dco_mask_t templ, uint16_t freq, uint16_t key)
+{
+    const arc_gain_table_t *table = rf_gain_table();
+    const dco_want_t want = {freq, arc_gain_highest_rf_stage_start(table), table->max_index,
+                             table->band5, phy_param[650], key};
+    if (!dco_matches(t, &want) || dco_filter_key(t->filter_code, t->filter_skirt, t->filter_bw20) != key ||
+        dco_mask_count(templ, t->lo, t->hi)) return false;
+    for (unsigned g = t->lo; g <= t->hi && g <= ARC_VENDOR_GAIN_MAX; ++g)
+        if (!t->e[g].valid || dco_entry_bad(&t->e[g])) return false;
+    return true;
+}
 
 static bool dco_current_complete(void)
 {
-    const rf_filter_t live = rf_filter();
-    return !dco_rows(0) && !dco_template_rows() &&
-           dco_filter_same(s_dco.filter_code, s_dco.filter_skirt, s_dco.filter_bw20, live.code, (int)live.skirt,
-                           live.bw20);
+    return dco_table_complete(&s_dco, s_dco_templ, rf_frequency_mhz(), live_filter_key());
+}
+
+static void dco_ready_put(uint16_t freq, uint16_t key, bool ready)
+{
+    int empty = -1, unready = -1, other = -1;
+    for (unsigned k = 0; k < DCO_READY_MAX; ++k) {
+        if (s_dco_ready[k].freq == freq && s_dco_ready[k].key == key) {
+            s_dco_ready[k].ready = ready;
+            return;
+        }
+        if (!s_dco_ready[k].freq && empty < 0) empty = (int)k;
+        else if (s_dco_ready[k].freq && !s_dco_ready[k].ready && unready < 0) unready = (int)k;
+        if (s_dco_ready[k].freq != freq && other < 0) other = (int)k;
+    }
+    const int slot = empty >= 0 ? empty : unready >= 0 ? unready : ready ? (other >= 0 ? other : 0) : -1;
+    if (slot < 0) return;
+    s_dco_ready[slot].freq = freq;
+    s_dco_ready[slot].key = key;
+    s_dco_ready[slot].ready = ready;
+}
+
+static void dco_ready_load(void)
+{
+    memset(s_dco_ready, 0, sizeof(s_dco_ready));
+    for (unsigned k = 0; k < DCO_SLOTS; ++k) {
+        if (!s_dco_index.freq[k] || !dco_load_slot(k, &s_dco)) continue;
+        dco_ready_put(s_dco_index.freq[k], s_dco_index.filt[k],
+                      dco_table_complete(&s_dco, s_dco_index.templ[k], s_dco_index.freq[k], s_dco_index.filt[k]));
+    }
+    memset(&s_dco, 0, sizeof(s_dco));
+    for (unsigned k = 0; k < DCO_READY_MAX; ++k)
+        if (s_dco_ready[k].freq)
+            printf("DCO_READY freq=%u filter_key=%04x ready=%u\n", s_dco_ready[k].freq, s_dco_ready[k].key,
+                   s_dco_ready[k].ready);
 }
 
 static void dco_ready_note(void)
 {
-    const uint16_t key = live_filter_key(), freq = rf_frequency_mhz();
-    unsigned slot = 0;
-    for (unsigned k = 0; k < DCO_READY_MAX; ++k) {
-        if (s_dco_ready[k].freq == freq && s_dco_ready[k].key == key) { slot = k; break; }
-        if (s_dco_ready[k].freq != freq) slot = k;
-    }
-    s_dco_ready[slot].freq = freq;
-    s_dco_ready[slot].key = key;
-    s_dco_ready[slot].ready = dco_current_complete();
+    dco_ready_put(rf_frequency_mhz(), live_filter_key(), dco_current_complete());
 }
 
 bool calibration_dc_ready(rf_filter_t f)
 {
     const uint16_t key = dco_filter_key(f.code, (int)f.skirt, f.bw20), freq = rf_frequency_mhz();
     for (unsigned k = 0; k < DCO_READY_MAX; ++k)
-        if (s_dco_ready[k].freq == freq && s_dco_ready[k].key == key) return s_dco_ready[k].ready;
-    return false;
+        if (s_dco_ready[k].freq == freq && s_dco_ready[k].key == key)
+            return s_dco_ready[k].ready || (DCO_PRESET_BOARDS > 0 && dco_preset_class_of(key) >= 0);
+    return DCO_PRESET_BOARDS > 0 && dco_preset_class_of(key) >= 0;
 }
 
 /* Startup: the DC tables of the other profile filters too (NORMAL, NARROW,
@@ -1535,10 +1650,10 @@ static void dco_startup_profiles(bool manual, int64_t deadline)
 {
     const rf_filter_t live = rf_filter();
     dco_ready_note();
-    rf_filter_t todo[3];
+    rf_filter_t todo[4];
     unsigned n = 0;
-    static const int classes[3] = {FILTER_NORMAL, FILTER_NARROW, FILTER_WIDE};
-    for (unsigned c = 0; c < 3u; ++c) {
+    static const int classes[4] = {FILTER_NORMAL, FILTER_NARROW, FILTER_WIDE, FILTER_XNARROW};
+    for (unsigned c = 0; c < 4u; ++c) {
         rf_filter_t f;
         if (!filter_setting(classes[c], &f) || rf_filter_equal(f, live)) continue;
         bool dup = false;
@@ -2065,25 +2180,44 @@ static void filter_measure_current(void)
 {
     if (video_recent() || !receiver_pause("FILTER_CHECK")) return;
     const uint8_t restore = s_current_gain;
+    const rf_filter_t live = rf_filter();
     receiver_set_gain(rf_gain_table()->max_index);
-    dco_hold_for_scan();
-    vTaskDelay(pdMS_TO_TICKS(50));
     const int64_t t0 = esp_timer_get_time();
-    cal_noise_t a = {0};
-    unsigned width = 0, nbw = 0, env = 0;
-    int clip = 0;
-    const bool quiet = noise_like();
-    const bool ok = quiet && rf_filter_applied() && noise_collect(&a, CAL_WINDOWS) &&
-        cal_noise_finish(&a, &width, &nbw, &env, &clip) && cal_setting_quiet(env, clip) && width && nbw;
-    if (ok) {
-        const rf_filter_t f = rf_filter();
-        filter_blob_t cal = s_filter_cal;
-        cal.version = FILTER_VERSION;
-        cal.normal = (filter_entry_t){1u, f.bw20, f.skirt, f.code, (uint16_t)width, (uint16_t)nbw};
+    filter_blob_t cal = s_filter_cal;
+    filter_xn_blob_t xn = s_filter_xn;
+    cal.version = FILTER_VERSION;
+    xn.version = FILTER_VERSION;
+    if (!cal.calibrated_nbw_khz) cal.calibrated_nbw_khz = DCO_PRESET_CAL_NBW_KHZ;
+    static const int classes[4] = {FILTER_NORMAL, FILTER_NARROW, FILTER_WIDE, FILTER_XNARROW};
+    filter_entry_t *dst[4] = {&cal.normal, &cal.narrow, &cal.wide, &xn.xnarrow};
+    unsigned ok_count = 0, last_w = 0, last_n = 0;
+    for (unsigned k = 0; k < 4u; ++k) {
+        rf_filter_t f;
+        if (!filter_setting(classes[k], &f) || !rf_set_filter(f)) continue;
+        dco_hold_for_scan();
+        vTaskDelay(pdMS_TO_TICKS(50));
+        cal_noise_t a = {0};
+        unsigned width = 0, nbw = 0, env = 0;
+        int clip = 0;
+        const bool quiet = noise_like();
+        const bool ok = quiet && rf_filter_applied() && noise_collect(&a, CAL_WINDOWS) &&
+            cal_noise_finish(&a, &width, &nbw, &env, &clip) && cal_setting_quiet(env, clip) && width && nbw;
+        if (ok) {
+            *dst[k] = (filter_entry_t){1u, f.bw20, f.skirt, f.code, (uint16_t)width, (uint16_t)nbw};
+            if (k == 0u) { last_w = width; last_n = nbw; }
+            ++ok_count;
+            printf("FILTER_CAL bw=%s code=%d skirt=%u width_khz=%u nbw_khz=%u env_x100=%u limit=%u clip_pm=%d\n",
+                   f.bw20 ? "BW20" : "BW40", f.code, f.skirt, width, nbw, env, quiet_limit(clip), clip);
+        }
+    }
+    (void)rf_set_filter(live);
+    dco_hold_for_scan();
+    if (ok_count) {
         if (blob_store("filter", &cal, sizeof(cal))) { s_filter_cal = cal; s_filter_result = "measured_current"; }
+        if (xn.xnarrow.valid && blob_store("filter_xn", &xn, sizeof(xn))) s_filter_xn = xn;
     }
     printf("CAL_STEP step=filter_current ms=%lld result=%s width_khz=%u nbw_khz=%u\n",
-           (esp_timer_get_time() - t0) / 1000, ok ? "measured" : "unknown", width, nbw);
+           (esp_timer_get_time() - t0) / 1000, ok_count ? "measured" : "unknown", last_w, last_n);
     receiver_set_gain(restore);
     receiver_resume();
 }
@@ -2105,7 +2239,7 @@ static void startup_phase(bool full)
         flightlog_event(FLOG_E_CAL_START, &m, 1);
     }
     const int64_t t0 = esp_timer_get_time();
-    const int64_t deadline = t0 + (full ? STARTUP_FULL_BUDGET_US : STARTUP_BUDGET_US);
+    const int64_t deadline = t0 + STARTUP_FULL_BUDGET_US;
     /* Direct Gain first finds its state (table maximum without a carrier). */
     for (unsigned k = 0; k < 40u && s_gain.state == DG_SETTLE; ++k) vTaskDelay(pdMS_TO_TICKS(100));
     vTaskDelay(pdMS_TO_TICKS(manual ? 200 : 1500));
@@ -2134,9 +2268,9 @@ static void startup_phase(bool full)
         /* Reuse fresh NORMAL DC windows before the other filter passes. */
         printf("STARTUP step=noise_map\n");
         if (esp_timer_get_time() < deadline) noise_map_startup(deadline);
-        if (!full && esp_timer_get_time() < deadline) filter_measure_current();
-        if (full && esp_timer_get_time() < deadline) dco_startup_profiles(manual, deadline);
+        if (esp_timer_get_time() < deadline) dco_startup_profiles(manual, deadline);
         else dco_ready_note();
+        if (!full && esp_timer_get_time() < deadline) filter_measure_current();
         printf("STARTUP step=deviation\n");
         /* Video needs a moment back on the own channel before measuring. */
         status_screen_end();
@@ -2382,12 +2516,12 @@ static void calibration_dump(void)
         CAL_BASELINE_FILTER_BW20 ? "true" : "false",
         (unsigned)DCO_PRESET_BOARDS, (unsigned long)s_dco_preset_holds,
         s_boot_policy_ms, s_boot_phase_ms, s_manual_ms, s_last_manual_full ? "true" : "false", s_health_us);
-    const filter_entry_t *filters[] = {&s_filter_cal.normal, &s_filter_cal.narrow, &s_filter_cal.wide};
-    for (unsigned k = 0; k < 3u; ++k) {
-        const filter_entry_t *x = filters[k];
+    static const int classes[4] = {FILTER_NORMAL, FILTER_NARROW, FILTER_WIDE, FILTER_XNARROW};
+    for (unsigned k = 0; k < 4u; ++k) {
+        const filter_entry_t x = filter_class_entry(classes[k]);
         cal_dump_line(&d, "{\"type\":\"filter\",\"class\":%u,\"valid\":%s,\"code\":%d,\"skirt\":%u,"
-            "\"bw20\":%s,\"width_khz\":%u,\"nbw_khz\":%u}", k, x->valid ? "true" : "false", x->code,
-            x->skirt, x->bw20 ? "true" : "false", x->width_khz, x->nbw_khz);
+            "\"bw20\":%s,\"width_khz\":%u,\"nbw_khz\":%u}", k, x.valid ? "true" : "false", x.code,
+            x.skirt, x.bw20 ? "true" : "false", x.width_khz, x.nbw_khz);
     }
     /* -1 is the active table, slots 0..5 are saved observations. They may
      * duplicate it: consumers group by board/context/gain, not row count. */
@@ -2511,9 +2645,9 @@ static void calibration_task(void *arg)
  * the filter calibration, every DC table and the repair flags, and runs the
  * full first-boot calibration. Raise CAL_GENERATION whenever a firmware
  * changes what a stored calibration means. */
-/* 3: 11p, 4: digital RX mode 12; each changes the transfer function/noise
- * seen by the stored tables. */
-#define CAL_GENERATION 4u
+/* 3: 11p, 4: digital RX mode 12, 5: 4-class mode 12 filter and DC base map;
+ * each changes the transfer function/noise seen by the stored tables. */
+#define CAL_GENERATION 5u
 static void calibration_generation(void)
 {
     uint16_t stored = 0;
@@ -2523,9 +2657,12 @@ static void calibration_generation(void)
     const filter_blob_t none = {0};
     dco_index_init(&s_dco_index);
     s_dco_index_loaded = true;                 /* never adopt or upgrade the old tables */
+    memset(s_dco_ready, 0, sizeof(s_dco_ready));
     dc_flags_init(&s_dc_flags);
     s_dc_flags_loaded = true;
-    const bool ok = blob_store("filter", &none, sizeof(none)) &&
+    const filter_xn_blob_t no_xn = {0};
+    s_filter_xn = no_xn;
+    const bool ok = blob_store("filter", &none, sizeof(none)) && blob_store("filter_xn", &no_xn, sizeof(no_xn)) &&
                     blob_store("dco_idx", &s_dco_index, sizeof(s_dco_index)) &&
                     blob_store("dc_recal", &s_dc_flags, sizeof(s_dc_flags));
     const uint16_t now = CAL_GENERATION;
@@ -2569,7 +2706,7 @@ static void calib_record(bool manual, int64_t t0)
         e[0] = 1; e[1] = f.bw20; e[2] = (uint8_t)(int8_t)f.code; e[3] = (uint8_t)f.skirt;
         flog_put16(e + 4, x->width_khz); flog_put16(e + 6, x->nbw_khz);
     }
-    for (unsigned k = 0; k < DCO_READY_MAX; ++k) {
+    for (unsigned k = 0; k < 3u; ++k) {
         uint8_t *e = p + 30 + k * 5;
         flog_put16(e, s_dco_ready[k].freq); flog_put16(e + 2, s_dco_ready[k].key); e[4] = s_dco_ready[k].ready;
     }
@@ -2585,7 +2722,9 @@ void calibration_start(void)
 {
     calibration_generation();
     rf_filter_t loaded;
-    if (blob_load("filter", &s_filter_cal, sizeof(s_filter_cal)) && filter_setting(FILTER_NORMAL, &loaded)) {
+    if (!blob_load("filter_xn", &s_filter_xn, sizeof(s_filter_xn))) memset(&s_filter_xn, 0, sizeof(s_filter_xn));
+    if (blob_load("filter", &s_filter_cal, sizeof(s_filter_cal)) && s_filter_cal.version == FILTER_VERSION &&
+        s_filter_cal.normal.valid && filter_setting(FILTER_NORMAL, &loaded)) {
         rf_set_filter(loaded);
         s_filter_result = "loaded";
     } else {
@@ -2601,12 +2740,13 @@ void calibration_print(void)
 {
     rf_filter_t f = rf_filter();
     const unsigned valid = dco_valid_rows();
+    const filter_entry_t fn = filter_class_entry(FILTER_NORMAL), fnar = filter_class_entry(FILTER_NARROW),
+                         fw = filter_class_entry(FILTER_WIDE);
     printf("FILTER %s active bw=%s code=%d skirt=%u | normal width_khz=%u nbw_khz=%u | narrow valid=%u "
            "width_khz=%u nbw_khz=%u | wide valid=%u width_khz=%u nbw_khz=%u | calibrated_nbw_khz=%u\n",
-           s_filter_result, f.bw20 ? "BW20" : "BW40", f.code, f.skirt, s_filter_cal.normal.width_khz,
-           s_filter_cal.normal.nbw_khz, s_filter_cal.narrow.valid, s_filter_cal.narrow.width_khz,
-           s_filter_cal.narrow.nbw_khz, s_filter_cal.wide.valid, s_filter_cal.wide.width_khz,
-           s_filter_cal.wide.nbw_khz, s_filter_cal.calibrated_nbw_khz);
+           s_filter_result, f.bw20 ? "BW20" : "BW40", f.code, f.skirt, fn.width_khz,
+           fn.nbw_khz, fnar.valid, fnar.width_khz, fnar.nbw_khz, fw.valid, fw.width_khz,
+           fw.nbw_khz, s_filter_cal.calibrated_nbw_khz ? s_filter_cal.calibrated_nbw_khz : DCO_PRESET_CAL_NBW_KHZ);
     uint8_t hw[8] = {0}, want[8] = {0};
     const int bad = phy_filter_hw_mismatch(hw, want);
     printf("PHY11P want=1 hw_enabled=%d (-1=unsupported; analog profile checked below)\n", phy_11p_hw_enabled());

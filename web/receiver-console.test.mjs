@@ -147,6 +147,14 @@ test('busy-gated supported keys match console routing across firmware generation
   assert.deepEqual([...MENU_COMMAND_KEYS].sort(), [...keys].sort());
 });
 
+test('VIDEO follows confirmed sync (video=), not the AFC lock', () => {
+  const state = new ReceiverConsole();
+  state.push('C5VRX-5 keys: T\nSTATUS channel=A1 freq=5865 afc_locked=0 video=1 standard=AUTO detected=NTSC signal=60 menu=0\n', 1000);
+  assert.equal(state.view().locked, true);
+  state.push('STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=AUTO detected=NTSC signal=0 menu=0\n', 3000);
+  assert.equal(state.view().locked, false);
+});
+
 test('STATUS beat fills the menu and marks firmware that reports by itself', () => {
   const state = new ReceiverConsole();
   state.push('C5VRX5 version=v5.0.9 demod=U85Q\n', 1000);

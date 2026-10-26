@@ -34,7 +34,8 @@ EVENTS = {1: 'channel', 2: 'profile', 3: 'kp', 4: 'cal_start', 5: 'cal_end', 6: 
           15: 'output_gap', 16: 'output_unlock'}
 DROPOUT = ['CALIBRATION_OR_PHY', 'FAST_EVIDENCE_LOSS', 'AT_RF_FLOOR', 'DEMOD_CLIFF', 'UNKNOWN']
 SPHASE = ['unverified', 'settled', 'drifted', 'unsettled', 'noise_limited', 'probe_failed']
-PROFILES = ['DEFAULT', 'MATCHED', 'NARROW', 'WIDE']
+# 2: kp0.5 NARROW until 2026-10-23, the menu's XNARROW filter since 2026-10-26.
+PROFILES = ['DEFAULT', 'MATCHED', 'XNARROW', 'WIDE']
 RX_STATES = ['', 'ACQUIRE', 'TRACK', 'EDGE', 'RECOVER', 'FAULT', 'OWNED']
 RX_REASONS = ['none', 'no_carrier', 'weak_signal', 'dc_clipping', 'overload', 'dc_residual', 'sync_loss_with_rf',
               'owned', 'fault', 'low_picture_snr']

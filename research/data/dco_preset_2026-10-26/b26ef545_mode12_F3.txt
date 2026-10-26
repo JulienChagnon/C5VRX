@@ -1,0 +1,440 @@
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=11 menu=0 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=0 fw=5.0.0-menu+local
+STARTUP begin manual=1 filter=stored dco_rows=30 deviation_x100=73
+STARTUP step=sphase
+SPHASE startup state=settled excess_mc2=21 white_pm=544 dc_mcell=-150/286 scans=4 best=-1 worst=-1
+STARTUP step=filter
+STARTUP step=dco
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+HB t_s=290 stage=ready gain=83 menu=1 startup=1 busy=1
+DCO row=83 fast_search=fallback_full
+DCO search before=4283/1228 codes=253/249 residual=3082/1820
+DCO row=83 not_converged residual=3082/1820
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO row=82 fast_search=fallback_full
+DCO search before=3744/1058 codes=221/240 residual=-2053/-384
+DCO row=82 not_converged residual=-2053/-384
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO row=81 fast_search=fallback_full
+HB t_s=295 stage=ready gain=81 menu=1 startup=1 busy=1
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO search before=3556/547 codes=221/246 residual=-2497/41
+DCO row=81 not_converged residual=-2497/41
+DCO row=80 fast_search=fallback_full
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO search before=3200/732 codes=246/241 residual=1326/-71
+DCO row=80 not_converged residual=1326/-71
+DCO row=79 fast_search=fallback_full
+HB t_s=300 stage=ready gain=79 menu=1 startup=1 busy=1
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO search before=2677/769 codes=241/247 residual=394/138
+DCO search before=205/173 codes=241/247 residual=103/34
+DCO search before=-45/16 codes=241/247 residual=-176/87
+DCO row=76 fast_search=fallback_full
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO search before=-278/229 codes=242/247 residual=-193/15
+DCO search before=-251/23 codes=242/247 residual=-240/53
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO search before=-574/-236 codes=245/247 residual=63/60
+DCO search before=35/-106 codes=245/247 residual=-232/-32
+HB t_s=305 stage=ready gain=73 menu=1 startup=1 busy=1
+DCO search before=-435/15 codes=246/247 residual=121/-77
+DCO search before=184/-74 codes=246/247 residual=201/-126
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO flat before=1475/272 codes=246/245 residual=100/-335 ok
+DCO flat before=1139/348 codes=246/246 residual=-122/-24 ok
+DCO flat before=1319/393 codes=246/246 residual=-331/-84 ok
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO flat before=844/394 codes=248/246 residual=140/-214 ok
+DCO flat before=886/414 codes=248/247 residual=3/-87 ok
+DCO gate row=65 gain=66 reason=envelope env_x100=179 clip_pm=0
+CAL_STEP step=dc rows=18 ms=20766 result=carrier_detected
+HB t_s=310 stage=ready gain=80 menu=1 startup=1 busy=1
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO startup where=own result=carrier_detected searched=18 rows=26 floor_rows=0 missing=4 template_rows=14 floor_from_gain=0
+STARTUP step=noise_map
+CN_NOISE row=83 noise_cells2=8.648 kurtosis=1.89
+CN_NOISE row=82 noise_cells2=7.328 kurtosis=1.99
+CN_NOISE row=81 noise_cells2=6.213 kurtosis=1.98
+CN_NOISE row=80 noise_cells2=4.884 kurtosis=1.95
+CN_NOISE row=79 noise_cells2=3.992 source=dc_verify
+CN_NOISE row=78 noise_cells2=3.188 source=dc_verify
+CN_NOISE row=77 noise_cells2=2.606 source=dc_verify
+CN_NOISE row=76 noise_cells2=2.088 source=dc_verify
+CN_NOISE row=75 noise_cells2=1.689 source=dc_verify
+CN_NOISE row=74 noise_cells2=1.407 source=dc_verify
+CN_NOISE row=73 noise_cells2=1.147 source=dc_verify
+CN_NOISE row=72 noise_cells2=0.963 source=dc_verify
+CN_NOISE row=71 noise_cells2=0.802 source=dc_verify
+CN_NOISE row=70 noise_cells2=0.655 kurtosis=1.99
+CN_NOISE row=67 noise_cells2=0.499 kurtosis=1.43
+CN_NOISE row=64 noise_cells2=0.334 kurtosis=2.02
+CN_NOISE row=61 noise_cells2=0.144 kurtosis=5.20
+CN_NOISE row=58 noise_cells2=0.188 kurtosis=2.35
+CN_NOISE row=55 noise_cells2=0.135 kurtosis=4.34
+CN_NOISE startup rows=19 rejected=0 (per-row noise for C/N-AUTO)
+DCO startup profile_filter bw20=1 code=63 skirt=24
+DCO row=83 fast_search=fallback_full
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO search before=3411/1001 codes=221/244 residual=-2452/-34
+DCO row=83 not_converged residual=-2452/-34
+DCO row=82 fast_search=fallback_full
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+HB t_s=315 stage=ready gain=82 menu=1 startup=1 busy=1
+DCO search before=3346/1140 codes=221/243 residual=-2709/277
+DCO row=82 not_converged residual=-2709/277
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO search before=2907/809 codes=238/245 residual=226/188
+DCO row=80 fast_search=fallback_full
+DCO search before=42/95 codes=238/243 residual=-129/294
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO row=79 fast_search=fallback_full
+HB t_s=320 stage=ready gain=79 menu=1 startup=1 busy=1
+DCO search before=-390/-64 codes=240/244 residual=-318/193
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO row=78 fast_search=fallback_full
+DCO search before=-202/-266 codes=240/244 residual=-413/-24
+DCO row=77 fast_search=fallback_full
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO search before=-186/-374 codes=240/246 residual=2/360
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+HB t_s=325 stage=ready gain=76 menu=1 startup=1 busy=1
+DCO row=76 fast_search=fallback_full
+DCO search before=-263/68 codes=243/246 residual=141/215
+DCO search before=-182/125 codes=243/246 residual=-141/100
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO search before=-219/131 codes=243/246 residual=-209/1
+DCO row=73 fast_search=fallback_full
+DCO search before=-651/-74 codes=246/246 residual=-113/32
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO search before=-78/-28 codes=246/246 residual=-152/-68
+HB t_s=330 stage=ready gain=71 menu=1 startup=1 busy=1
+DCO search before=342/-310 codes=244/248 residual=-143/221
+DCO search before=-300/207 codes=245/248 residual=-180/154
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO search before=-333/311 codes=246/246 residual=70/-63
+DCO flat before=1417/272 codes=246/246 residual=-253/-305 ok
+DCO flat before=1204/382 codes=246/246 residual=-136/-292 ok
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO flat before=1051/332 codes=247/247 residual=-40/49 ok
+DCO flat before=1133/341 codes=247/246 residual=-268/-247 ok
+DCO gate row=64 gain=65 reason=envelope env_x100=151 clip_pm=0
+CAL_STEP step=dc rows=19 ms=23281 result=carrier_detected
+HB t_s=335 stage=ready gain=83 menu=1 startup=1 busy=1
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO startup where=own result=carrier_detected searched=19 rows=28 floor_rows=0 missing=2 template_rows=0 floor_from_gain=0
+DCO startup profile_filter bw20=0 code=62 skirt=8
+DCO row=83 fast_search=fallback_full
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO search before=4082/775 codes=253/249 residual=4314/1255
+DCO row=83 not_converged residual=4314/1255
+DCO row=82 fast_search=fallback_full
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+HB t_s=340 stage=ready gain=82 menu=1 startup=1 busy=1
+DCO search before=3822/607 codes=253/249 residual=3523/888
+DCO row=82 not_converged residual=3523/888
+DCO row=81 fast_search=fallback_full
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO search before=3445/713 codes=221/244 residual=-2781/228
+DCO row=81 not_converged residual=-2781/228
+DCO row=80 fast_search=fallback_full
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO search before=2643/1043 codes=240/241 residual=572/271
+HB t_s=345 stage=ready gain=79 menu=1 startup=1 busy=1
+DCO search before=-324/-238 codes=237/243 residual=-43/26
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO row=78 fast_search=fallback_full
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO search before=-88/-450 codes=238/246 residual=-620/373
+DCO search before=-388/393 codes=241/244 residual=-5/-154
+DCO search before=-391/-385 codes=242/245 residual=-29/67
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO row=75 fast_search=fallback_full
+HB t_s=350 stage=ready gain=75 menu=1 startup=1 busy=1
+DCO search before=-399/-33 codes=243/246 residual=-176/-74
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO search before=-502/124 codes=245/247 residual=204/-11
+DCO search before=154/-61 codes=245/247 residual=-82/20
+DCO search before=-253/11 codes=245/247 residual=-208/49
+DCO search before=-76/222 codes=245/247 residual=15/149
+DCO search before=-102/37 codes=245/247 residual=-42/55
+DCO search before=-190/4 codes=245/247 residual=-239/-74
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO flat before=1309/278 codes=246/247 residual=-232/-30 ok
+DCO flat before=1284/354 codes=247/248 residual=59/-86 ok
+HB t_s=355 stage=ready gain=66 menu=1 startup=1 busy=1
+DCO flat before=1186/208 codes=246/247 residual=-238/-186 ok
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO flat before=1092/249 codes=248/247 residual=-49/-106 ok
+DCO gate row=64 gain=65 reason=envelope env_x100=204 clip_pm=0
+CAL_STEP step=dc rows=19 ms=20990 result=carrier_detected
+DCO startup where=own result=carrier_detected searched=19 rows=27 floor_rows=0 missing=3 template_rows=0 floor_from_gain=0
+DCO startup profile_filter bw20=1 code=63 skirt=0
+DCO preset freq=5865 class=3 rows=2 boards=1 (firmware base map: trimmed live, adopted when held)
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO row=83 fast_search=fallback_full
+DCO search before=4523/478 codes=285/239 residual=3384/-682
+DCO row=83 not_converged residual=3384/-682
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+HB t_s=360 stage=ready gain=82 menu=1 startup=1 busy=1
+DCO row=82 fast_search=fallback_full
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO search before=3834/1156 codes=221/238 residual=-2084/-914
+DCO row=82 not_converged residual=-2084/-914
+DCO row=81 fast_search=fallback_full
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO search before=3863/598 codes=221/249 residual=-2820/847
+DCO row=81 not_converged residual=-2820/847
+HB t_s=365 stage=ready gain=80 menu=1 startup=1 busy=1
+DCO row=80 fast_search=fallback_full
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO search before=3655/709 codes=222/241 residual=-2087/-845
+DCO row=80 not_converged residual=-2087/-845
+DCO row=79 fast_search=fallback_full
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO search before=3732/111 codes=227/247 residual=-1717/-285
+DCO row=79 not_converged residual=-1717/-285
+DCO search before=2997/337 codes=236/247 residual=-78/-158
+DCO row=77 fast_search=fallback_full
+HB t_s=370 stage=ready gain=77 menu=1 startup=1 busy=1
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO search before=-354/-91 codes=238/247 residual=-91/-42
+DCO search before=-357/56 codes=240/247 residual=-250/-131
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO row=75 fast_search=fallback_full
+DCO search before=-262/-175 codes=243/247 residual=-97/32
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO search before=-578/64 codes=244/248 residual=-151/221
+DCO row=73 fast_search=fallback_full
+HB t_s=375 stage=ready gain=73 menu=1 startup=1 busy=1
+DCO search before=-34/348 codes=244/246 residual=-40/-73
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO search before=-369/-151 codes=244/246 residual=-177/-67
+DCO row=71 fast_search=fallback_full
+DCO search before=-218/-168 codes=245/247 residual=128/-52
+DCO search before=-83/-68 codes=245/247 residual=6/26
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO flat before=1552/275 codes=246/247 residual=0/58 ok
+DCO flat before=1424/261 codes=247/246 residual=-47/-103 ok
+HB t_s=380 stage=ready gain=68 menu=1 startup=1 busy=1
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+DCO flat before=1282/503 codes=247/246 residual=276/-162 ok
+DCO flat before=1236/409 codes=247/247 residual=-185/-13 ok
+DCO gate row=65 gain=66 reason=envelope env_x100=166 clip_pm=0
+CAL_STEP step=dc rows=18 ms=24095 result=carrier_detected
+DCO startup where=own result=carrier_detected searched=18 rows=25 floor_rows=0 missing=5 template_rows=12 floor_from_gain=0
+DCO preset freq=5865 class=0 rows=4 boards=1 (firmware base map: trimmed live, adopted when held)
+DCO_READY freq=5865 filter_key=3920 ready=0
+DCO_READY freq=5865 filter_key=c018 ready=0
+DCO_READY freq=5865 filter_key=3f08 ready=0
+DCO_READY freq=5865 filter_key=c000 ready=0
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+FILTER_CAL bw=BW40 code=56 skirt=32 width_khz=12500 nbw_khz=13997 env_x100=119 limit=142 clip_pm=69
+DCO preset freq=5865 class=1 rows=2 boards=1 (firmware base map: trimmed live, adopted when held)
+FILTER_CAL bw=BW20 code=63 skirt=24 width_khz=11250 nbw_khz=11963 env_x100=108 limit=120 clip_pm=14
+DCO preset freq=5865 class=2 rows=3 boards=1 (firmware base map: trimmed live, adopted when held)
+FILTER_CAL bw=BW40 code=62 skirt=8 width_khz=16875 nbw_khz=18119 env_x100=112 limit=127 clip_pm=30
+DCO preset freq=5865 class=3 rows=5 boards=1 (firmware base map: trimmed live, adopted when held)
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=6 menu=1 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=1 fw=5.0.0-menu+local
+HB t_s=385 stage=ready gain=83 menu=1 startup=1 busy=1
+FILTER_CAL bw=BW20 code=63 skirt=0 width_khz=10625 nbw_khz=11721 env_x100=104 limit=118 clip_pm=8
+DCO preset freq=5865 class=0 rows=4 boards=1 (firmware base map: trimmed live, adopted when held)
+CAL_STEP step=filter_current ms=3141 result=measured width_khz=12500 nbw_khz=13997
+STARTUP step=deviation
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=43 menu=0 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=0 fw=5.0.0-menu+local
+STARTUP step=sphase_final
+SPHASE scan tag=SPHASE_QUICK positions=3 best=436 worst=596 contrast=0 verdict=unsettled
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=41 menu=0 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=0 fw=5.0.0-menu+local
+HB t_s=390 stage=ready gain=83 menu=0 startup=1 busy=0
+SPHASE scan tag=SPHASE positions=9 best=284 worst=935 contrast=1 verdict=settled
+SPHASE final state=settled excess_mc2=277 white_pm=584 dc_mcell=2899/238 scans=5 best=284 worst=935
+CAL_MANUAL kind=current_filter ms=101850 searches=263 filter=measured_current
+STARTUP done ms=101852 filter=measured_current dco_rows=30 dco_missing=0 sphase=settled profile=DEFAULT 12MHZ reason=boot_default
+STATUS channel=A1 freq=5865 afc_locked=0 video=0 standard=NTSC detected=none signal=42 menu=0 mode=DEFAULT 12MHZ demod=U80P64-R1 output=1.0x live=0 busy=0 fw=5.0.0-menu+local
+CALDUMP_BEGIN schema=1
+CALDUMP_LINE n=0 {"type":"device","schema":1,"board_id":"b26ef545","board_id_valid":true,"firmware":"5.0.0-menu+local","idf":"v6.0.2","chip_revision":100,"cal_generation":5,"uptime_us":391542087}
+CALDUMP_LINE n=1 {"type":"active","freq_mhz":5865,"offset_khz":0,"gain":83,"lane":2,"filter_code":56,"filter_skirt":32,"filter_bw20":false,"filter_measured":true,"filter_nbw_khz":13997,"dc_held":true,"health":0,"dc_i_mcells":3289,"dc_q_mcells":418,"qualified_blocks":79,"rejected_blocks":5,"calibration_recommended":true}
+CALDUMP_LINE n=2 {"type":"boot_timing","radio_ms":664,"ready_ms":3876,"target_ms":10000}
+CALDUMP_LINE n=3 {"type":"dc_hardware","valid":true,"gain":83,"bank1_i":280,"bank1_q":228,"bank2_i":250,"bank2_q":240}
+CALDUMP_LINE n=4 {"type":"policy","auto_calibration":false,"auto_dc_trim":true,"dc_adopted":0,"baseline_code":56,"baseline_skirt":32,"baseline_bw20":false,"dc_preset_boards":1,"dc_preset_holds":7,"boot_blocking_ms":0,"boot_phase_ms":471,"last_manual_ms":101850,"last_manual_full":false,"health_observation_us":10843512}
+CALDUMP_LINE n=5 {"type":"filter","class":0,"valid":true,"code":56,"skirt":32,"bw20":false,"width_khz":12500,"nbw_khz":13997}
+CALDUMP_LINE n=6 {"type":"filter","class":1,"valid":true,"code":63,"skirt":24,"bw20":true,"width_khz":11250,"nbw_khz":11963}
+CALDUMP_LINE n=7 {"type":"filter","class":2,"valid":true,"code":62,"skirt":8,"bw20":false,"width_khz":16875,"nbw_khz":18119}
+CALDUMP_LINE n=8 {"type":"filter","class":3,"valid":true,"code":63,"skirt":0,"bw20":true,"width_khz":10625,"nbw_khz":11721}
+CALDUMP_LINE n=9 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":54,"i":249,"q":241,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=10 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":55,"i":249,"q":241,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=11 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":56,"i":249,"q":241,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=12 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":57,"i":249,"q":241,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=13 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":58,"i":249,"q":240,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=14 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":59,"i":248,"q":241,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=15 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":60,"i":251,"q":247,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=16 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":61,"i":251,"q":247,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=17 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":62,"i":251,"q":247,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=18 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":63,"i":250,"q":248,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=19 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":64,"i":250,"q":247,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=20 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":65,"i":247,"q":246,"residual_i_mcells":-198,"residual_q_mcells":-74,"valid":1,"template":false}
+CALDUMP_LINE n=21 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":66,"i":248,"q":247,"residual_i_mcells":3,"residual_q_mcells":-87,"valid":1,"template":false}
+CALDUMP_LINE n=22 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":67,"i":248,"q":246,"residual_i_mcells":140,"residual_q_mcells":-214,"valid":1,"template":false}
+CALDUMP_LINE n=23 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":68,"i":246,"q":246,"residual_i_mcells":-331,"residual_q_mcells":-84,"valid":1,"template":false}
+CALDUMP_LINE n=24 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":69,"i":246,"q":246,"residual_i_mcells":-122,"residual_q_mcells":-24,"valid":1,"template":false}
+CALDUMP_LINE n=25 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":70,"i":246,"q":245,"residual_i_mcells":100,"residual_q_mcells":-335,"valid":1,"template":false}
+CALDUMP_LINE n=26 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":71,"i":246,"q":247,"residual_i_mcells":201,"residual_q_mcells":-126,"valid":1,"template":false}
+CALDUMP_LINE n=27 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":72,"i":246,"q":247,"residual_i_mcells":121,"residual_q_mcells":-77,"valid":1,"template":false}
+CALDUMP_LINE n=28 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":73,"i":245,"q":247,"residual_i_mcells":-232,"residual_q_mcells":-32,"valid":1,"template":false}
+CALDUMP_LINE n=29 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":74,"i":245,"q":247,"residual_i_mcells":63,"residual_q_mcells":60,"valid":1,"template":false}
+CALDUMP_LINE n=30 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":75,"i":242,"q":247,"residual_i_mcells":-240,"residual_q_mcells":53,"valid":1,"template":false}
+CALDUMP_LINE n=31 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":76,"i":242,"q":247,"residual_i_mcells":-193,"residual_q_mcells":15,"valid":1,"template":false}
+CALDUMP_LINE n=32 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":77,"i":241,"q":247,"residual_i_mcells":-176,"residual_q_mcells":87,"valid":1,"template":false}
+CALDUMP_LINE n=33 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":78,"i":241,"q":247,"residual_i_mcells":103,"residual_q_mcells":34,"valid":1,"template":false}
+CALDUMP_LINE n=34 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":79,"i":241,"q":247,"residual_i_mcells":394,"residual_q_mcells":138,"valid":1,"template":false}
+CALDUMP_LINE n=35 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":80,"i":246,"q":245,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=36 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":81,"i":246,"q":244,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=37 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":82,"i":249,"q":244,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=38 {"type":"dc_row","slot":-1,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":83,"i":250,"q":240,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=39 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":54,"i":249,"q":241,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=40 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":55,"i":249,"q":241,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=41 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":56,"i":249,"q":241,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=42 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":57,"i":249,"q":241,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=43 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":58,"i":249,"q":240,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=44 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":59,"i":248,"q":241,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=45 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":60,"i":251,"q":247,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=46 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":61,"i":251,"q":247,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=47 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":62,"i":251,"q":247,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=48 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":63,"i":250,"q":248,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=49 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":64,"i":250,"q":247,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=50 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":65,"i":247,"q":246,"residual_i_mcells":-198,"residual_q_mcells":-74,"valid":1,"template":false}
+CALDUMP_LINE n=51 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":66,"i":248,"q":247,"residual_i_mcells":3,"residual_q_mcells":-87,"valid":1,"template":false}
+CALDUMP_LINE n=52 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":67,"i":248,"q":246,"residual_i_mcells":140,"residual_q_mcells":-214,"valid":1,"template":false}
+CALDUMP_LINE n=53 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":68,"i":246,"q":246,"residual_i_mcells":-331,"residual_q_mcells":-84,"valid":1,"template":false}
+CALDUMP_LINE n=54 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":69,"i":246,"q":246,"residual_i_mcells":-122,"residual_q_mcells":-24,"valid":1,"template":false}
+CALDUMP_LINE n=55 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":70,"i":246,"q":245,"residual_i_mcells":100,"residual_q_mcells":-335,"valid":1,"template":false}
+CALDUMP_LINE n=56 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":71,"i":246,"q":247,"residual_i_mcells":201,"residual_q_mcells":-126,"valid":1,"template":false}
+CALDUMP_LINE n=57 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":72,"i":246,"q":247,"residual_i_mcells":121,"residual_q_mcells":-77,"valid":1,"template":false}
+CALDUMP_LINE n=58 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":73,"i":245,"q":247,"residual_i_mcells":-232,"residual_q_mcells":-32,"valid":1,"template":false}
+CALDUMP_LINE n=59 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":74,"i":245,"q":247,"residual_i_mcells":63,"residual_q_mcells":60,"valid":1,"template":false}
+CALDUMP_LINE n=60 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":75,"i":242,"q":247,"residual_i_mcells":-240,"residual_q_mcells":53,"valid":1,"template":false}
+CALDUMP_LINE n=61 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":76,"i":242,"q":247,"residual_i_mcells":-193,"residual_q_mcells":15,"valid":1,"template":false}
+CALDUMP_LINE n=62 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":77,"i":241,"q":247,"residual_i_mcells":-176,"residual_q_mcells":87,"valid":1,"template":false}
+CALDUMP_LINE n=63 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":78,"i":241,"q":247,"residual_i_mcells":103,"residual_q_mcells":34,"valid":1,"template":false}
+CALDUMP_LINE n=64 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":79,"i":241,"q":247,"residual_i_mcells":394,"residual_q_mcells":138,"valid":1,"template":false}
+CALDUMP_LINE n=65 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":80,"i":236,"q":246,"residual_i_mcells":-851,"residual_q_mcells":196,"valid":0,"template":false}
+CALDUMP_LINE n=66 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":81,"i":246,"q":244,"residual_i_mcells":0,"residual_q_mcells":0,"valid":0,"template":true}
+CALDUMP_LINE n=67 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":82,"i":249,"q":244,"residual_i_mcells":0,"residual_q_mcells":0,"valid":0,"template":true}
+CALDUMP_LINE n=68 {"type":"dc_row","slot":0,"freq_mhz":5865,"filter_key":14624,"code":56,"skirt":32,"bw20":0,"iq_scale":0,"table_version":8,"gain":83,"i":250,"q":240,"residual_i_mcells":0,"residual_q_mcells":0,"valid":0,"template":true}
+CALDUMP_LINE n=69 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":54,"i":248,"q":240,"residual_i_mcells":-268,"residual_q_mcells":-147,"valid":1,"template":false}
+CALDUMP_LINE n=70 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":55,"i":248,"q":240,"residual_i_mcells":-329,"residual_q_mcells":-171,"valid":1,"template":false}
+CALDUMP_LINE n=71 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":56,"i":248,"q":240,"residual_i_mcells":-102,"residual_q_mcells":-72,"valid":1,"template":false}
+CALDUMP_LINE n=72 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":57,"i":248,"q":239,"residual_i_mcells":-124,"residual_q_mcells":-133,"valid":1,"template":false}
+CALDUMP_LINE n=73 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":58,"i":248,"q":238,"residual_i_mcells":-29,"residual_q_mcells":-256,"valid":1,"template":false}
+CALDUMP_LINE n=74 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":59,"i":247,"q":240,"residual_i_mcells":-241,"residual_q_mcells":137,"valid":1,"template":false}
+CALDUMP_LINE n=75 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":60,"i":249,"q":247,"residual_i_mcells":-438,"residual_q_mcells":20,"valid":1,"template":false}
+CALDUMP_LINE n=76 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":61,"i":249,"q":247,"residual_i_mcells":-400,"residual_q_mcells":58,"valid":1,"template":false}
+CALDUMP_LINE n=77 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":62,"i":249,"q":247,"residual_i_mcells":-59,"residual_q_mcells":-66,"valid":1,"template":false}
+CALDUMP_LINE n=78 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":63,"i":249,"q":247,"residual_i_mcells":-96,"residual_q_mcells":115,"valid":1,"template":false}
+CALDUMP_LINE n=79 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":64,"i":249,"q":246,"residual_i_mcells":-239,"residual_q_mcells":-239,"valid":1,"template":false}
+CALDUMP_LINE n=80 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":65,"i":247,"q":246,"residual_i_mcells":-268,"residual_q_mcells":-247,"valid":1,"template":false}
+CALDUMP_LINE n=81 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":66,"i":247,"q":247,"residual_i_mcells":-40,"residual_q_mcells":49,"valid":1,"template":false}
+CALDUMP_LINE n=82 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":67,"i":246,"q":246,"residual_i_mcells":-136,"residual_q_mcells":-292,"valid":1,"template":false}
+CALDUMP_LINE n=83 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":68,"i":246,"q":246,"residual_i_mcells":-253,"residual_q_mcells":-305,"valid":1,"template":false}
+CALDUMP_LINE n=84 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":69,"i":246,"q":246,"residual_i_mcells":70,"residual_q_mcells":-63,"valid":1,"template":false}
+CALDUMP_LINE n=85 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":70,"i":245,"q":248,"residual_i_mcells":-180,"residual_q_mcells":154,"valid":1,"template":false}
+CALDUMP_LINE n=86 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":71,"i":244,"q":248,"residual_i_mcells":-143,"residual_q_mcells":221,"valid":1,"template":false}
+CALDUMP_LINE n=87 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":72,"i":246,"q":246,"residual_i_mcells":-152,"residual_q_mcells":-68,"valid":1,"template":false}
+CALDUMP_LINE n=88 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":73,"i":246,"q":246,"residual_i_mcells":-113,"residual_q_mcells":32,"valid":1,"template":false}
+CALDUMP_LINE n=89 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":74,"i":243,"q":246,"residual_i_mcells":-209,"residual_q_mcells":1,"valid":1,"template":false}
+CALDUMP_LINE n=90 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":75,"i":243,"q":246,"residual_i_mcells":-141,"residual_q_mcells":100,"valid":1,"template":false}
+CALDUMP_LINE n=91 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":76,"i":243,"q":246,"residual_i_mcells":141,"residual_q_mcells":215,"valid":1,"template":false}
+CALDUMP_LINE n=92 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":77,"i":240,"q":246,"residual_i_mcells":2,"residual_q_mcells":360,"valid":1,"template":false}
+CALDUMP_LINE n=93 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":78,"i":240,"q":244,"residual_i_mcells":-413,"residual_q_mcells":-24,"valid":1,"template":false}
+CALDUMP_LINE n=94 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":79,"i":240,"q":244,"residual_i_mcells":-318,"residual_q_mcells":193,"valid":1,"template":false}
+CALDUMP_LINE n=95 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":80,"i":238,"q":243,"residual_i_mcells":-129,"residual_q_mcells":294,"valid":1,"template":false}
+CALDUMP_LINE n=96 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":81,"i":238,"q":245,"residual_i_mcells":226,"residual_q_mcells":188,"valid":1,"template":false}
+CALDUMP_LINE n=97 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":82,"i":236,"q":239,"residual_i_mcells":-302,"residual_q_mcells":107,"valid":0,"template":false}
+CALDUMP_LINE n=98 {"type":"dc_row","slot":1,"freq_mhz":5865,"filter_key":49176,"code":63,"skirt":24,"bw20":1,"iq_scale":0,"table_version":8,"gain":83,"i":236,"q":238,"residual_i_mcells":12,"residual_q_mcells":-177,"valid":0,"template":false}
+CALDUMP_LINE n=99 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":54,"i":248,"q":240,"residual_i_mcells":-256,"residual_q_mcells":-267,"valid":1,"template":false}
+CALDUMP_LINE n=100 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":55,"i":248,"q":241,"residual_i_mcells":-206,"residual_q_mcells":-35,"valid":1,"template":false}
+CALDUMP_LINE n=101 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":56,"i":248,"q":240,"residual_i_mcells":-2,"residual_q_mcells":-204,"valid":1,"template":false}
+CALDUMP_LINE n=102 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":57,"i":247,"q":241,"residual_i_mcells":-155,"residual_q_mcells":6,"valid":1,"template":false}
+CALDUMP_LINE n=103 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":58,"i":247,"q":240,"residual_i_mcells":-108,"residual_q_mcells":-227,"valid":1,"template":false}
+CALDUMP_LINE n=104 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":59,"i":247,"q":240,"residual_i_mcells":66,"residual_q_mcells":-127,"valid":1,"template":false}
+CALDUMP_LINE n=105 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":60,"i":250,"q":247,"residual_i_mcells":144,"residual_q_mcells":-186,"valid":1,"template":false}
+CALDUMP_LINE n=106 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":61,"i":249,"q":247,"residual_i_mcells":-262,"residual_q_mcells":-181,"valid":1,"template":false}
+CALDUMP_LINE n=107 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":62,"i":249,"q":247,"residual_i_mcells":-256,"residual_q_mcells":-138,"valid":1,"template":false}
+CALDUMP_LINE n=108 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":63,"i":248,"q":248,"residual_i_mcells":-336,"residual_q_mcells":182,"valid":1,"template":false}
+CALDUMP_LINE n=109 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":64,"i":249,"q":247,"residual_i_mcells":16,"residual_q_mcells":-117,"valid":1,"template":false}
+CALDUMP_LINE n=110 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":65,"i":248,"q":247,"residual_i_mcells":-49,"residual_q_mcells":-106,"valid":1,"template":false}
+CALDUMP_LINE n=111 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":66,"i":246,"q":247,"residual_i_mcells":-238,"residual_q_mcells":-186,"valid":1,"template":false}
+CALDUMP_LINE n=112 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":67,"i":247,"q":248,"residual_i_mcells":59,"residual_q_mcells":-86,"valid":1,"template":false}
+CALDUMP_LINE n=113 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":68,"i":246,"q":247,"residual_i_mcells":-232,"residual_q_mcells":-30,"valid":1,"template":false}
+CALDUMP_LINE n=114 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":69,"i":245,"q":247,"residual_i_mcells":-239,"residual_q_mcells":-74,"valid":1,"template":false}
+CALDUMP_LINE n=115 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":70,"i":245,"q":247,"residual_i_mcells":-42,"residual_q_mcells":55,"valid":1,"template":false}
+CALDUMP_LINE n=116 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":71,"i":245,"q":247,"residual_i_mcells":15,"residual_q_mcells":149,"valid":1,"template":false}
+CALDUMP_LINE n=117 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":72,"i":245,"q":247,"residual_i_mcells":-208,"residual_q_mcells":49,"valid":1,"template":false}
+CALDUMP_LINE n=118 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":73,"i":245,"q":247,"residual_i_mcells":-82,"residual_q_mcells":20,"valid":1,"template":false}
+CALDUMP_LINE n=119 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":74,"i":245,"q":247,"residual_i_mcells":204,"residual_q_mcells":-11,"valid":1,"template":false}
+CALDUMP_LINE n=120 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":75,"i":243,"q":246,"residual_i_mcells":-176,"residual_q_mcells":-74,"valid":1,"template":false}
+CALDUMP_LINE n=121 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":76,"i":242,"q":245,"residual_i_mcells":-29,"residual_q_mcells":67,"valid":1,"template":false}
+CALDUMP_LINE n=122 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":77,"i":241,"q":244,"residual_i_mcells":-5,"residual_q_mcells":-154,"valid":1,"template":false}
+CALDUMP_LINE n=123 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":78,"i":238,"q":246,"residual_i_mcells":-620,"residual_q_mcells":373,"valid":1,"template":false}
+CALDUMP_LINE n=124 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":79,"i":237,"q":243,"residual_i_mcells":-43,"residual_q_mcells":26,"valid":1,"template":false}
+CALDUMP_LINE n=125 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":80,"i":240,"q":241,"residual_i_mcells":572,"residual_q_mcells":271,"valid":1,"template":false}
+CALDUMP_LINE n=126 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":81,"i":234,"q":240,"residual_i_mcells":-45,"residual_q_mcells":-276,"valid":0,"template":false}
+CALDUMP_LINE n=127 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":82,"i":235,"q":238,"residual_i_mcells":297,"residual_q_mcells":-164,"valid":0,"template":false}
+CALDUMP_LINE n=128 {"type":"dc_row","slot":2,"freq_mhz":5865,"filter_key":16136,"code":62,"skirt":8,"bw20":0,"iq_scale":0,"table_version":8,"gain":83,"i":237,"q":243,"residual_i_mcells":1004,"residual_q_mcells":-672,"valid":0,"template":false}
+CALDUMP_LINE n=129 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":54,"i":249,"q":241,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=130 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":55,"i":249,"q":240,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=131 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":56,"i":249,"q":241,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=132 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":57,"i":249,"q":240,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=133 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":58,"i":249,"q":240,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=134 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":59,"i":248,"q":240,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=135 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":60,"i":251,"q":247,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=136 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":61,"i":251,"q":248,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=137 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":62,"i":250,"q":247,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=138 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":63,"i":250,"q":247,"residual_i_mcells":0,"residual_q_mcells":0,"valid":1,"template":true}
+CALDUMP_LINE n=139 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":64,"i":248,"q":246,"residual_i_mcells":-69,"residual_q_mcells":-79,"valid":1,"template":false}
+CALDUMP_LINE n=140 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":65,"i":247,"q":245,"residual_i_mcells":-194,"residual_q_mcells":-233,"valid":1,"template":false}
+CALDUMP_LINE n=141 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":66,"i":247,"q":247,"residual_i_mcells":-185,"residual_q_mcells":-13,"valid":1,"template":false}
+CALDUMP_LINE n=142 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":67,"i":247,"q":246,"residual_i_mcells":276,"residual_q_mcells":-162,"valid":1,"template":false}
+CALDUMP_LINE n=143 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":68,"i":247,"q":246,"residual_i_mcells":-47,"residual_q_mcells":-103,"valid":1,"template":false}
+CALDUMP_LINE n=144 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":69,"i":246,"q":247,"residual_i_mcells":0,"residual_q_mcells":58,"valid":1,"template":false}
+CALDUMP_LINE n=145 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":70,"i":245,"q":247,"residual_i_mcells":6,"residual_q_mcells":26,"valid":1,"template":false}
+CALDUMP_LINE n=146 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":71,"i":245,"q":247,"residual_i_mcells":128,"residual_q_mcells":-52,"valid":1,"template":false}
+CALDUMP_LINE n=147 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":72,"i":244,"q":246,"residual_i_mcells":-177,"residual_q_mcells":-67,"valid":1,"template":false}
+CALDUMP_LINE n=148 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":73,"i":244,"q":246,"residual_i_mcells":-40,"residual_q_mcells":-73,"valid":1,"template":false}
+CALDUMP_LINE n=149 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":74,"i":244,"q":248,"residual_i_mcells":-151,"residual_q_mcells":221,"valid":1,"template":false}
+CALDUMP_LINE n=150 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":75,"i":243,"q":247,"residual_i_mcells":-97,"residual_q_mcells":32,"valid":1,"template":false}
+CALDUMP_LINE n=151 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":76,"i":240,"q":247,"residual_i_mcells":-250,"residual_q_mcells":-131,"valid":1,"template":false}
+CALDUMP_LINE n=152 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":77,"i":238,"q":247,"residual_i_mcells":-91,"residual_q_mcells":-42,"valid":1,"template":false}
+CALDUMP_LINE n=153 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":78,"i":236,"q":247,"residual_i_mcells":-78,"residual_q_mcells":-158,"valid":1,"template":false}
+CALDUMP_LINE n=154 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":79,"i":239,"q":246,"residual_i_mcells":-241,"residual_q_mcells":207,"valid":0,"template":false}
+CALDUMP_LINE n=155 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":80,"i":237,"q":244,"residual_i_mcells":18,"residual_q_mcells":-273,"valid":0,"template":false}
+CALDUMP_LINE n=156 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":81,"i":237,"q":244,"residual_i_mcells":207,"residual_q_mcells":-141,"valid":0,"template":false}
+CALDUMP_LINE n=157 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":82,"i":250,"q":242,"residual_i_mcells":0,"residual_q_mcells":0,"valid":0,"template":true}
+CALDUMP_LINE n=158 {"type":"dc_row","slot":3,"freq_mhz":5865,"filter_key":49152,"code":63,"skirt":0,"bw20":1,"iq_scale":0,"table_version":8,"gain":83,"i":242,"q":243,"residual_i_mcells":0,"residual_q_mcells":0,"valid":0,"template":true}
+CALDUMP_LINE n=159 {"type":"gain_context","valid":false,"version":0,"freq_mhz":0,"offset_khz":0,"filter_code":0,"filter_skirt":0,"filter_bw20":0,"iq_scale":0}
+CALDUMP_LINE n=160 {"type":"noise_row","gain":54,"cells2":0.079099,"samples":12,"measured_us":187584686}
+CALDUMP_LINE n=161 {"type":"noise_row","gain":55,"cells2":0.134773,"samples":4,"measured_us":311715705}
+CALDUMP_LINE n=162 {"type":"noise_row","gain":57,"cells2":0.117497,"samples":12,"measured_us":187540685}
+CALDUMP_LINE n=163 {"type":"noise_row","gain":58,"cells2":0.187907,"samples":4,"measured_us":311671707}
+CALDUMP_LINE n=164 {"type":"noise_row","gain":60,"cells2":0.193807,"samples":12,"measured_us":187496686}
+CALDUMP_LINE n=165 {"type":"noise_row","gain":61,"cells2":0.143820,"samples":4,"measured_us":311627703}
+CALDUMP_LINE n=166 {"type":"noise_row","gain":63,"cells2":0.328483,"samples":12,"measured_us":187452686}
+CALDUMP_LINE n=167 {"type":"noise_row","gain":64,"cells2":0.334109,"samples":4,"measured_us":311583706}
+CALDUMP_LINE n=168 {"type":"noise_row","gain":66,"cells2":0.403339,"samples":12,"measured_us":187408686}
+CALDUMP_LINE n=169 {"type":"noise_row","gain":67,"cells2":0.499392,"samples":4,"measured_us":311539703}
+CALDUMP_LINE n=170 {"type":"noise_row","gain":69,"cells2":0.598060,"samples":12,"measured_us":187364881}
+CALDUMP_LINE n=171 {"type":"noise_row","gain":70,"cells2":0.676295,"samples":16,"measured_us":311495708}
+CALDUMP_LINE n=172 {"type":"noise_row","gain":71,"cells2":0.823320,"samples":16,"measured_us":311452114}
+CALDUMP_LINE n=173 {"type":"noise_row","gain":72,"cells2":0.949743,"samples":16,"measured_us":311451962}
+CALDUMP_LINE n=174 {"type":"noise_row","gain":73,"cells2":1.162872,"samples":16,"measured_us":311451810}
+CALDUMP_LINE n=175 {"type":"noise_row","gain":74,"cells2":1.420544,"samples":16,"measured_us":311451658}
+CALDUMP_LINE n=176 {"type":"noise_row","gain":75,"cells2":1.723803,"samples":16,"measured_us":311451524}
+CALDUMP_LINE n=177 {"type":"noise_row","gain":76,"cells2":2.093708,"samples":16,"measured_us":311451361}
+CALDUMP_LINE n=178 {"type":"noise_row","gain":77,"cells2":2.644978,"samples":16,"measured_us":311451207}
+CALDUMP_LINE n=179 {"type":"noise_row","gain":78,"cells2":3.219388,"samples":16,"measured_us":311451052}
+CALDUMP_LINE n=180 {"type":"noise_row","gain":79,"cells2":4.044115,"samples":16,"measured_us":311450911}
+CALDUMP_LINE n=181 {"type":"noise_row","gain":80,"cells2":4.741438,"samples":105,"measured_us":311450708}
+CALDUMP_LINE n=182 {"type":"noise_row","gain":81,"cells2":6.108747,"samples":16,"measured_us":311406715}
+CALDUMP_LINE n=183 {"type":"noise_row","gain":82,"cells2":7.637508,"samples":16,"measured_us":311362706}
+CALDUMP_LINE n=184 {"type":"noise_row","gain":83,"cells2":9.050874,"samples":12,"measured_us":311318742}
+CALDUMP_LINE n=185 {"type":"capture","live_context_unchanged":true,"duration_ms":841}
+CALDUMP_END lines=186 fnv1a=50fc181c

@@ -11,6 +11,7 @@
 #include "flightlog_format.h"
 #include "receiver.h"
 #include "cn_estimate.h"
+#include "profile_logic.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -349,7 +350,7 @@ void flightlog_second(const diag_record_t *r, uint8_t gain_min, uint8_t gain_max
         .servo_writes = have ? flog_sat8(servo_writes - sw) : 0,
         .afc_offset_khz = afc_off, .afc_residual_khz = afc_res,
         .afc_corrections = have ? flog_sat8(afc_corr - ac) : 0,
-        .demod = (uint8_t)((r->profile & 3u) | ((r->kp_level < 0 ? 7u : (unsigned)r->kp_level & 7u) << 2) |
+        .demod = (uint8_t)(profile_flog_code(r->profile) | ((r->kp_level < 0 ? 7u : (unsigned)r->kp_level & 7u) << 2) |
                            ((r->lp ? 1u : 0u) << 5)),
         .sphase = sph, .temp_c = temp,
         .flags = (uint16_t)(r->flags | (s_menu_active ? 0x100u : 0u) | (s_scan_active ? 0x200u : 0u) |

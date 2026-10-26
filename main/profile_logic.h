@@ -34,7 +34,8 @@
 #define DEV_WIDE_MIN     160
 
 /* Values are stable (NVS-independent, but logged and compared). */
-enum { PROFILE_DEFAULT, PROFILE_NARROW, PROFILE_RETIRED_KP050, PROFILE_WIDE, PROFILES };
+/* XNARROW (4) is a menu choice only; the deviation logic never selects it. */
+enum { PROFILE_DEFAULT, PROFILE_NARROW, PROFILE_RETIRED_KP050, PROFILE_WIDE, PROFILE_XNARROW, PROFILES };
 
 typedef struct {
     int32_t span[DEV_BATCH], medians[DEV_BATCHES];
@@ -196,10 +197,17 @@ static inline bool dev_monitor_should_store(int stored_x100, int dev_x100, bool 
  * old behaviour (PENDING for the next boot). */
 #define DEV_NARROW_AGREE 2u
 
-/* Filter width order of the profiles: NARROW < DEFAULT < WIDE. */
+/* Flight-log profile code (2 bits in some records): XNARROW takes code 2,
+ * the retired kp0.5 NARROW slot (never written since 2026-10-23). */
+static inline unsigned profile_flog_code(int p)
+{
+    return p == PROFILE_XNARROW ? (unsigned)PROFILE_RETIRED_KP050 : (unsigned)p & 3u;
+}
+
+/* Filter width order of the profiles: XNARROW < NARROW < DEFAULT < WIDE. */
 static inline int profile_width_rank(int p)
 {
-    return p == PROFILE_RETIRED_KP050 || p == PROFILE_NARROW ? 1 : p == PROFILE_WIDE ? 3 : 2;
+    return p == PROFILE_XNARROW ? 0 : p == PROFILE_RETIRED_KP050 || p == PROFILE_NARROW ? 1 : p == PROFILE_WIDE ? 3 : 2;
 }
 
 /* A narrow filter clips an off-centre carrier (research README section 3:
@@ -219,4 +227,26 @@ static inline bool profile_live_switch_wanted(bool enabled, int want, int active
     if (!enabled || want < 0 || want >= PROFILES || want == active || want == PROFILE_RETIRED_KP050) return false;
     if (!profile_narrowing(want, active)) return true;   /* widen at once */
     return narrow_ok && agree_streak >= DEV_NARROW_AGREE;
+}
+
+/* Menu FILTER: AUTO (the profile logic above decides) or one fixed filter
+ * class chosen by the operator. Hold steps AUTO -> XNARROW -> NARROW ->
+ * NORMAL -> WIDE -> AUTO and skips a class that has no calibrated filter
+ * with its own DC table; NORMAL is always there (uncalibrated it keeps the
+ * filter that is set). The choice is not saved: every boot starts AUTO. */
+#define PROFILE_SELECT_AUTO (-1)
+
+static inline int profile_select_next(int current, bool xnarrow_ok, bool narrow_ok, bool wide_ok)
+{
+    static const int order[] = {PROFILE_SELECT_AUTO, PROFILE_XNARROW, PROFILE_NARROW, PROFILE_DEFAULT, PROFILE_WIDE};
+    const int n = (int)(sizeof(order) / sizeof(order[0]));
+    int at = 0;
+    while (at < n && order[at] != current) ++at;
+    for (int step = 1; step <= n; ++step) {
+        const int p = order[(at + step) % n];
+        if ((p == PROFILE_XNARROW && !xnarrow_ok) || (p == PROFILE_NARROW && !narrow_ok) ||
+            (p == PROFILE_WIDE && !wide_ok)) continue;
+        return p;
+    }
+    return PROFILE_SELECT_AUTO;
 }

@@ -94,7 +94,8 @@ static void help(void)
            "  G RX gain AUTO (KEEL-1) -> MAX -> fixed G78..G24 (until the next boot; every boot starts AUTO),\n"
            "  A live VTX profile switch on/off (continuous matching every 30 s; off = report only),\n"
            "  I IQ snapshot, o menu open/close, n/x menu next/select, c next channel, b next band, s scan,\n"
-           "  v video standard AUTO/NTSC/PAL, e close menu (web menu direct controls),\n"
+           "  v video standard AUTO/NTSC/PAL, f analog filter AUTO/NARROW/NORMAL/WIDE (this boot; calibrated classes),\n"
+           "  e close menu (web menu direct controls),\n"
            "  F calibrate current filter; B full RF optimization (ground only; video stops), L bench IQ lane comparison (video stops ~3 s),\n"
            "  N bench: noise floor with the video output on vs off (VTX off; video stops ~0.3 s x4),\n"
            "  Z DAC self-test (bench: test pattern, then one flat level per pin for a multimeter),\n"
@@ -159,7 +160,7 @@ static void console_task(void *arg)
             case '!': rx_clock_slip(1); printf("SLIP bench: one RX sampling-phase slip (T SPHASE shows the new excess)\n"); break;
             case 'Y': case 'W': case 'X': flightlog_console((char)c); break;
             case 'h': case '?': help(); break;
-            case 'o': case 'e': case 'v': case 'n': case 'x': case 'c': case 'b': case 's': case 'g': case 'A': case 'U': case 'G': case 'Q': case 'Z': {
+            case 'o': case 'e': case 'v': case 'f': case 'n': case 'x': case 'c': case 'b': case 's': case 'g': case 'A': case 'U': case 'G': case 'Q': case 'Z': {
                 int command = c;
                 if (s_commands) (void)xQueueSend(s_commands, &command, 0);
                 break;
