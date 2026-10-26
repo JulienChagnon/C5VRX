@@ -300,17 +300,62 @@ test('a port that cannot take the key still gets the loader', async () => {
   assert.equal(vm.runInContext('isConnected', h.context), true);
 });
 
-test('after the restart drops the board off USB, the loader talks to the reconnected port', async () => {
+test('after the selected port reconnects, the loader keeps using that same port', async () => {
+  const port = mockPort('C5VRX5 download_boot=requested\r\n');
+  const h = connectHarness(port, [], port);
+  await h.connect();
+  assert.deepEqual(h.modes, ['no_reset']);
+  assert.equal(h.loaderPorts[0], port);
+  assert.equal(h.listeners.connect.size + h.listeners.disconnect.size, 0);
+  assert.equal(vm.runInContext('isConnected', h.context), true);
+});
+
+test('a replacement port requires reselection before any bootloader handshake', async () => {
   const port = mockPort('C5VRX5 download_boot=requested\r\n');
   const back = mockPort(null);
   const h = connectHarness(port, [], back);
+  // Skip only the reconnect polling delay; exercise the actual click handler.
+  h.context.setTimeout = (fn, ms) => setTimeout(fn, ms === 100 ? 0 : ms);
   await h.connect();
-  assert.deepEqual(h.modes, ['no_reset']);
-  assert.equal(h.loaderPorts.length, 1);
-  assert.equal(h.loaderPorts[0], back);
+  assert.deepEqual(h.modes, []);
+  assert.equal(h.loaderPorts.length, 0);
   assert.equal(h.listeners.connect.size + h.listeners.disconnect.size, 0);   // listeners removed
-  assert.equal(vm.runInContext('isConnected', h.context), true);
+  assert.equal(vm.runInContext('isConnected', h.context), false);
+  assert.match(h.alerts[0], /select the receiver again/);
 });
+
+for (const sameModel of [false, true]) {
+  test(`unrelated USB events cannot replace the selected port (same model: ${sameModel})`, async () => {
+    const port = mockPort(null);
+    const other = mockPort(null);
+    if (!sameModel) other.getInfo = () => ({ usbVendorId: 0x1234, usbProductId: 0x5678 });
+    const h = connectHarness(port, []);
+    h.context.selectedPort = port;
+    const watch = vm.runInContext('watchReconnect(selectedPort)', h.context);
+    for (const fn of h.listeners.disconnect) fn({ target: other });
+    for (const fn of h.listeners.connect) fn({ target: other });
+    assert.equal(watch.vanished, false);
+    assert.equal(watch.back, null);
+    h.context.reconnectWatch = watch;
+    assert.equal(await vm.runInContext('portAfterRestart(selectedPort, reconnectWatch)', h.context), port);
+    assert.equal(h.listeners.connect.size + h.listeners.disconnect.size, 0);
+  });
+
+  test(`a missing selected port never falls back to another permitted port (same model: ${sameModel})`, async () => {
+    const port = mockPort(null);
+    const other = mockPort(null);
+    if (!sameModel) other.getInfo = () => ({ usbVendorId: 0x1234, usbProductId: 0x5678 });
+    const h = connectHarness(port, []);
+    h.context.navigator.serial.getPorts = async () => [other];
+    h.context.selectedPort = port;
+    const watch = vm.runInContext('watchReconnect(selectedPort)', h.context);
+    for (const fn of h.listeners.connect) fn({ target: other });
+    h.context.reconnectWatch = watch;
+    await assert.rejects(vm.runInContext('portAfterRestart(selectedPort, reconnectWatch)', h.context), /select the receiver again/);
+    assert.equal(h.loaderPorts.length, 0);
+    assert.equal(h.listeners.connect.size + h.listeners.disconnect.size, 0);
+  });
+}
 
 test('after flashing, the LP watchdog restarts the C5 into the new firmware, not the RTS reset', async () => {
   const h = harness('alpha');

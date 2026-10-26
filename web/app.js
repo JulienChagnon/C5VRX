@@ -400,12 +400,17 @@ async function sendDownloadKey(selectedPort) {
 }
 
 // If the restart drops the board off USB, Chrome hands it back as a new
-// SerialPort (a 'connect' event; the permission is kept). On the bench
-// (Windows, Chrome) the same port stayed valid; this is a guard.
-function watchReconnect() {
+// SerialPort (a 'connect' event; the permission is kept). USB vendor/product
+// IDs identify a model, not an individual board: only reuse the selected
+// SerialPort. A replacement object needs an explicit selection by the user.
+function watchReconnect(selectedPort) {
   const watch = { vanished: false, back: null };
-  const onDisconnect = () => { watch.vanished = true; };
-  const onConnect = event => { watch.back = event.target; };
+  const onDisconnect = event => {
+    if (event.target === selectedPort) { watch.vanished = true; watch.back = null; }
+  };
+  const onConnect = event => {
+    if (watch.vanished && event.target === selectedPort) watch.back = selectedPort;
+  };
   navigator.serial.addEventListener('disconnect', onDisconnect);
   navigator.serial.addEventListener('connect', onConnect);
   watch.stop = () => {
@@ -418,11 +423,9 @@ function watchReconnect() {
 async function portAfterRestart(previous, watch) {
   for (let t = 0; t < 80 && watch.vanished && !watch.back; ++t) await wait(100);
   watch.stop();
-  if (watch.back) return watch.back;
-  const info = previous.getInfo();
-  const same = p => p.getInfo().usbVendorId === info.usbVendorId && p.getInfo().usbProductId === info.usbProductId;
   const ports = await navigator.serial.getPorts();
-  return (watch.vanished && ports.find(p => p !== previous && same(p))) || ports.find(p => p === previous) || ports.find(same) || previous;
+  if (ports.includes(previous)) return previous;
+  throw new Error('The selected receiver is no longer available. Click Connect device and select the receiver again; another serial port cannot be identified safely.');
 }
 
 async function handshake(selectedPort, mode) {
@@ -461,7 +464,7 @@ async function connectDevice() {
     // esptool.js clears the log when the loader object is created: steps go
     // to the status line and the route is logged once connected.
     statStatus.textContent = 'Connecting… sending the download key';
-    const watch = watchReconnect();
+    const watch = watchReconnect(port);
     let keyReply;
     try { keyReply = await sendDownloadKey(port); } catch (err) { keyReply = `not sent: ${err.message || err}`; }
     // A receiver that took the key restarts into the loader, which answers
