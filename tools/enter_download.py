@@ -6,7 +6,8 @@ reset leaves the modem domain (forced clocks, the always-on dump writer)
 running into the ROM loader, whose USB download loop then stops answering.
 This sends the console key '`', which makes the firmware stop the writer and
 Wi-Fi, request a download boot and esp_restart() (main/rf.c,
-rf_reboot_to_download). Flash afterwards with esptool --before no-reset.
+rf_reboot_to_download). Flash afterwards with esptool --before no-reset;
+tools/flash.py does both steps.
 
   python tools/enter_download.py COM33 && esptool --before no-reset ...
 

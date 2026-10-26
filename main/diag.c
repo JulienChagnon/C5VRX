@@ -421,7 +421,7 @@ void diag_report(void)
                "or CALIBRATE now)\n", need);
         any = true;
     }
-    VERDICT(receiver_gain_mode() != GAIN_MODE_AUTO,
+    VERDICT(!receiver_gain_mode_auto(receiver_gain_mode()),
             "GAIN_FIXED a fixed gain is saved across boots and costs range (menu GAIN or console G to AUTO)");
     VERDICT(!rf_freq_in_spec(mhz), "UNKNOWN out-of-spec channel: compare with a channel <= 5885 MHz");
     VERDICT(g >= table->max_index && cn != CN_UNKNOWN_X10 && cn <= DIAG_FLOOR_CN_X10,

@@ -66,8 +66,9 @@ F remains the full own-row calibration; B the full RF optimization.
   corrupt IQ, so two 24-window clean observations can qualify it; otherwise
   try three positions with repeated confirmation. The collector has a 600 ms
   deadline, no nine-position retry, and runs only under the existing splash,
-  at most once in the first five seconds. No late slips on live video. A result
-  that cannot be proved within the budget remains unknown for manual CALIBRATE.
+  at most once in the first five seconds. A result that cannot be proved within
+  the budget remains unknown; the live repair above can subsequently recover
+  a persistently bad phase. Manual CALIBRATE remains available.
 - Share passive DC/noise/phase measurements at no more than four blocks/second.
   Three stable, independent, qualified blocks are required before recommending
   calibration. Noise must look like noise; a carrier needs a qualified circle
@@ -181,3 +182,25 @@ code std I 0.81 / Q 0.83 (was 1.30 / 0.90 over the partial maps), measured
 width 13125 kHz each run, F 32-37 s (more rows measured). One board only;
 no range claim. Uncalibrated, this board showed 3.7/1.7 cells live DC at G83
 before F.
+
+## Live repair bench follow-up (2026-10-26)
+
+Board b26ef545, local `5.0.0-repair1+local` build (reported ELF prefix
+`6bd0fe939`), A1. The initial 12-slip noise run recorded a successful automatic
+repair from excess 3995 to 34, 2.56 s after the preceding S acknowledgment.
+A second bad position fell within the success cooldown; the next manual slip
+cleared it, so that occurrence is not evidence of automatic recovery.
+
+A further 12-slip run used 12-second waits before each status request, with
+an NTSC carrier present initially and changing RF conditions during the run.
+It recorded multiple successful automatic repairs and ended at excess 61,
+clipping 0 per mille and no transport faults after a further 15 seconds.
+One repair was logged 9.60 s after the preceding slip: neither the monitor
+nor its cooldown provides a two-second upper bound. USB receipt times include
+buffering; these are not hardware timestamps or a video interruption measure.
+
+Captured observations and source-log hashes are in
+`research/data/phase_repair_bench_2026-10-26.json`. This is one-board bench
+evidence, not a range test or validation of every phase/carrier context. The
+local build reports `commit=local`; the final merged source is separately
+checked by host tests and the ESP-IDF CI build.

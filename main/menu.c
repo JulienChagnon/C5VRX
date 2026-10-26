@@ -180,12 +180,12 @@ void menu_render(void)
         .band_letters = "RABEFL", .band_count = FPV_BANDS,
         .signal = s_signal_strength, .video = s_afc_locked,
         .level_valid = lv.valid, .level_above_noise = lv.above_noise, .level_dbm = (lv.carrier_dbm_x10 - 5) / 10,
-        .dc_cal = dc_cal, .dc_need = dc_need, .gain_fixed = mode != GAIN_MODE_AUTO,
+        .dc_cal = dc_cal, .dc_need = dc_need, .gain_fixed = !receiver_gain_mode_auto(mode),
         .scan_active = s_scan_active, .scan_progress = s_scan_progress,
         .std_mode = (int)s_std_mode, .std_out_pal = s_video_std == VIDEO_STD_PAL,
         .detected_valid = s_detected_std_valid, .detected_pal = s_detected_std == VIDEO_STD_PAL,
         .output = transport_output(), .output_name = transport_output_name(),
-        .gain_mode = receiver_gain_mode_name(mode, gain_mode, sizeof(gain_mode)), .gain_auto = mode == GAIN_MODE_AUTO,
+        .gain_mode = receiver_gain_mode_name(mode, gain_mode, sizeof(gain_mode)), .gain_auto = receiver_gain_mode_auto(mode),
         .gain = s_current_gain, .gain_max = rf_gain_table()->max_index,
     };
     menu_ui_render(s_raster.ui, &v);

@@ -3,9 +3,11 @@
  * context/age validation. Bound a continuously runnable observer batch so
  * IDLE/calibration get time even if notifications accumulate. */
 #include "receiver.h"
+#include <limits.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include "agc.h"
 #include "cn_estimate.h"
 #include "cn_auto.h"
 #include "cn_observation.h"
@@ -29,8 +31,10 @@ bool s_gain_map_saved_valid;
 static TaskHandle_t s_observer, s_sentinel;
 static volatile uint8_t s_gain_mode = GAIN_MODE_AUTO;
 
-/* Menu/console cycle: AUTO, MAX, then fixed G78 down to G24. */
-static const uint8_t s_gain_modes[] = {GAIN_MODE_AUTO, GAIN_MODE_MAX, 78, 72, 66, 60, 54, 48, 42, 36, 30, 24};
+/* Menu/console cycle: AUTO (KEEL-1), the LEVEL and RSSI models, MAX, then
+ * fixed G78 down to G24. */
+static const uint8_t s_gain_modes[] = {GAIN_MODE_AUTO, GAIN_MODE_LEVEL, GAIN_MODE_RSSI, GAIN_MODE_MAX,
+                                       78, 72, 66, 60, 54, 48, 42, 36, 30, 24};
 
 uint8_t receiver_gain_mode(void) { return s_gain_mode; }
 
@@ -40,7 +44,7 @@ uint8_t receiver_gain_mode(void) { return s_gain_mode; }
  * (logged in the flight log). */
 void receiver_set_gain_mode(uint8_t mode, bool user)
 {
-    if (mode != GAIN_MODE_AUTO && mode != GAIN_MODE_MAX && (mode < 2u || mode > ARC_VENDOR_GAIN_MAX)) return;
+    if (!receiver_gain_mode_auto(mode) && mode != GAIN_MODE_MAX && (mode < 2u || mode > ARC_VENDOR_GAIN_MAX)) return;
     s_gain_mode = mode;
     if (user) flightlog_event(FLOG_E_GAIN_MODE, &mode, 1);
     char buf[16];
@@ -57,6 +61,8 @@ uint8_t receiver_gain_mode_next(uint8_t mode)
 const char *receiver_gain_mode_name(uint8_t mode, char *buf, unsigned size)
 {
     if (mode == GAIN_MODE_AUTO) return "AUTO";
+    if (mode == GAIN_MODE_LEVEL) return "LEVEL";
+    if (mode == GAIN_MODE_RSSI) return "RSSI";
     if (mode == GAIN_MODE_MAX) return "MAX";
     snprintf(buf, size, "G%u", mode);
     return buf;
@@ -107,13 +113,44 @@ static uint8_t pair_decision(const dg_observation_t *o)
     return (s_pair_obs / PAIR_SWITCH_OBS) & 1u ? (uint8_t)(s_pair_hi - 1u) : s_pair_hi;
 }
 
+/* The research AGC models (agc.h) on the KEEL-1 core's gain model and the
+ * startup noise map (s_gain_th, below). Re-bound on a mode change, a
+ * retune/scan/calibration (s_control_epoch) and a new gain table, so the
+ * level history never spans two channels or two gain models. */
+static union { agc_level_t level; agc_rssi_t rssi; } s_agc;   /* one model at a time */
+static uint8_t s_agc_mode;
+static uint32_t s_agc_control = UINT32_MAX;
+static unsigned s_agc_rows = UINT_MAX;
+/* Tentative declarations; defined with the noise-derived gain table below. */
+static unsigned s_gain_rows_measured;
+static float s_gain_th[DG_STATES];
+#define AGC_NOISE_TOP_DEFAULT 4.8f   /* cells^2 at G83 when no noise map yet (Wi-Fi reference, FINDINGS) */
+
+static uint8_t agc_decision(uint8_t mode, const dg_observation_t *o)
+{
+    const arc_gain_table_t *t = rf_gain_table();
+    if (mode != s_agc_mode || s_agc_control != s_control_epoch || s_agc_rows != s_gain_rows_measured) {
+        const float n = s_gain_th[t->max_index] > 0.0f ? s_gain_th[t->max_index] : AGC_NOISE_TOP_DEFAULT;
+        if (mode == GAIN_MODE_LEVEL) agc_level_reset(&s_agc.level, s_gain.model_db_q8, t->max_index, (uint16_t)(n * 16.0f));
+        else agc_rssi_reset(&s_agc.rssi, s_gain.model_db_q8, t->max_index);
+        s_agc_mode = mode;
+        s_agc_control = s_control_epoch;
+        s_agc_rows = s_gain_rows_measured;
+        printf("AGC model=%s bound top=G%u noise_top=%.2f cells2 rows_measured=%u\n",
+               mode == GAIN_MODE_LEVEL ? "LEVEL" : "RSSI", t->max_index, (double)n, s_gain_rows_measured);
+    }
+    return mode == GAIN_MODE_LEVEL ? agc_level_tick(&s_agc.level, o, s_current_gain, o->observed_us)
+                                   : agc_rssi_tick(&s_agc.rssi, o, s_current_gain, o->observed_us);
+}
+
 /* Fixed modes bypass the controller; apply_target clamps to the live table. */
 static uint8_t gain_decision(const dg_observation_t *o)
 {
     if (s_pair_active) return pair_decision(o);
     const uint8_t mode = s_gain_mode;
     if (mode == GAIN_MODE_AUTO) return dg_tick(&s_gain, o);
-    const uint8_t target = mode == GAIN_MODE_MAX ? rf_gain_table()->max_index : mode;
+    const uint8_t target = mode == GAIN_MODE_LEVEL || mode == GAIN_MODE_RSSI ? agc_decision(mode, o)
+                         : mode == GAIN_MODE_MAX ? rf_gain_table()->max_index : mode;
     /* Once written and settled the model reads HOLD, so profile/DC/C-N gates
      * waiting for a held gain behave as with a steady carrier. */
     if (target == s_current_gain && s_gain.state != DG_HOLD &&
@@ -864,6 +901,13 @@ void receiver_start(void)
 
 void receiver_print(void)
 {
+    if (s_gain_mode == GAIN_MODE_LEVEL)
+        printf("AGC model=LEVEL decisions=%lu moves=%lu folds=%lu learned=%lu (agc.c; rows corrected from the "
+               "level before/after a move)\n", (unsigned long)s_agc.level.decisions, (unsigned long)s_agc.level.moves,
+               (unsigned long)s_agc.level.folds, (unsigned long)s_agc.level.learned);
+    else if (s_gain_mode == GAIN_MODE_RSSI)
+        printf("AGC model=RSSI moves=%lu folds=%lu (agc.c)\n", (unsigned long)s_agc.rssi.moves,
+               (unsigned long)s_agc.rssi.folds);
     const rx_level_t lv = s_level;
     if (lv.valid)
         printf("RX_LEVEL carrier_dbm=%.1f input_dbm=%.1f noise_dbm=%.1f noise_learned=%u cn_db=%.1f above_noise=%u exact=%u gains=%u-%u probes=%lu clipped_pm=%u "

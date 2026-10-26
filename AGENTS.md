@@ -962,7 +962,7 @@ This section supersedes older C5VRX-5 default/feature notes above.
 Direct Gain V6 extends V5 with same-context carrier memory: hold 10 ms,
 then climb eight indices per 3 ms; overload above the remembered healthy gain
 returns to it in one write. Learned maps still require exact provenance.
-GAIN (console `G`): AUTO (KEEL-1), MAX or fixed G78..G24, never stored: every boot starts AUTO (operator decision 2026-10-20).
+GAIN (console `G`): AUTO (KEEL-1), the research AGC models LEVEL and RSSI (`main/agc.c`, PR #266, host-simulated, for an operator board A/B; KEEL-1 stays the default), MAX or fixed G78..G24, never stored: every boot starts AUTO (operator decision 2026-10-20). See docs/FINDINGS.md "AGC research".
 FLYWHEEL (console `U`) was removed on 2026-10-25 (operator: extreme
 desyncs and poor range); see the realtime invariants above.
 Menu entry allocates internal DMA descriptors in 384-byte chunks before
