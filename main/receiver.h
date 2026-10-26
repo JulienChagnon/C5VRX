@@ -227,6 +227,9 @@ bool calibration_sphase_settled(void);
 /* DC correction in place for this gain: held, or not needed (outside the
  * calibrated rows, or below the measured noise floor). */
 bool calibration_dc_ok(uint8_t gain);
+/* Hold the current gain's calibrated DC row after a paused gain write (the
+ * post-gain hook is silent while paused). true when a pair is held. */
+bool calibration_dc_hold_current(void);
 /* Explicit bench-only lane comparison (console L): video stops ~2 s. */
 void lane_compare_request(void);
 void self_noise_request(void);   /* bench: noise floor with the video output on vs off (console N) */

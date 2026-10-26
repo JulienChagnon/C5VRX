@@ -7,6 +7,80 @@ scripts and data live in that branch under `v4/docs/PICTURE_CLIFF_STUDY.md`,
 Synthetic results are host simulations; board results are labelled as such.
 Measured range is not established.
 
+## VTX-on PHY lab, AFC window and digital mode 12 (board, 2026-10-26)
+
+Board COM10 (NiceMCU), 5865 MHz / A1, PAL VTX on a table, firmware
+`5.0.0-pr.273+7ca5725`. Data: `research/data/vtx_on_lab_2026-10-26/`
+(lab console logs, `combined.txt`, 30 IQ snapshots in `iq/`).
+
+**Bench lesson: the operator's body.** With someone at the bench the carrier
+at fixed, read-back gain stepped 4-11 dB between plateaus of seconds
+(~1 step per 10 s) while the noise floor stayed within 0.2-0.5 dB, so the
+signal was lost before the LNA. With nobody within ~3 m the carrier held
+11.6-11.7 dB for two minutes (`5865_mon_07/08.log`, from 18:08:21); on the
+return the steps resumed within seconds. Not a receiver, AFC (frozen in a
+lab run) or VTX-frequency effect: the porch estimate sat on the -1000 kHz
+target, residual 0. Lab runs need the operator away; with that the sham
+spread was 0.12-0.21 dB C/N (`5865_sham6.log`). A head next to the goggle
+antenna shadows the link the same way in the field.
+
+**Sweep (console `S` `a`, baseline C/N 7.05 dB, G73, 25 shams):** no PHY
+candidate improves clearly on stock. RX IQ correction off costs
+0.43-0.48 dB (keep it); gain rows G67/G79 cost 0.86/0.24 dB against the run
+gain; analog filter code +-1/+-2, ADC selector, LO cap +1, TX clock and all
+packet/RX policy bits show no effect; NF-auto 8..F do not latch, 0..7 do
+not reproduce. One weak-signal level and one channel: screening, not range.
+
+**Digital mode 12 (suite 3, repeated):** C/N +0.20 / +0.28 / +0.52 dB and
+FM clicks -0.52 / -0.34 / +0.01 per mille against mode 0 (the last run
+saturated at 14.9 dB C/N); verdict REPRODUCED_BETTER. Mode 4 (+0.28 /
++0.19 dB C/N, no click change) and mode 8 did not reproduce. VTX-off noise
+(PR #244) read mode 12 ~1 dB noisier, so it was not picked then: with a
+carrier the wider response costs less than it keeps. Production now applies
+mode 12 (`PHY_DFILT_MODE_DEFAULT`) with the same readback and reapply path;
+calibration generation 4, gain map 8, C/N store 5 and gtab 5 discard
+mode-0 data, so a board needs one manual calibration (VTX off) after the
+update. Measured only at 5865 MHz (ADC selector 1); 5805 MHz and an
+attenuator threshold test are still open. ~0.25 dB is about 3 % distance in
+free space at best.
+
+**AFC window: why the AFC never locked.** `sync_valid_pct` stayed <= 68 %
+for minutes and `afc_locked=0`, also at 17 dB C/N without clicks. The
+colour burst was never detected (`burst_x10=0` in all 30 snapshots), so a
+sync counts only with a second one exactly one line earlier
+(`afc2_measure`), and one 4092-byte control descriptor (1.6 lines) holds
+such a pair only at some line phases. Replay of the real snapshots through
+the production `afc2_measure` (`research/sync_window_replay.c`): 4092-byte
+windows at 65 offsets per snapshot 45 % valid (28-66 %), the full
+8190-byte window 30/30 (PAL, 2 lines). Host model, B/W PAL at 40 line
+phases: 17/40 vs 40/40 (`test/test_afc_measure.c`). With ~1 sync per
+window the porch MAD sat at 80 kHz, the lock limit. The control loop now
+measures the AFC on an 8190-byte contiguous window (`copy_snapshot()`
+under the scheduler hold, ending where the active descriptor began, so it
+covers the gain window); gain observation keeps the 4092-byte descriptor.
+Noise windows of both lengths still give no sync. A longer window passes
+the envelope-stationarity gate less often near the noise floor; AFC
+re-acquisition already waits for >= 6 dB C/N.
+
+Board check of this firmware (same day, after one manual calibration with
+the VTX off): `DFILT want=12 hw_mode=12`, `cal_generation=4`, picture fine
+in the goggles. The source was now NTSC with a detected colour burst
+(`burst_x10` ~53, period 2542), deviation 0.73. `sync_valid_pct` averaged
+82 % (was ~30 %), but the AFC still did not lock: porch MAD 185-284 kHz
+with the median residual inside the deadband. Replay of 18 fresh snapshots
+and a mean frequency profile after the sync (`runs` not kept; method in
+`research/sync_window_replay.c`) show why: NTSC's back porch is ~1 us
+shorter than PAL's, so the porch window (3.4-4.4 us after the detected sync
+end, set for PAL) already reaches the active video. The estimate follows
+picture content, and it reads the VTX as centred while its flat porch sits
+at about -1620 kHz, ~600 kHz from the target. An earlier window (start
+~100 samples) reads -1605..-1627 kHz for NTSC and keeps PAL at MAD 44-60,
+but the NTSC MAD stays 100-135 kHz; a subcarrier-integer length (45
+samples) did not lower it, so the burst is not the remaining cause. On the
+earlier PAL snapshots the new window gives MAD 48 kHz and residual -44 kHz,
+inside the lock gates. The NTSC porch window is a follow-up; it predates
+this change.
+
 ## GPIO27 IQ loopback experiment (2026-10-25)
 
 Operator request: a standalone GPIO-only PR directly on main, reserving

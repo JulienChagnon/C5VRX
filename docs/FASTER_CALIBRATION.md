@@ -46,6 +46,10 @@ LP RAM; 5.2 KB more static HP RAM left the USB console silent from boot.
 
 ## Live sampling-phase repair (operator decision 2026-10-26)
 
+Current bench key: `!` performs one RX slip. PR #273 reserves `S` plus a
+suite key for the PHY sensitivity lab; the historical `S` logs below
+predate that key change.
+
 Bench with console `S` (one RX slip) on b26ef545, VTX off: 3 of 12 positions
 read mixed IQ bits (excess 4588-6597 against 44-62, IQ 989-998 per mille
 clipped, no usable picture). The bad phase causes the clipping on its own; the

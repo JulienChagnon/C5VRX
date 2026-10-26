@@ -15,6 +15,7 @@
 #include "esp_timer.h"
 #include "phase8_gain_lut.h"
 #include "phy.h"
+#include "snapshot.h"
 #include "rf.h"
 #include "flightlog.h"
 #include "flightlog_format.h"
@@ -63,12 +64,16 @@ volatile video_standard_t s_detected_std = VIDEO_STD_NTSC;
 volatile int64_t s_last_video_us;
 QueueHandle_t s_commands;
 
-/* One control-task scratch buffer: the control window (gain/AFC) and,
- * during a scan (receiver paused), a separate endpoint area. Saves the
- * scan's malloc. */
+/* One control-task scratch buffer: the control window (gain), then the
+ * longer AFC window over it, and during a scan (receiver paused) a separate
+ * endpoint area. Saves the scan's malloc. */
 #define SCAN_BUF_OFFSET 4096u
-static uint8_t s_control_scratch[SCAN_BUF_OFFSET + SCAN_PAIRS];
+#define AFC_WINDOW_BYTES C5V4_LEVEL_SAMPLE_BYTES
+#define CONTROL_SCRATCH_BYTES (SCAN_BUF_OFFSET + SCAN_PAIRS > AFC_WINDOW_BYTES ? \
+                               SCAN_BUF_OFFSET + SCAN_PAIRS : AFC_WINDOW_BYTES)
+static uint8_t s_control_scratch[CONTROL_SCRATCH_BYTES];
 static uint8_t *const s_window = s_control_scratch;
+static uint8_t *const s_afc_window = s_control_scratch;
 static uint8_t s_pal_votes, s_ntsc_votes;
 static uint8_t s_last_std = 0xFF;      /* last stable standard (NVS) */
 static unsigned s_afc_corrections, s_afc_weak_skips;
@@ -324,6 +329,16 @@ static vq_acc_t s_vq_acc;
 static vq_t s_vq;
 static uint32_t s_vq_periods;
 
+/* copy_snapshot() under the same scheduler hold as copy_control_window():
+ * a preempted copy fails its overrun check. */
+static bool copy_afc_window(uint8_t *dst)
+{
+    vTaskSuspendAll();
+    const bool ok = copy_snapshot(dst);
+    (void)xTaskResumeAll();
+    return ok;
+}
+
 static void control_task(void *arg)
 {
     (void)arg;
@@ -413,14 +428,20 @@ static void control_task(void *arg)
          * kp ladder: AFC must never use samples spanning a gain/context write. */
         const bool receiver_ok = copied && settle == 0 && ctx == afc_context() && !phy_busy() &&
                                  now - s_last_gain_write_us >= 5000;
-        bool window_ok = receiver_ok && afc2_envelope_stationary(s_window, CONTROL_BYTES);
+        /* The AFC window holds 3.2 lines, not the 1.6 of one descriptor:
+         * without a detected burst a sync counts only with a second one a
+         * line earlier, which one descriptor contains in ~43 % of windows
+         * (board IQ replay 2026-10-26: 45 % vs 30/30 snapshots). It ends
+         * where the active descriptor began, so it covers s_window. */
+        const bool afc_copied = receiver_ok && copy_afc_window(s_afc_window);
+        bool window_ok = afc_copied && afc2_envelope_stationary(s_afc_window, AFC_WINDOW_BYTES);
         const char *afc_window_reason = !copied ? "copy_missing" : settle ? "settle" :
             ctx != afc_context() ? "context" : phy_busy() ? "phy_busy" : !receiver_ok ? "gain_settle" :
-            !window_ok ? "nonstationary" : "measured";
+            !afc_copied ? "afc_copy_missing" : !window_ok ? "nonstationary" : "measured";
         if (settle) --settle;
         afc2_result_t r = {0};
         if (window_ok) {
-            r = afc2_measure(s_window, CONTROL_BYTES, c5vrx_phase8_gain_lut);
+            r = afc2_measure(s_afc_window, AFC_WINDOW_BYTES, c5vrx_phase8_gain_lut);
             afc2_ctrl_observe_at(&afc, &r, (uint64_t)now);
             vq_add(&s_vq_acc, &r);
         } else afc2_ctrl_miss(&afc);   /* settle and context changes reset via afc2_ctrl_sync */

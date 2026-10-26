@@ -2,7 +2,7 @@ idf_component_register(
     SRCS
         "main.c" "rf.c" "phy.c" "arc_phy.c" "transport.c" "gain.c" "agc.c" "receiver.c"
         "control.c" "calibration.c" "menu.c" "menu_ui.c" "menu_raster.c" "analog_video_detect.c"
-        "settings.c" "console.c" "profile.c" "diag.c" "flightlog.c"
+        "settings.c" "console.c" "profile.c" "diag.c" "flightlog.c" "sense_lab.c"
     INCLUDE_DIRS "."
     REQUIRES esp_wifi esp_phy nvs_flash esp_event esp_netif esp_driver_parlio
              esp_driver_gpio esp_driver_bitscrambler esp_driver_usb_serial_jtag

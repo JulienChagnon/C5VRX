@@ -172,7 +172,7 @@ static void restore_lock(void)
         ESP_ERROR_CHECK(p11);        /* never resume after failed entry/rollback */
     apply_filter();
     if (!phy_dfilt_apply_default())
-        ESP_EARLY_LOGW(TAG, "digital RX filter mode 0 not applied (unsupported PHY or readback mismatch)");
+        ESP_EARLY_LOGW(TAG, "digital RX filter mode not applied (unsupported PHY or readback mismatch)");
     if (s_post_gain_hook) s_post_gain_hook(s_gain);
 }
 

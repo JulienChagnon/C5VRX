@@ -6,6 +6,7 @@
  * Explicit console B also optimizes the filter and prepares other profiles.
  * Gain control/AFC remain the normal receive controls, outside this policy. */
 #include "receiver.h"
+#include "sense_lab.h"
 #include "cn_auto.h"
 #include "calibration_noise.h"
 #include "calibration_policy.h"
@@ -1007,6 +1008,14 @@ static void dco_hold_for_scan(void)
     int code[2];
     bool preset;
     if (dco_hold_codes(s_current_gain, code, &preset)) (void)phy_dco_hold(code[0], code[1]);   /* the live trim too */
+}
+
+/* Bench labs (sense_lab.c) write gains while paused too: the same explicit
+ * hold, so TEST and STOCK rows keep their calibrated DC. */
+bool calibration_dc_hold_current(void)
+{
+    dco_hold_for_scan();
+    return phy_dco_held();
 }
 
 /* Reuse the exact noise statistics of accepted, quiet DC verification
@@ -2485,6 +2494,7 @@ static void calibration_task(void *arg)
         if (s_dump_requested) { s_dump_requested = false; calibration_dump(); continue; }
         if (s_lane_requested && !s_menu_active) { s_lane_requested = false; lane_compare(); continue; }
         if (s_selfnoise_requested && !s_menu_active) { s_selfnoise_requested = false; self_noise_test(); continue; }
+        if (sense_lab_pending() && !s_menu_active) { sense_lab_run(quiet_owner()); continue; }
         dco_service();
         servo_service();
         drift_service();
@@ -2501,8 +2511,9 @@ static void calibration_task(void *arg)
  * the filter calibration, every DC table and the repair flags, and runs the
  * full first-boot calibration. Raise CAL_GENERATION whenever a firmware
  * changes what a stored calibration means. */
-/* 11p changes the transfer function/noise seen by the stored tables. */
-#define CAL_GENERATION 3u
+/* 3: 11p, 4: digital RX mode 12; each changes the transfer function/noise
+ * seen by the stored tables. */
+#define CAL_GENERATION 4u
 static void calibration_generation(void)
 {
     uint16_t stored = 0;

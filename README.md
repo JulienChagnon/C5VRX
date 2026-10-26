@@ -253,6 +253,7 @@ without Enter; `h` lists the commands supported by your firmware.
 | `D` / `R` | Health report / per-second field diagnostics |
 | `I` / `M` / `L` | IQ snapshot / gain map / bench IQ lane test |
 | `A` | Live analog filter/profile switching on/off (saved) |
+| `S` + suite | Bench PHY sensitivity lab, VTX on ([docs](docs/PHY_SENSITIVITY_LAB.md); ground only) |
 | `` ` `` | USB download mode |
 
 P64 always uses the same fixed program and LUT. Profiles select only the

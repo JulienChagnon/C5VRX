@@ -399,8 +399,9 @@ typedef struct {
 /* 2: the anchors are stored too; a map loaded for another channel or filter
  * kept learning without one (operator, 2026-10-20). Version 1 maps are
  * dropped and measured again at the next clean boot. */
-/* 3: digital RX mode 0; old noise/anchor powers are another RF context. */
-#define CNA_STORE_VERSION 4u  /* 4: 11p noise/anchor context */
+/* 3: digital RX mode 0, 4: 11p, 5: digital RX mode 12; old noise/anchor
+ * powers are another RF context. */
+#define CNA_STORE_VERSION 5u
 static cna_store_t s_cna_store;
 static bool s_cna_store_loaded;
 static cna_noise_map_t s_cna_map;
@@ -519,7 +520,7 @@ void receiver_cn_noise_save(void) { cna_save(); s_cna_gain_dirty = true; }
  * the channel and filter (measured_rows=0 after a profile switch, board
  * 2026-10-20) and its in-service learning took in a weak carrier (G83-G72
  * 9.1 dB against 10.8 measured at boot). */
-#define GTAB_VERSION 4u   /* 4: 11p; reject old noise-derived gains */
+#define GTAB_VERSION 5u   /* 4: 11p, 5: digital RX mode 12; reject old noise-derived gains */
 typedef struct { uint8_t version, rows; uint16_t th_x256[DG_STATES]; } gtab_blob_t;
 static unsigned s_gain_rows_measured;
 static float s_gain_th[DG_STATES];

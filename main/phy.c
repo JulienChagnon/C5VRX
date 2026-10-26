@@ -209,8 +209,9 @@ int phy_filter_calibrated_code(void)
 
 /* ---- Digital RX filter --------------------------------------------------
  * C5VRX/Twotoz bench #244: mode 0 reduced captured noise power at 5865 MHz
- * versus vendor mode 8. Reapply after vendor setup (which changes the mode
- * above 5830 MHz). Never change the coupled ADC-rate selector here.
+ * versus vendor mode 8; with the VTX on, mode 12 gave the better C/N
+ * (phy.h). Reapply after vendor setup (which changes the mode above
+ * 5830 MHz). Never change the coupled ADC-rate selector here.
  * Read all four bits: modes with low bits set stalled IQ on the bench. */
 #ifdef C5VRX_PHY_PINNED
 extern void phy_rx_filter_mode(uint32_t mode);

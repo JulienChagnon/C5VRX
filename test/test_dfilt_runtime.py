@@ -55,7 +55,7 @@ static void vendor_mode(unsigned mode) {
     reg_word=(reg_word & ~DFILT_MASK) | (mode << DFILT_SHIFT);
 }
 void phy_rx_filter_mode(uint32_t mode) {
-    assert(locks && phy_busy() && notified && mode==0);
+    assert(locks && phy_busy() && notified && mode==PHY_DFILT_MODE_DEFAULT);
     ++writes; if(!fail_write) vendor_mode(mode);
 }
 static void invalidate(void){assert(locks);++hooks;notified=true;}
@@ -101,7 +101,7 @@ int main(void) {
         const unsigned gen=phy_generation(), before=hooks;
         assert(phy_dfilt_hw_mode()==(int)mode && !locks && !phy_busy());
         notified=false;assert(phy_dfilt_apply_default());
-        assert(phy_dfilt_hw_mode()==0 && (reg_word & ~DFILT_MASK)==unrelated);
+        assert(phy_dfilt_hw_mode()==PHY_DFILT_MODE_DEFAULT && (reg_word & ~DFILT_MASK)==unrelated);
         assert(adc_word==3 && hooks==before+1 && phy_generation()==gen+1 && !locks);
     }
     for(unsigned width=0;width<2;++width) {
@@ -109,7 +109,7 @@ int main(void) {
         const unsigned gen=phy_generation(), before=hooks;
         phy_begin();restore_lock();
         assert(phy_busy() && phy_generation()==gen && hooks==before+1);
-        assert(phy_dfilt_hw_mode()==0 && rf_filter_applied());
+        assert(phy_dfilt_hw_mode()==PHY_DFILT_MODE_DEFAULT && rf_filter_applied());
         phy_end();assert(!locks && phy_generation()==gen+1);
     }
     /* A dropped write must never be reported as applied. */
@@ -125,7 +125,7 @@ int main(void) {
         rf_filter_t f={(bool)width,16,8};
         assert(rf_set_filter(f) && rf_filter_applied() && !locks);
         rf_set_offset_khz(250*(int)(width+1));
-        assert(phy_dfilt_hw_mode()==0 && !locks && !phy_busy());
+        assert(phy_dfilt_hw_mode()==PHY_DFILT_MODE_DEFAULT && !locks && !phy_busy());
     }
     fail_write=true;
     assert(!rf_set_filter(s_filter) && !rf_filter_applied() && !locks);
@@ -165,23 +165,24 @@ int main(void) {
     arc_gain_table_from_bytes(&table,NULL,ARC_5G_GAIN_MAX);
     dg_reset(&s_gain,&table,83);
     const int16_t old_model=s_gain.model_db_q8[82];
-    disk=(gtab_blob_t){.version=3,.rows=2};
+    disk=(gtab_blob_t){.version=GTAB_VERSION-1u,.rows=2};
     disk.th_x256[83]=1024;disk.th_x256[82]=512;
-    /* VTX-on boot: no fresh noise pass; pre-11p mode-0 data must be ignored. */
+    /* VTX-on boot: no fresh noise pass; a table of the previous RF context
+     * (11p with digital mode 0) must be ignored. */
     cna_apply_gain();
     assert(!s_gain_rows_measured && s_gain.model_db_q8[82]==old_model);
     assert(s_gain_th[83]==0 && s_gain_th[82]==0 && !stores);
-    /* Existing 11p table remains usable on the next VTX-on boot. */
+    /* A table of the current context remains usable on the next VTX-on boot. */
     disk.version=GTAB_VERSION;s_gain_th_loaded=false;
     cna_apply_gain();assert(s_gain_rows_measured==2 && s_gain_th[83]==4);
     /* A clean startup pass replaces an old blob and publishes new data. */
-    disk.version=3;
+    disk.version=GTAB_VERSION-1u;
     const float noise[DG_STATES]={[83]=3.0f+CNA_QUANT_CELLS2,[82]=1.0f+CNA_QUANT_CELLS2};
     receiver_gain_table_measured(noise);
     assert(stores==1 && disk.version==GTAB_VERSION && s_gain_th_new && s_cna_gain_dirty);
     cna_apply_gain();assert(s_gain_rows_measured==2 && s_gain_th[83]==3 && !s_gain_th_new);
     receiver_gain_table_measured(noise);assert(stores==1); /* unchanged data: no NVS wear */
-    puts("PASS: production gtab rejects pre-11p data on VTX-on boot; fresh save/load retained");
+    puts("PASS: production gtab rejects previous-context data on VTX-on boot; fresh save/load retained");
 }
 '''
 

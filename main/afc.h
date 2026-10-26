@@ -47,7 +47,7 @@
 #define AFC2_TIP_GUARD         20u    /* 0.5 us */
 #define AFC2_PORCH_START       136u   /* 3.4 us after sync end */
 #define AFC2_PORCH_LEN         40u    /* 1.0 us */
-#define AFC2_MAX_SAMPLES       4096u
+#define AFC2_MAX_SAMPLES       8192u  /* the control loop's 8190-byte AFC window (3.2 lines) */
 #define AFC2_BURST_START       40u    /* 1.0 us after sync end */
 #define AFC2_BURST_LEN         80u    /* 2.0 us, inside NTSC and PAL burst */
 #define AFC2_BURST_MIN_X10     25     /* 2.5 codes (~390 kHz) burst amplitude */
