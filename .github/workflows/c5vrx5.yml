@@ -120,6 +120,7 @@ jobs:
         run: |
           python3 test/test_field_diag_compare.py
           python3 test/test_dac_check_tool.py
+          python3 test/test_flash_tool.py
           python3 test/test_diag_snapshot_runtime.py
           python3 test/test_flight_log_tool.py
           python3 test/test_settings.py
