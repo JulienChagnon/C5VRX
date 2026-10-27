@@ -379,8 +379,40 @@ static void read_live(uint16_t live[PBUS_BLOCKS][2])
         for (unsigned k = 0; k < 2; ++k) live[b][k] = phy_pbus_rd(b, k + 1);
 }
 
+/* Bank 1 of the DC words (blocks 2/3, bank 1) is the vendor's coarse DC
+ * for the RF stage; the calibrated bank-2 codes of the DC table are only
+ * valid on the bank 1 they were measured with. Debug mode used to copy the
+ * live bank 1 at every hold (every gain write releases and re-holds), so a
+ * vendor rewrite of it moved every row at once. Board 2026-10-27, after a
+ * walk: bank 1 245/224 against 279/227 at boot (G54-G83), I off the ADC at
+ * G83, half on the rail at G72, the servo trim at its +96 limit and the
+ * guard releasing G83 over and over, until a reboot. Bank 1 is now pinned
+ * per DC table: the first hold in its gain span takes it, every later one
+ * forces the same value (phy_dco_bank1_reset on a new table). */
+static int s_bank1_pin[2] = {-1, -1};
+static uint8_t s_bank1_lo = 1u, s_bank1_hi = 0u;
+static int s_bank1_moved[2] = {-1, -1};
+static uint32_t s_bank1_overrides;
+
+static void pin_bank1(uint16_t live[PBUS_BLOCKS][2])
+{
+    const uint32_t forced = *(volatile uint32_t *)0x600A702Cu;
+    if (!(forced & (1u << 23))) return;
+    const unsigned gain = (forced >> 24) & 0xffu;
+    if (gain < s_bank1_lo || gain > s_bank1_hi) return;
+    if (s_bank1_pin[0] < 0) { s_bank1_pin[0] = live[2][0]; s_bank1_pin[1] = live[3][0]; return; }
+    if (live[2][0] != (uint16_t)s_bank1_pin[0] || live[3][0] != (uint16_t)s_bank1_pin[1]) {
+        s_bank1_moved[0] = live[2][0];
+        s_bank1_moved[1] = live[3][0];
+        ++s_bank1_overrides;
+        live[2][0] = (uint16_t)s_bank1_pin[0];
+        live[3][0] = (uint16_t)s_bank1_pin[1];
+    }
+}
+
 static void enter_debug(uint16_t live[PBUS_BLOCKS][2])
 {
+    pin_bank1(live);
     phy_pbus_debugmode();
     for (unsigned b = 0; b < PBUS_BLOCKS; ++b) if (pbus_owned(b))
         for (unsigned k = 0; k < 2; ++k) phy_pbus_force_test(b, k + 1, live[b][k]);
@@ -622,6 +654,31 @@ bool phy_dco_release(void)
     s_dco_held = false;
     lock_give();
     return true;
+#endif
+}
+
+void phy_dco_bank1_reset(uint8_t lo, uint8_t hi)
+{
+#ifdef C5VRX_PHY_PINNED
+    lock_take();
+    s_bank1_lo = lo;
+    s_bank1_hi = hi;
+    s_bank1_pin[0] = s_bank1_pin[1] = -1;
+    lock_give();
+#else
+    (void)lo; (void)hi;
+#endif
+}
+
+uint32_t phy_dco_bank1_status(int pin[2], int moved[2])
+{
+#ifdef C5VRX_PHY_PINNED
+    pin[0] = s_bank1_pin[0]; pin[1] = s_bank1_pin[1];
+    moved[0] = s_bank1_moved[0]; moved[1] = s_bank1_moved[1];
+    return s_bank1_overrides;
+#else
+    pin[0] = pin[1] = moved[0] = moved[1] = -1;
+    return 0;
 #endif
 }
 

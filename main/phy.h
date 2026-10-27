@@ -97,6 +97,12 @@ bool phy_dco_held(void);
 /* PBUS DC words, read back: bank 1 (written by the vendor PHY) and bank 2
  * (the pair the hold forces), I then Q. false without the pinned PHY. */
 bool phy_dco_banks(int bank1[2], int bank2[2]);
+/* Bank 1 pinned per DC table (phy.c pin_bank1): a new table (channel,
+ * filter, gain span lo..hi) takes the next hold's bank 1 and forces it on
+ * every later hold. Status: the pinned pair, the last differing live pair
+ * the vendor had written (-1 none) and how often it was overridden. */
+void phy_dco_bank1_reset(uint8_t lo, uint8_t hi);
+uint32_t phy_dco_bank1_status(int pin[2], int moved[2]);
 #define PHY_DCO_TRY_MAX 8   /* codes per verified live trial (phy_dco_try_pair) */
 bool phy_dco_nudge(int di, int dq, int out[2]);
 /* Sample the actual current DAC pair twice; no mode change or assumed codes.

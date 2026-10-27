@@ -102,8 +102,22 @@ int main(void)
     memset(s, 0, sizeof(s));
     assert(!strcmp(cal_channel_quiet(s, 24, false, NULL, NULL), "origin"));
     memset(s, 0x77, sizeof(s));
+    assert(!strcmp(cal_channel_quiet(s, 24, false, NULL, NULL), "dc_rails"));   /* +7/+7 everywhere: one rail per axis */
+    for (unsigned k = 0; k < 24u * 256u; ++k) s[k] = (k & 1u) ? 0x77 : 0x88;  /* both rails: a large signal */
     assert(!strcmp(cal_channel_quiet(s, 24, false, NULL, NULL), "rails"));
     assert(cal_dc_gate_carrier("rails", 0, 400) && cal_dc_gate_carrier("video_sync", 0, 0));
+    /* Board 2026-10-27, G83: I at -8 in every sample, Q noise around -4.5
+     * cells. A DC fault for the search to fix, never "VTX on". */
+    for (unsigned k = 0; k < 24u * 256u; ++k) {
+        const int q = cell(-4.5 + 1.8 * gauss());
+        s[k] = (uint8_t)((8u << 4) | ((unsigned)(q < -8 ? -8 : q > 7 ? 7 : q) & 15u));
+    }
+    {
+        unsigned e = 0;
+        int c = 0;
+        const char *why = cal_channel_quiet(s, 24, false, &e, &c);
+        assert(!strcmp(why, "dc_rails") && !cal_dc_gate_carrier(why, e, c));
+    }
     /* Low gain rows, VTX off (board 2026-10-26: G68/G69/G70 noise ~0.35..0.57
      * cells^2, G69 envelope 1.22): quantized receiver noise reads "origin" or
      * a slightly raised envelope, never a definite carrier. */

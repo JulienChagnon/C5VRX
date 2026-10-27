@@ -60,7 +60,7 @@ static inline bool cal_setting_carrier(unsigned env, int clip)
  * as in the filter sweep only a definite carrier stops the batch. */
 static inline bool cal_dc_gate_carrier(const char *why, unsigned env, int clip)
 {
-    if (!why || !strcmp(why, "origin")) return false;
+    if (!why || !strcmp(why, "origin") || !strcmp(why, "dc_rails")) return false;   /* dc_rails: what the search fixes */
     if (!strcmp(why, "envelope")) return cal_setting_carrier(env, clip);
     return true;
 }
