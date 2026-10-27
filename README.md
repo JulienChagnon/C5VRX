@@ -198,7 +198,12 @@ KiCad ERC/DRC and schematic/PCB parity checks are clean; REV C has not been buil
   `--no-key`. `--app-only` flashes only the app image, which is faster
   when the bootloader and partition table have not changed, and
   `--monitor` then shows the console without resetting the chip (use it
-  instead of `idf.py flash monitor`).
+  instead of `idf.py flash monitor`; `--monitor-only` opens it without
+  flashing). `--log FILE` keeps a timestamped copy of the console,
+  `--iq DIR` saves each IQ snapshot (key `I`, or every N seconds with
+  `--iq-every N`) as `.bin` + `.json`, and `--check` waits for the boot,
+  runs `T` and `D` and exits 1 if the board crashed, runs a different
+  image than the one flashed, or reports a chain fault.
 - **Local File** flashes your own `.bin`; **Legacy builds** contains archived
   C5VRX-3 firmware.
 

@@ -24,6 +24,14 @@ class CompareTest(unittest.TestCase):
         self.assertEqual(r["sync_evidence_ok_pct"], 50)
         self.assertEqual(r["coverage_pct_median"], 25)
 
+    def test_timestamped_log(self):
+        # tools/flash.py --log writes "HH:MM:SS.mmm <console line>" and "#" notes.
+        r = self.summary("20:00:55.120 # flash.py log port=COM6\n"
+                         "20:00:55.300 FIELD_DIAG t=1 sync_valid_pct=100 measurement_coverage_pct=100 gain=70 max=83\n"
+                         "20:00:56.301 FIELD_DIAG t=2 sync_valid_pct=0 measurement_coverage_pct=100 gain=70 max=83\n")
+        self.assertEqual(r["seconds"], 2)
+        self.assertEqual(r["sync_evidence_ok_pct"], 50)
+
     def test_legacy_unknown_coverage(self):
         r = self.summary("FIELD_DIAG t=1 video_pct=100 gain=80 max=83\n")
         self.assertEqual(r["legacy_unknown_coverage_s"], 1)
