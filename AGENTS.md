@@ -686,6 +686,14 @@ hand) as template rows. Live, the per-row DC servo of main (`servo_service`,
 template/base-map row it holds within 0.3 cells as an own row. Calibration is
 recommended only at the servo's trim limit, without a row, after a fault, or
 after 30 s of qualified DC above 1.5 cells. See docs/FASTER_CALIBRATION.md.
+Range edge audit (2026-10-27, docs/FINDINGS.md "Range edge audit"): the hold
+guard in `dco_service()` releases/bans a row only where the servo cannot trim
+it (a ban used to lock the servo out of railing edge rows for 2-32 s); the
+servo brackets the sign bit where its share saturates (double / halve, hold a
+one-code crossing) and decides on 4096 samples there. Do not restore the
+unconditional rail ban. Manual calibration ends on CALIBRATION OK /
+INCOMPLETE (`CAL_RESULT`). The AFC porch window is 1.2-3.6 us after the
+detected sync end (the PAL-set 3.4-4.4 us read NTSC active video).
 
 ## Startup calibration acceleration (2026-10-25, hardware pending)
 
@@ -790,6 +798,8 @@ requirements by themselves**.
 - Digital RX filter mode 12 (`PHY_DFILT_MODE_DEFAULT`) is reapplied after
   every vendor restore on the pinned PHY. Mode 0 (PR #244) was chosen on
   VTX-off noise; the VTX-on lab (2026-10-26) reproduced mode 12 better.
+  Menu PHY FILT selects 12/0/4/8 for one boot (`phy_dfilt_select`, every
+  boot starts 12; maps are measured in 12).
   Preserve the vendor ADC-rate choice; other mode values and ADC-rate
   overrides are lab research. Readback and calibration migration are
   required when changing the receive transfer function. See
