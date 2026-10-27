@@ -94,6 +94,100 @@ servo offsets 10/-15, 5/-6, 2/-3 codes, `fault=0`, `unbans=0`,
 banned). PHY FILT 0/4/8/12 applied and read back. The walk with the VTX
 on is the deciding test; no dB or range claim.
 
+## Boot heap margin: about 2 KB at the boot peak (board, 2026-10-26)
+
+Board COM6 (XIAO ESP32-C5), main `9699550` and `07ece42`, with temporary
+heap prints after every boot stage in `app_main` and inside `rf_start`
+(not committed). Internal heap free / largest block:
+
+| After | `07ece42` | `9699550`, fresh sdkconfig |
+|---|---|---|
+| `rf_start` (NVS 5.8 KB, Wi-Fi init 23.2 KB, start 2.4 KB) | 41,752 / 38,912 | 41,640 / 36,864 |
+| `transport_start` | 28,016 / 25,600 | 27,904 / 25,600 |
+| menu splash (DMA descriptor chain) | 9,780 / 8,192 | 9,668 / 7,936 |
+| receiver and control tasks | 2,216 / 1,536 | 2,104 / 1,536 |
+| splash end (chain freed) | 20,452 / 17,408 | 20,340 / 17,408 |
+
+The splash chain (about 18 KB, interlaced) is held while `receiver_start`
+creates `gain_obs` (4 KB stack) and `gain_fast` (3 KB), so the lowest free
+heap of a boot is about 2.1 KB, while `T` a few seconds later reads 17 KB
+largest. Any extra ~2 KB allocated before `receiver_start` makes
+`gain_fast` fail with `ESP_ERR_NO_MEM` and the board boot-loops. That
+happened here: an `sdkconfig` generated before the defaults cut
+`CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM` to 2 still had 4, and `esp_wifi_init`
+took 3,440 bytes more. ESP-IDF does not reapply `sdkconfig.defaults` to an
+existing `sdkconfig`; delete it and rebuild after a defaults change.
+
+`T` now prints `heap_min` (lowest free since boot, 2,096 on `9699550`
+plus this change), and `tools/flash.py --check` warns below 1024 bytes; it
+also warns before flashing when the build's configuration differs from
+`sdkconfig.defaults`. Not changed here: the splash could be built after the
+receiver tasks (it already skips itself when the raster cannot be built),
+which would trade the margin against a progressive splash on some boards.
+
+## PSRAM: 8 MB on the XIAO, now mapped (board, 2026-10-26)
+
+esptool on COM6 reads `ESP32-C5HR8 (revision v1.0)`, "Embedded PSRAM 8MB
+(AP_3v3)". Every generation so far left it off. Same source (`ab2edee`),
+VTX off, three PSRAM configurations against the baseline:
+
+| Configuration | `heap_min` | `heap_internal` live | free with the menu open | without PSRAM |
+|---|---|---|---|---|
+| baseline | 2,104 | 24,672 | ~6,400 (computed) | boots |
+| Wi-Fi `.bss` in PSRAM (`ALLOW_BSS_SEG_EXTERNAL_MEMORY`) | 14,564 | 37,120 | 18,884 | panics |
+| Wi-Fi heap in PSRAM (`TRY_ALLOCATE_WIFI_LWIP`, `IGNORE_NOTFOUND`) | 6,348 | 28,904 | 10,668 | boots |
+| both | boot loop (`gain_obs` `ESP_ERR_NO_MEM`) | | | |
+
+The Wi-Fi BSS configuration is available in the opt-in
+`sdkconfig.psram.defaults` overlay (quad, 80 MHz, `USE_CAPS_ALLOC`). The
+standard image keeps PSRAM disabled so boards without it still boot. The
+linker moves the `.bss` of `libnet80211`/`liblwip` (`g_cnxMgr` 5.9 KB,
+`s_wifi_nvs`, TWT timers; 16,456 bytes), which costs 3.4 KB of extra IRAM
+code: static HP SRAM 288,850 -> 276,518 bytes. `--check` passed with no
+transport faults, ready time 3.84 s against 3.93 s, and the menu opened
+and closed with no faults and no leak. With both options ESP-IDF forces 16
+static Wi-Fi TX buffers (`esp_wifi/Kconfig`), which is the likely cause of
+the boot loop (not investigated). `T` prints `heap_psram`.
+
+The contributor subsequently tested about two minutes of R7 NTSC video:
+three menu cycles without a leak, five of five IQ snapshots, eleven flight-log
+blocks and one snapshot with no flash errors or drops, and no transport faults
+([PR #283 board report](https://github.com/Twotoz/C5VRX/pull/283#issuecomment-6432708418)).
+The PAL menu and long runs remain untested. PSRAM shares the MSPI bus with the flash; the video
+path (PARLIO, GDMA, BitScrambler, the RX ring) stays in internal SRAM.
+
+Three cold static buffers moved on top (`EXT_RAM_BSS_ATTR`, 7.4 KB): the
+lab's `s_dyn`, the diag trace and the flight-log queue. Static HP SRAM
+276,518 -> 269,118 bytes; on COM6 `heap_min` 14,576 -> 21,956,
+`heap_internal` 37,132 -> 44,512, largest block 17,408 -> 19,456, 26,276
+free with the menu open, no transport faults, 19 of 20 `I` snapshots.
+
+What stays internal, and why (board, same session):
+- IQ snapshot buffers. Copying the 8,190 bytes into PSRAM missed the
+  copy deadline (about 500 us before RX reaches the window): 1 of 10 `I`
+  snapshots against 19 of 20 into internal RAM. CPU writes into PSRAM at
+  80 MHz therefore run below about 16 MB/s.
+- Flash-write sources (`s_flush_buf`, snapshot buffers): from PSRAM,
+  esp_flash copies 32 bytes per page program with the cache off.
+- The gain loop's state, the control window scratch (copied under a
+  microsecond deadline), transport restart buffers, and the AGC table
+  check buffer (filled in a critical section that changes clocks).
+
+Long gapless IQ captures into PSRAM do not work while RX runs (board,
+same session). 8 MB would hold ~200 ms of the 40 MB/s IQ stream (a
+snapshot is 204.75 us), so a console capture was tried: an AHB GDMA
+memory-to-memory channel (`esp_async_memcpy`) copies each completed part
+of the RX ring into PSRAM, 32-byte aligned (PSRAM burst limit and cache
+line), with every chunk checked against the time RX needs to come back
+to it. Result on COM6 at 80 MHz: 20-22 MB/s, 16-24 KiB before the copy
+fell behind, and each capture added one `rx_overflow` and one
+`tx_empty`: the PSRAM writes starve the RX DMA, so live video glitches
+and the stream itself has a gap. 16-byte chunks were worse (6.6 MB/s;
+the driver splits them through a stash buffer its ISR merges). 120 MHz
+PSRAM does not build with this flash configuration (ESP-IDF's MSPI
+timing tables). A long capture needs another path, such as a decimated
+stream or a capture with the RX ring paused.
+
 ## VTX-on PHY lab, AFC window and digital mode 12 (board, 2026-10-26)
 
 Board COM10 (NiceMCU), 5865 MHz / A1, PAL VTX on a table, firmware

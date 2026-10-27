@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "esp_attr.h"
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "arc_phy.h"
@@ -435,7 +436,7 @@ static void run_list(unsigned base, const sense_profile_t *list, unsigned n)
     if (!L.stop) run_patch(id, &k_sham);
 }
 
-static sense_profile_t s_dyn[16];
+static EXT_RAM_BSS_ATTR sense_profile_t s_dyn[16];   /* lab only: PSRAM */
 
 static void suite_nf_auto(void)
 {

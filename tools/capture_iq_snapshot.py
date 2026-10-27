@@ -46,6 +46,13 @@ def decode(lines):
     raise ValueError('incomplete IQ snapshot')
 
 
+def save(raw,metadata,output):
+    # Raw bytes plus a .json sidecar; tools/flash.py --iq writes the same pair.
+    metadata=dict(metadata,timestamp_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                  scope='204.75us contiguous snapshot; capture-start state unknown; no full vertical/range validation')
+    output.write_bytes(raw);output.with_suffix('.json').write_text(json.dumps(metadata,indent=2))
+
+
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
     ap.add_argument('port');ap.add_argument('output',type=Path);a=ap.parse_args()
@@ -60,10 +67,7 @@ def main():
             while b'\n' in buffer:
                 line,buffer=buffer.split(b'\n',1);line=record_line(line.decode('ascii',errors='replace'));lines.append(line)
                 if line.startswith(('IQSNAP_END','IQSNAP_REFUSED')):
-                    raw,metadata=decode(lines)
-                    metadata.update(timestamp_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                                    scope='204.75us contiguous snapshot; capture-start state unknown; no full vertical/range validation')
-                    a.output.write_bytes(raw);a.output.with_suffix('.json').write_text(json.dumps(metadata,indent=2))
+                    raw,metadata=decode(lines);save(raw,metadata,a.output)
                     print(f'Saved {len(raw)} IQ samples to {a.output}');return
     finally:s.close()
     raise RuntimeError('IQ snapshot timeout; requires firmware with uppercase I capture support')

@@ -198,9 +198,34 @@ KiCad ERC/DRC and schematic/PCB parity checks are clean; REV C has not been buil
   `--no-key`. `--app-only` flashes only the app image, which is faster
   when the bootloader and partition table have not changed, and
   `--monitor` then shows the console without resetting the chip (use it
-  instead of `idf.py flash monitor`).
+  instead of `idf.py flash monitor`; `--monitor-only` opens it without
+  flashing). `--log FILE` keeps a timestamped copy of the console,
+  `--iq DIR` saves each IQ snapshot (key `I`, or every N seconds with
+  `--iq-every N`) as `.bin` + `.json`, and `--check` waits for the boot,
+  runs `T` and `D` and exits 1 if the board crashed, runs a different
+  image than the one flashed, or reports a chain fault (low heap only
+  warns). Before flashing it warns when the build's `sdkconfig` differs
+  from `sdkconfig.defaults`: ESP-IDF keeps an existing `sdkconfig`, so
+  delete it and rebuild after the defaults change.
 - **Local File** flashes your own `.bin`; **Legacy builds** contains archived
   C5VRX-3 firmware.
+
+## Optional XIAO PSRAM build
+
+The standard release and web-flasher image also support boards without PSRAM.
+For a XIAO ESP32-C5HR8 with 8 MB PSRAM, build a separate image with ESP-IDF 6.0.2:
+
+```sh
+idf.py -B build-psram -DSDKCONFIG=sdkconfig.psram "-DSDKCONFIG_DEFAULTS=sdkconfig.defaults;sdkconfig.psram.defaults" build
+python tools/flash.py PORT --build build-psram --check
+```
+
+Use a fresh `sdkconfig.psram` when changing these defaults. Flash the full image
+when switching configurations, including the matching bootloader. This image
+requires PSRAM and will panic on a board without it. The contributor measured
+boot `heap_min` rising from about 2.1 KB to 21.9 KB on the XIAO; PAL and long-run
+checks remain pending. The live DMA/video buffers stay in internal RAM.
+See [PSRAM measurements and limits](docs/FINDINGS.md#psram-8-mb-on-the-xiao-now-mapped-board-2026-10-26).
 
 ## First boot
 

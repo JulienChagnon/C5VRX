@@ -20,6 +20,7 @@
 #include "driver/usb_serial_jtag_vfs.h"
 #include "esp_chip_info.h"
 #include "esp_heap_caps.h"
+#include "esp_attr.h"
 #include "esp_mac.h"
 #include "esp_partition.h"
 #include "esp_system.h"
@@ -47,7 +48,11 @@ static uint32_t s_snap_no_memory, s_snap_refused;
 static unsigned s_block;            /* record block (0..FLOG_RECORD_BLOCKS-1) being written */
 static unsigned s_used;             /* record bytes in it */
 static bool s_block_open;
-static uint8_t s_queue[FLOG_QUEUE], s_flush_buf[FLOG_QUEUE];
+/* The queue is only copied, so it can live in PSRAM. s_flush_buf is an
+ * esp_partition_write source and stays internal: from PSRAM, esp_flash
+ * writes 32 bytes per page program with the cache off. */
+static EXT_RAM_BSS_ATTR uint8_t s_queue[FLOG_QUEUE];
+static uint8_t s_flush_buf[FLOG_QUEUE];
 static unsigned s_queue_len;
 static uint32_t s_dropped, s_dropped_logged, s_blocks_written, s_snapshots, s_flash_errors;
 static portMUX_TYPE s_qlock = portMUX_INITIALIZER_UNLOCKED;
