@@ -73,10 +73,14 @@ the 2026-10-20 rating of ~-88..-90 walking (U85Q). The meter carries
   template and missing rows and the reason (`CAL_RESULT`).
 - AFC porch window 1.2-3.6 us (2.4 us spans 8.6 NTSC / 10.6 PAL subcarrier
   periods, so the burst averages out).
-- Menu PHY FILT: digital RX filter mode 12 -> 0 -> 4 -> 8, this boot only
-  (every boot starts 12; noise maps and the C/N reference are measured in
-  12), reapplied on every RF restore, read back, previous mode kept on a
-  failed readback; the DC row sums restart on a change.
+- Menu PHY FILT: digital RX filter mode 12 -> 0 -> 4 -> 8 (noise maps and
+  the C/N reference are measured in 12; another mode shows LAB), reapplied
+  on every RF restore, read back, previous mode kept on a failed readback;
+  the DC row sums restart on a change.
+- Menu choices kept across reboots (NVS `prefs`, operator request): FILTER,
+  PHY FILT and the GAIN model (AUTO/LEVEL/RSSI). MAX and fixed gains still
+  return to AUTO at boot (2026-10-20: a forgotten fixed gain costs range
+  without a sign). Channel, VIDEO, OUTPUT and AFC were already kept.
 
 **Host evidence.** `test/test_dc_servo.c`: template rows 6-12 cells off
 (sigma 0.8) within 0.35 cells after <= 5 decisions, sub-cell noise settles

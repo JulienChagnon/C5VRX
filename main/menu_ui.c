@@ -194,7 +194,7 @@ static void row_value(const menu_view_t *v, int item, const char **value, const 
         static char mode[8];
         snprintf(mode, sizeof(mode), "MODE %d", v->dfilt_mode);
         *value = mode;
-        if (!v->dfilt_default) *note = "BOOT 12";
+        if (!v->dfilt_default) *note = "LAB";      /* the maps are measured in 12 */
         break;
     }
     case MENU_CALIBRATE: if (v->dc_cal) *value = "DC!"; break;

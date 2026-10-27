@@ -54,9 +54,9 @@ int phy_filter_hw_mismatch(uint8_t hw[8], uint8_t want[8]);
  * chose another in menu PHY FILT); every RF restore reapplies it. */
 bool phy_dfilt_apply_default(void);
 int phy_dfilt_hw_mode(void);
-/* Operator choice among the bench-safe modes 0/4/8/12 (PR #244, #279): this
- * boot only, every boot starts PHY_DFILT_MODE_DEFAULT, the noise maps and the
- * C/N reference are measured in that mode. Returns false for another value or
+/* Operator choice among the bench-safe modes 0/4/8/12 (PR #244, #279), kept
+ * across reboots by the settings prefs; the noise maps and the C/N reference
+ * are measured in PHY_DFILT_MODE_DEFAULT. Returns false for another value or
  * a failed readback (then the previous mode is restored). */
 bool phy_dfilt_select(int mode);
 int phy_dfilt_mode(void);

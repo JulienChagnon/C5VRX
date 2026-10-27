@@ -75,7 +75,7 @@ typedef struct {
     unsigned filter_width_khz;      /* measured -3 dB width of the active filter, 0 unknown */
     bool narrow_ok, wide_ok;        /* class calibrated with its own DC table */
     int dfilt_mode;                 /* digital RX filter mode 0/4/8/12 (menu PHY FILT) */
-    bool dfilt_default;             /* the boot default (12) */
+    bool dfilt_default;             /* the default 12 (the maps are measured in it) */
     /* VTX and link quality. */
     int deviation_x100;             /* measured this session, < 0 unknown */
     int offset_khz;                 /* AFC tuning offset */

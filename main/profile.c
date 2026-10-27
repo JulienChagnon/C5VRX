@@ -356,6 +356,16 @@ void profile_commit(int dev_x100)
 
 int profile_selected(void) { return s_select; }
 
+void profile_select_restore(int select)
+{
+    if (select != PROFILE_SELECT_AUTO && select != PROFILE_DEFAULT && select != PROFILE_NARROW &&
+        select != PROFILE_WIDE && select != PROFILE_XNARROW) return;
+    s_select = select;
+    if (select == PROFILE_SELECT_AUTO || select == PROFILE_DEFAULT || !profile_selectable(select)) return;
+    if (profile_set(select)) s_reason = "saved_select";
+    printf("PROFILE restore select=%s active=%s\n", s_names[select], s_names[s_profile]);
+}
+
 bool profile_selectable(int p)
 {
     if (p == PROFILE_DEFAULT) return true;

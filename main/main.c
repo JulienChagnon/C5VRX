@@ -8,6 +8,7 @@
 #include "esp_app_desc.h"
 #include "esp_timer.h"
 #include "rf.h"
+#include "phy.h"
 
 volatile const char *s_boot_stage = "start";
 static int64_t s_boot_radio_ms = -1, s_boot_ready_ms = -1;
@@ -71,6 +72,18 @@ void app_main(void)
      * chosen before live TX starts; it never changes under live video. */
     profile_load();
     profile_boot();
+    {   /* Menu choices of the last session (settings prefs). */
+        settings_prefs_t p;
+        if (settings_prefs_load(&p)) {
+            if (p.dfilt_mode != PHY_DFILT_MODE_DEFAULT && !phy_dfilt_select(p.dfilt_mode))
+                printf("PREFS dfilt=%u not applied; mode %d\n", p.dfilt_mode, phy_dfilt_mode());
+            if (receiver_gain_mode_auto(p.gain_mode) && p.gain_mode != GAIN_MODE_AUTO)
+                receiver_set_gain_mode(p.gain_mode, false);
+            profile_select_restore(p.filter_select);
+            printf("PREFS restored filter_select=%d gain_mode=%u dfilt=%d\n", p.filter_select, receiver_gain_mode(),
+                   phy_dfilt_mode());
+        }
+    }
     s_boot_stage = "transport";
     if (transport_start() != ESP_OK) {
         s_boot_stage = "transport_fault";
