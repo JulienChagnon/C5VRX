@@ -107,8 +107,20 @@ class FlashToolTest(unittest.TestCase):
         esptool.assert_not_called()
         mon.assert_called_once()
 
+    def test_check_after_flash_and_on_a_running_board(self):
+        for argv, flashes, booting in ((["--check"], 1, True), (["--monitor-only", "--check"], 0, False)):
+            chk = mock.Mock(return_value=1)
+            mon = mock.Mock()
+            with mock.patch.object(flash, "run_check", chk), mock.patch.object(flash, "monitor", mon):
+                code, _, esptool, _, _ = run(["COM6"] + argv)
+            self.assertEqual(code, 1)
+            self.assertEqual(esptool.call_count, flashes)
+            self.assertEqual(chk.call_args.args[2], booting)
+            mon.assert_not_called()   # --check alone exits with its result
+
     def test_option_dependencies(self):
-        for argv in (["--iq-every", "5", "--monitor"], ["--iq", "x", "--iq-every", "5"]):
+        for argv in (["--iq-every", "5", "--monitor"], ["--expect-video"],
+                     ["--iq", "x", "--iq-every", "5"]):
             with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
                 flash.main(["COM6"] + argv)
 
@@ -140,6 +152,7 @@ class FakePort:
 
     def close(self):
         pass
+
 
 
 class MonitorTest(unittest.TestCase):
@@ -254,6 +267,88 @@ class ConsoleTest(unittest.TestCase):
         c = flash.Console(io.StringIO())
         c.feed("\n".join(snapshot_lines()) + "\n")
         self.assertIn("IQSNAP_DATA offset=0 ", c.out.getvalue())
+
+
+ELF = "ab" * 32
+GOOD = [
+    "ESP-ROM:esp32c5-eco2-20250121",
+    "rst:0x1 (POWERON),boot:0x18 (SPI_FAST_FLASH_BOOT)",
+    "CAL_BOOT mode=baseline ms=410 searches=0 sweeps=0 dc_trim=0 boot_phase_budget_ms=600",
+    "BOOT_PHASE ms=320 budget_ms=600 state=settled",
+    f'FIRMWARE id=c5v5-1 version=1 commit=abc elf_sha256={ELF[:9]} built="Oct 26 2026" idf=v6.0.2 cal_dump=1',
+    "VIDEO_Q known=1 snr_x10=312 lines_x100=9850 lines=15 windows=60 periods=4 (end-to-end)",
+    "RANGE_DIAG gain index=54 max=83 rf_stage=3 rf_code=1 bb=2 fine=0 top_rf_stage_from=70 at_max=0 state=2",
+    "RANGE_DIAG chain sphase=settled dc_ok=1 dc_held=1 lane=ultrafine faults=0",
+    "RANGE_DIAG iq p50=9 coherence=80 cn_est_x10=180 (model, 12 MHz class) origin_pm=10 clip_pm=0 video_recent=1",
+    "RANGE_DIAG verdict=VIDEO_EVIDENCE strong C/N estimate with gain headroom",
+    "RANGE_DIAG history seconds=60 sync_evidence_ok_pct=100 at_max_gain_pct=0 dropouts=0",
+]
+
+
+class EvaluateTest(unittest.TestCase):
+    def test_healthy_board_passes(self):
+        problems, warnings, fields = flash.evaluate(GOOD, True, ELF, expect_video=True)
+        self.assertEqual((problems, warnings), ([], []))
+        self.assertEqual(fields["elf_match"], 1)
+        self.assertEqual((fields["snr_x10"], fields["gain"], fields["cn_est_x10"]), ("312", "54", "180"))
+        self.assertEqual(fields["verdicts"], "VIDEO_EVIDENCE")
+
+    def fails(self, lines, booting=True, elf=ELF, **kw):
+        return " | ".join(flash.evaluate(lines, booting, elf, **kw)[0])
+
+    def swap(self, prefix, new):
+        return [new if line.startswith(prefix) else line for line in GOOD]
+
+    def test_failures(self):
+        self.assertIn("not the flashed build", self.fails(GOOD, elf="cd" * 32))
+        self.assertIn("did not finish booting", self.fails(GOOD[4:]))
+        self.assertIn("rebooted after the boot", self.fails(GOOD + ["rst:0xc (SW_CPU),boot:0x18"]))
+        self.assertIn("crash", self.fails(GOOD + ["Guru Meditation Error: Core 0 panic'ed"]))
+        self.assertIn("faults=3", self.fails(self.swap("RANGE_DIAG chain", "RANGE_DIAG chain sphase=settled faults=3")))
+        self.assertIn("did not answer T", self.fails([line for line in GOOD if "FIRMWARE" not in line]))
+        self.assertIn("did not answer D", self.fails([line for line in GOOD if "RANGE_DIAG" not in line]))
+        self.assertIn("filter not read back", self.fails(GOOD + [
+            "RANGE_DIAG verdict=CALIBRATION_OR_PHY filter not read back as requested"]))
+        no_video = self.swap("VIDEO_Q", "VIDEO_Q known=0 snr_x10=0 lines_x100=0")
+        self.assertIn("no video", self.fails(no_video, expect_video=True))
+        self.assertEqual(self.fails(no_video), "")
+
+    def test_running_board_check_skips_boot_and_image(self):
+        self.assertEqual(self.fails(GOOD[4:], booting=False, elf=None), "")
+
+    def test_boot_loop_reported_once_with_a_count(self):
+        # Board, 2026-10-26: a stale sdkconfig ran out of heap in receiver_start every boot.
+        crash = ["ESP_ERROR_CHECK failed: esp_err_t 0x101 (ESP_ERR_NO_MEM) at 0x420182f6",
+                 "abort() was called at PC 0x4080c967 on core 0", "Rebooting...",
+                 "ESP-ROM:esp32c5-eco2-20250121", "rst:0xc (SW_CPU),boot:0x18 (SPI_FAST_FLASH_BOOT)",
+                 "CAL_BOOT mode=baseline ms=0"]
+        problems = flash.evaluate(GOOD[:2] + GOOD[2:3] + crash * 3 + GOOD[3:], True, ELF)[0]
+        self.assertEqual(len(problems), 3)
+        self.assertIn("ESP_ERR_NO_MEM", problems[0])
+        self.assertTrue(all(p.endswith("(x3)") for p in problems))
+
+    def test_settings_left_behind_only_warn(self):
+        problems, warnings, _ = flash.evaluate(GOOD + [
+            "RANGE_DIAG verdict=GAIN_FIXED a fixed gain is saved across boots",
+            "RANGE_DIAG verdict=CALIBRATION_OR_PHY sampling phase unverified (manual CALIBRATE only)"], True, ELF)
+        self.assertEqual(problems, [])
+        self.assertEqual(len(warnings), 2)
+
+
+class CheckBoardTest(unittest.TestCase):
+    def test_waits_for_boot_then_sends_t_and_d(self):
+        FakePort.opened = []
+        text = "\n".join(GOOD) + "\n"
+        port = FakePort([b"", text[:150].encode(), b"", text[150:].encode()], fail_open=2)
+        flash_serial.Serial = port
+        clock = (x * 0.1 for x in range(100000))
+        console = flash.Console(io.StringIO())
+        with mock.patch.dict(sys.modules, {"serial": flash_serial}), mock.patch.object(flash.time, "sleep"), \
+                mock.patch.object(flash.time, "monotonic", lambda: next(clock)):
+            lines = flash.check_board("COM6", console, True)
+        self.assertEqual(port.writes, [b"T", b"D"])
+        self.assertTrue(all(o == (False, False) for o in FakePort.opened))
+        self.assertEqual(lines, GOOD)
 
 
 if __name__ == "__main__":

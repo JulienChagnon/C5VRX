@@ -20,6 +20,7 @@ both removed. This runs the route that works instead:
     python tools/flash.py COM6 --app-only         # app image only (flash_app_args)
     python tools/flash.py COM6 --monitor          # then show the console
     python tools/flash.py COM6 --monitor-only     # console only, no flashing
+    python tools/flash.py COM6 --check            # flash, then a pass/fail health check
     python tools/flash.py COM6 --monitor-only --log bench.log --iq iq/ --iq-every 10
 
 --app-only skips the bootloader and partition table, so it is faster for
@@ -42,13 +43,24 @@ tools/field_diag_compare.py reads these logs directly.
 for watching the raw IQ while tuning gain, filter or the VTX. A snapshot
 is 204.75 us of IQ: a sample of the receiver input, not a range result.
 
+--check waits for the boot (CAL_BOOT), lets the boot phase pass, sends T
+and D and exits 1 if the board crashed or rebooted, runs another image
+than the one flashed (the FIRMWARE elf_sha256 prefix), reports a chain
+fault or a filter that did not read back, or (with --expect-video) has no
+video (VIDEO_Q known=0). It ends with one 'CHECK result=pass|fail ...'
+line for scripts. With --monitor-only it checks the running board without
+waiting for a boot or comparing the image.
+
 Run it in the ESP-IDF environment, which provides esptool and pyserial.
 """
 import argparse
 import contextlib
 import datetime
+import hashlib
 import importlib.util
+import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -58,6 +70,12 @@ HERE = Path(__file__).resolve().parent
 DEFAULT_BUILD = HERE.parent / "build"
 sys.path.insert(0, str(HERE))
 import capture_iq_snapshot  # noqa: E402
+
+KV = re.compile(r"(\w+)=(\S+)")
+BOOT_DONE = ("CAL_BOOT ", "STARTUP done")
+BOOT_BANNER = ("rst:0x",)
+CRASH = ("Guru Meditation", "ESP_ERROR_CHECK failed", "abort() was called", "task_wdt")
+WARN_VERDICTS = ("NOT_CALIBRATED", "DC_CAL_NEEDED", "GAIN_FIXED", "CALIBRATION_OR_PHY sampling phase")
 
 
 def esptool_cmd(port, baud, args_file="flash_args"):
@@ -90,6 +108,14 @@ def open_quiet(port):
     s.rts = False
     s.open()
     return s
+
+
+def elf_sha256(build):
+    """SHA-256 of the built app ELF, as the firmware prints it in FIRMWARE elf_sha256=."""
+    with contextlib.suppress(OSError, ValueError, KeyError):
+        desc = json.loads((build / "project_description.json").read_text())
+        return hashlib.sha256((build / desc["app_elf"]).read_bytes()).hexdigest()
+    return None
 
 
 class Console:
@@ -229,6 +255,129 @@ def monitor(port, poll, console, iq_every=0.0):
     return 0
 
 
+def check_board(port, console, booting, boot_timeout=60.0, settle=6.0, status_wait=2.0, diag_wait=5.0):
+    """Wait out the boot (if booting), then send T and D; return the console lines read."""
+    import serial
+    start = len(console.lines)
+    s = None
+
+    def pump(seconds, until=None):
+        nonlocal s
+        mark = len(console.lines)
+        end = time.monotonic() + seconds
+        while time.monotonic() < end:
+            if s is None:
+                try:
+                    s = open_quiet(port)
+                except serial.SerialException:
+                    time.sleep(0.2)
+                    continue
+            try:
+                data = s.read(4096)
+            except serial.SerialException:
+                with contextlib.suppress(serial.SerialException):
+                    s.close()
+                s = None
+                continue
+            if data:
+                console.feed(data.decode(errors="replace"))
+            if until and any(u in line for line in console.lines[mark:] for u in until):
+                return True
+        return False
+
+    def send(key):
+        for _ in range(2):
+            if s is None:
+                pump(1.0)   # still re-enumerating: give it a moment
+            with contextlib.suppress(serial.SerialException, AttributeError):
+                s.write(key)
+                console.write_log("# key " + key.decode())
+                return
+
+    try:
+        if booting:
+            console.note(f"flash: check waits up to {boot_timeout:.0f} s for the boot")
+            if pump(boot_timeout, BOOT_DONE):
+                pump(settle)   # the boot phase (sampling-phase check) runs 5 s after CAL_BOOT
+        send(b"T")
+        pump(status_wait)
+        send(b"D")
+        if pump(diag_wait, ("RANGE_DIAG history",)):
+            pump(0.3)
+    finally:
+        if s is not None:
+            with contextlib.suppress(serial.SerialException):
+                s.close()
+    return console.lines[start:]
+
+
+def evaluate(lines, booting, elf=None, expect_video=False):
+    """Judge the check from the console lines: (problems, warnings, summary fields)."""
+    problems, warnings, fields = [], [], {}
+    boot_at = next((i for i, line in enumerate(lines) if any(b in line for b in BOOT_DONE)), None)
+    if booting and boot_at is None:
+        problems.append("no CAL_BOOT or STARTUP done line: the receiver did not finish booting")
+    for i, line in enumerate(lines):
+        if any(c in line for c in CRASH):
+            problems.append("crash: " + line.strip())
+        elif boot_at is not None and i > boot_at and any(b in line for b in BOOT_BANNER):
+            problems.append("rebooted after the boot: " + line.strip())
+
+    def last(tag):
+        found = [dict(KV.findall(line[line.find(tag):])) for line in lines if tag in line]
+        return found[-1] if found else None
+
+    fw = last("FIRMWARE id=")
+    if fw is None:
+        problems.append("no FIRMWARE line: the board did not answer T")
+    else:
+        fields["firmware"] = fw.get("id", "?")
+        running = fw.get("elf_sha256", "")
+        if elf:
+            fields["elf_match"] = int(bool(running) and elf.startswith(running))
+            if not fields["elf_match"]:
+                problems.append(f"running image elf_sha256={running[:16] or '?'} is not the flashed build {elf[:16]}")
+    vq = last("VIDEO_Q ")
+    if vq is not None:
+        fields.update(video_known=vq.get("known"), snr_x10=vq.get("snr_x10"), lines_x100=vq.get("lines_x100"))
+    if expect_video and (vq is None or vq.get("known") != "1"):
+        problems.append("no video: VIDEO_Q known=0 (VTX on, same channel, load fitted?)")
+    if not any("RANGE_DIAG " in line for line in lines):
+        problems.append("no RANGE_DIAG lines: the board did not answer D")
+    gain, iq, chain = last("RANGE_DIAG gain "), last("RANGE_DIAG iq "), last("RANGE_DIAG chain ")
+    if gain:
+        fields["gain"] = gain.get("index")
+    if iq:
+        fields["cn_est_x10"] = iq.get("cn_est_x10")
+    if chain:
+        fields["faults"] = chain.get("faults")
+        if chain.get("faults", "0") != "0":
+            problems.append(f"transport faults={chain['faults']}")
+    verdicts = [line.split("verdict=", 1)[1].strip() for line in lines if "RANGE_DIAG verdict=" in line]
+    for v in verdicts:
+        if v.startswith("CALIBRATION_OR_PHY filter"):
+            problems.append(v)
+        elif v.startswith(WARN_VERDICTS):
+            warnings.append(v)
+    fields["verdicts"] = ",".join(v.split()[0] for v in verdicts) or "none"
+    # A boot loop repeats the same crash every boot: report each once, with a count.
+    counted = {p: problems.count(p) for p in problems}
+    problems = [p if n == 1 else f"{p} (x{n})" for p, n in counted.items()]
+    return problems, warnings, fields
+
+
+def run_check(port, console, booting, elf=None, expect_video=False, boot_timeout=60.0):
+    lines = check_board(port, console, booting, boot_timeout)
+    problems, warnings, fields = evaluate(lines, booting, elf, expect_video)
+    for w in warnings:
+        console.note("CHECK warn: " + w)
+    for p in problems:
+        console.note("CHECK fail: " + p)
+    console.note(" ".join(["CHECK result=" + ("fail" if problems else "pass")] +
+                          [f"{k}={v}" for k, v in fields.items()]))
+    return 1 if problems else 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Flash C5VRX-5 without a USB line reset.")
     ap.add_argument("port", help="serial port, for example COM6 or /dev/ttyACM0")
@@ -244,16 +393,25 @@ def main(argv=None):
     ap.add_argument("--monitor", action="store_true",
                     help="after flashing, show the console without resetting the chip")
     ap.add_argument("--monitor-only", action="store_true",
-                    help="do not flash: only show the console")
+                    help="do not flash: only show the console (or --check the running board)")
     ap.add_argument("--log", type=Path, metavar="FILE",
                     help="append the console to FILE with timestamps (field_diag_compare.py reads it)")
     ap.add_argument("--iq", type=Path, metavar="DIR",
                     help="save each IQ snapshot (key I) to DIR as .bin + .json")
     ap.add_argument("--iq-every", type=float, default=0.0, metavar="SECONDS",
                     help="with --iq: send I on this period while monitoring")
+    ap.add_argument("--check", action="store_true",
+                    help="after flashing, wait for the boot, run T and D and exit 1 if the "
+                         "health check fails")
+    ap.add_argument("--expect-video", action="store_true",
+                    help="with --check: also fail without video (VIDEO_Q known=0)")
+    ap.add_argument("--boot-timeout", type=float, default=60.0, metavar="SECONDS",
+                    help="with --check: how long to wait for CAL_BOOT (default: %(default)s)")
     args = ap.parse_args(argv)
     if args.iq_every and not args.iq:
         ap.error("--iq-every needs --iq DIR")
+    if args.expect_video and not args.check:
+        ap.error("--expect-video needs --check")
     if args.iq_every and not (args.monitor or args.monitor_only):
         ap.error("--iq-every needs --monitor or --monitor-only")
     args_file = "flash_app_args" if args.app_only else "flash_args"
@@ -282,7 +440,10 @@ def main(argv=None):
             rc = flash(args, args_file, console)
             if rc != 0:
                 return rc
-        if args.monitor or args.monitor_only:
+        if args.check:
+            elf = None if args.monitor_only else elf_sha256(args.build)
+            rc = run_check(args.port, console, not args.monitor_only, elf, args.expect_video, args.boot_timeout)
+        if args.monitor or (args.monitor_only and not args.check):
             with console_keys() as poll:
                 monitor(args.port, poll, console, args.iq_every)
         return rc
