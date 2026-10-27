@@ -198,6 +198,12 @@ class MonitorTest(unittest.TestCase):
         self.assertIn(b"T", port.writes)
         self.assertLess(port.writes.count(b"I"), 4)
 
+    def test_monitor_does_not_retain_transcript(self):
+        console = flash.Console(io.StringIO())
+        self.monitor(FakePort([b"FIELD_DIAG t=1\n"] * 100), [None] * 100, console)
+        self.assertEqual(console.lines, [])
+        self.assertEqual(console.out.getvalue().count("FIELD_DIAG t=1"), 100)
+
 
 IQ = bytes(range(256)) * 31 + bytes(254)
 
@@ -315,6 +321,15 @@ class EvaluateTest(unittest.TestCase):
 
     def test_running_board_check_skips_boot_and_image(self):
         self.assertEqual(self.fails(GOOD[4:], booting=False, elf=None), "")
+
+    def test_incomplete_diagnostics_fail(self):
+        for tag in ("RANGE_DIAG chain", "RANGE_DIAG history"):
+            self.assertIn("incomplete RANGE_DIAG", self.fails([s for s in GOOD if not s.startswith(tag)]))
+        self.assertIn("incomplete RANGE_DIAG", self.fails(self.swap(
+            "RANGE_DIAG chain", "RANGE_DIAG chain sphase=settled")))
+
+    def test_running_board_reboot_fails(self):
+        self.assertIn("rebooted", self.fails(GOOD[4:] + [GOOD[1]], booting=False, elf=None))
 
     def test_boot_loop_reported_once_with_a_count(self):
         # Board, 2026-10-26: a stale sdkconfig ran out of heap in receiver_start every boot.

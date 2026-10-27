@@ -228,6 +228,9 @@ def monitor(port, poll, console, iq_every=0.0):
                 data = s.read(4096)
                 if data:
                     console.feed(data.decode(errors="replace"))
+                    # Monitoring can run for days, including large IQ dumps.
+                    # Only check_board needs an in-memory transcript.
+                    console.lines.clear()
                 else:
                     console.idle()
                 key = poll()
@@ -286,13 +289,20 @@ def check_board(port, console, booting, boot_timeout=60.0, settle=6.0, status_wa
         return False
 
     def send(key):
+        nonlocal s
         for _ in range(2):
             if s is None:
                 pump(1.0)   # still re-enumerating: give it a moment
-            with contextlib.suppress(serial.SerialException, AttributeError):
+            if s is None:
+                continue
+            try:
                 s.write(key)
                 console.write_log("# key " + key.decode())
                 return
+            except serial.SerialException:
+                with contextlib.suppress(serial.SerialException):
+                    s.close()
+                s = None
 
     try:
         if booting:
@@ -320,7 +330,7 @@ def evaluate(lines, booting, elf=None, expect_video=False):
     for i, line in enumerate(lines):
         if any(c in line for c in CRASH):
             problems.append("crash: " + line.strip())
-        elif boot_at is not None and i > boot_at and any(b in line for b in BOOT_BANNER):
+        elif (not booting or (boot_at is not None and i > boot_at)) and any(b in line for b in BOOT_BANNER):
             problems.append("rebooted after the boot: " + line.strip())
 
     def last(tag):
@@ -345,6 +355,8 @@ def evaluate(lines, booting, elf=None, expect_video=False):
     if not any("RANGE_DIAG " in line for line in lines):
         problems.append("no RANGE_DIAG lines: the board did not answer D")
     gain, iq, chain = last("RANGE_DIAG gain "), last("RANGE_DIAG iq "), last("RANGE_DIAG chain ")
+    if last("RANGE_DIAG history ") is None or chain is None or "faults" not in chain:
+        problems.append("incomplete RANGE_DIAG response: transport health was not confirmed")
     if gain:
         fields["gain"] = gain.get("index")
     if iq:
