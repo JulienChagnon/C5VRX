@@ -1,5 +1,6 @@
 /* C5VRX-5 by Twotoz and the C5VRX contributors: LEVEL and RSSI AGC (agc.h). */
 #include "agc.h"
+#include "level_quality.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,7 +10,8 @@
 #define LEVEL_DECIDE_US 5000u
 #endif
 #ifndef LEVEL_DECAY_Q8
-#define LEVEL_DECAY_Q8 199u     /* per 5 ms: exp(-5 / 20 ms) */
+#define LEVEL_DECAY_Q8 250u     /* per 5 ms: exp(-5 / 200 ms); 20 ms (199) followed the fading
+                                   * itself and wrote 5 a second (test_agc_compare.c, PICTURE_Q) */
 #endif
 #ifndef LEVEL_WEIGHT
 #define LEVEL_WEIGHT 256u     /* one window */
@@ -20,14 +22,8 @@
 #ifndef LEVEL_HYST
 #define LEVEL_HYST 6        /* quality units (of 100) needed to move */
 #endif
-#ifndef LEVEL_FOLD_K
-#define LEVEL_FOLD_K 1.15f    /* noise radii the peak may reach */
-#endif
-#ifndef LEVEL_DC_MARGIN
-#define LEVEL_DC_MARGIN 0.35f    /* cells kept free for DC */
-#endif
-#ifndef LEVEL_RAIL
-#define LEVEL_RAIL 7.5f
+#ifndef LEVEL_FOLD_OVER_Q8
+#define LEVEL_FOLD_OVER_Q8 (3 * 256)   /* a folded window: its measured level this much over */
 #endif
 #ifndef LEVEL_LEARN_MAX_Q8
 #define LEVEL_LEARN_MAX_Q8 (8 * 256)   /* learned model correction per row, at most */
@@ -37,18 +33,6 @@
 #endif
 #ifndef LEVEL_LEARN_SETTLE_US
 #define LEVEL_LEARN_SETTLE_US 600u     /* the write transient */
-#endif
-#ifndef LEVEL_SYNC_DB
-#define LEVEL_SYNC_DB 3.0f     /* a picture holds above ~3 dB (FINDINGS, static edge) */
-#endif
-#ifndef LEVEL_PIC_DB
-#define LEVEL_PIC_DB 10.0f
-#endif
-#ifndef LEVEL_SYNC_SHARE
-#define LEVEL_SYNC_SHARE 0.6f
-#endif
-#ifndef LEVEL_FOLD_Q
-#define LEVEL_FOLD_Q (-100)   /* a folded moment, against 100 for a full picture */
 #endif
 
 /* RSSI parameters. */
@@ -107,25 +91,34 @@ static unsigned nearest_home(const uint8_t *home, unsigned homes, const int16_t 
 
 /* ---- LEVEL ---- */
 
-static float small_signal_loss_db(float rms)
+/* Linear interpolation position of x on an ascending axis: index and weight. */
+static int axis_at(const int16_t *axis, int n, float x, float *w)
 {
-    static const float at[] = {1.5f, 2.2f, 3.0f, 4.2f}, loss[] = {2.9f, 1.4f, 0.6f, 0.0f};
-    if (rms <= at[0]) return loss[0] + (at[0] - rms) * 2.0f;
-    for (int k = 1; k < 4; ++k)
-        if (rms <= at[k]) return loss[k - 1] + (loss[k] - loss[k - 1]) * (rms - at[k - 1]) / (at[k] - at[k - 1]);
-    return 0.0f;
+    if (x <= axis[0]) { *w = 0.0f; return 0; }
+    for (int k = 1; k < n; ++k)
+        if (x < axis[k]) { *w = (x - axis[k - 1]) / (float)(axis[k] - axis[k - 1]); return k - 1; }
+    *w = 1.0f;
+    return n - 2;
 }
 
 /* Quality 0..100 of a carrier at input level `level_db` on a row `rel_db`
- * under the top one: sync first, then picture; a fold is LEVEL_FOLD_Q. */
+ * under the top one: the measured U80P64-R1 table (level_quality.h) at the
+ * row's C/N and total radius. The gain sets no C/N (the noise enters before
+ * it), only the radius: rows differ by the radius window (best ~2.5-6 cells
+ * rms; a fold above ~7 costs far more than a small radius below). */
 static int quality(float level_db, float rel_db, float noise_top)
 {
     const float c = powf(10.0f, (level_db + rel_db) / 10.0f), n = noise_top * powf(10.0f, rel_db / 10.0f);
-    if (sqrtf(c) + LEVEL_FOLD_K * sqrtf(n) + LEVEL_DC_MARGIN > LEVEL_RAIL) return LEVEL_FOLD_Q;
-    const float snr = 10.0f * log10f(c / (n + 1.0f / 6.0f) + 1e-9f) - small_signal_loss_db(sqrtf(c + n));
-    const float sync = 1.0f / (1.0f + expf(-(snr - LEVEL_SYNC_DB)));
-    const float pic = 1.0f / (1.0f + expf(-(snr - LEVEL_PIC_DB) / 1.5f));
-    return (int)lroundf(100.0f * sync * (LEVEL_SYNC_SHARE + (1.0f - LEVEL_SYNC_SHARE) * pic));
+    const float rms = sqrtf(c + n);
+    if (rms * 100.0f >= level_q_rms_x100[LEVEL_Q_RMS - 1]) return 0;
+    float wc, wr;
+    const int i = axis_at(level_q_cn_x10, LEVEL_Q_CNS, 100.0f * log10f(c / n + 1e-9f), &wc);
+    const int j = axis_at(level_q_rms_x100, LEVEL_Q_RMS, rms * 100.0f, &wr);
+    const float lo = level_q[i][j] + (level_q[i][j + 1] - level_q[i][j]) * wr;
+    const float hi = level_q[i + 1][j] + (level_q[i + 1][j + 1] - level_q[i + 1][j]) * wr;
+    float q = lo + (hi - lo) * wc;
+    if (rms * 100.0f < level_q_rms_x100[0]) q *= rms * 100.0f / level_q_rms_x100[0];   /* toward no signal */
+    return (int)lroundf(q);
 }
 
 static void row_noise(agc_level_t *a, unsigned k)
@@ -192,10 +185,16 @@ uint8_t agc_level_tick(agc_level_t *a, const dg_observation_t *o, uint8_t curren
     const int rel = a->rel_q8[current];
     const uint32_t noise = a->noise_x16[current];
     if (agc_folded(o)) {
-        /* Above the fold the level is unknown: count it a few dB over. */
-        const float lim = LEVEL_RAIL - LEVEL_FOLD_K * sqrtf(noise / 16.0f);
-        const float c = lim > 0.5f ? lim * lim : 0.25f;
-        level_add(a, agc_db_q8((uint32_t)(c * 16.0f)) - agc_db_q8(16) - rel + 3 * 256, LEVEL_FOLD_WEIGHT);
+        /* Above the fold the level is unknown: the folded window's own power
+         * (the wrapped samples read low), counted LEVEL_FOLD_OVER_Q8 over when
+         * the carrier dominates it. At the edge the noise peaks fold windows
+         * while the carrier is weak, which costs nothing (level_quality.h). A
+         * fixed level at the rails instead read every such window as a strong
+         * carrier: with the measured table it held the top row on a strong
+         * folding carrier (the rails map to ~6 cells rms, the table's best). */
+        const uint32_t c = o->pwr_x16 > noise ? o->pwr_x16 - noise : noise / 50u + 1u;
+        const int over = c >= 2u * noise ? LEVEL_FOLD_OVER_Q8 : 0;
+        level_add(a, agc_db_q8(c) - agc_db_q8(16) - rel + over, LEVEL_FOLD_WEIGHT);
         a->fold_pending = true;
         a->move_pending = false;   /* a folded level says nothing about the row's gain */
         a->level_windows = 0;
