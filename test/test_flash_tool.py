@@ -282,6 +282,9 @@ GOOD = [
     "CAL_BOOT mode=baseline ms=410 searches=0 sweeps=0 dc_trim=0 boot_phase_budget_ms=600",
     "BOOT_PHASE ms=320 budget_ms=600 state=settled",
     f'FIRMWARE id=c5v5-1 version=1 commit=abc elf_sha256={ELF[:9]} built="Oct 26 2026" idf=v6.0.2 cal_dump=1',
+    # Board, 2026-10-26: main 45fb464 with heap_min, T about 6 s after the boot.
+    "C5VRX5 version=5.0.0-dev demod=U80P64-R1 lane=ultrafine gain_owner=keel1 uptime_s=6 heap_internal=24784 "
+    "heap_largest=17408 heap_min=2104 heap_dma=23236 heap_dma_largest=17408 heap_lp=1548 fw=c5v5-1",
     "VIDEO_Q known=1 snr_x10=312 lines_x100=9850 lines=15 windows=60 periods=4 (end-to-end)",
     "RANGE_DIAG gain index=54 max=83 rf_stage=3 rf_code=1 bb=2 fine=0 top_rf_stage_from=70 at_max=0 state=2",
     "RANGE_DIAG chain sphase=settled dc_ok=1 dc_held=1 lane=ultrafine faults=0",
@@ -348,6 +351,23 @@ class EvaluateTest(unittest.TestCase):
             "RANGE_DIAG verdict=CALIBRATION_OR_PHY sampling phase unverified (manual CALIBRATE only)"], True, ELF)
         self.assertEqual(problems, [])
         self.assertEqual(len(warnings), 2)
+
+    def test_heap_read_from_status_and_warned_when_low(self):
+        _, warnings, fields = flash.evaluate(GOOD, True, ELF)
+        self.assertEqual((fields["heap_largest"], fields["heap_min"]), (17408, 2104))
+        low = [line.replace("heap_largest=17408", "heap_largest=6144").replace("heap_min=2104", "heap_min=900")
+               for line in GOOD]
+        problems, warnings, _ = flash.evaluate(low, True, ELF)
+        self.assertEqual(problems, [])   # a warning, not a failure
+        self.assertEqual([w.split("=")[0] for w in warnings], ["heap_largest", "heap_min"])
+        _, warnings, _ = flash.evaluate(low, True, ELF, heap_warn=4096, heap_min_warn=512)
+        self.assertEqual(warnings, [])
+
+    def test_firmware_without_heap_min(self):
+        old = [line.replace(" heap_min=2104", "") for line in GOOD]
+        _, warnings, fields = flash.evaluate(old, True, ELF)
+        self.assertNotIn("heap_min", fields)
+        self.assertEqual(warnings, [])
 
 
 class CheckBoardTest(unittest.TestCase):
