@@ -29,16 +29,16 @@ dg_map_blob_t s_gain_map_saved;
 bool s_gain_map_saved_valid;
 
 static TaskHandle_t s_observer, s_sentinel;
-static volatile uint8_t s_gain_mode = GAIN_MODE_AUTO;
+static volatile uint8_t s_gain_mode = GAIN_MODE_DEFAULT;
 
-/* Menu/console cycle: AUTO (KEEL-1), the LEVEL and RSSI models, MAX, then
+/* Menu/console cycle: LEVEL (the default), KEEL (KEEL-1), RSSI, MAX, then
  * fixed G78 down to G24. */
-static const uint8_t s_gain_modes[] = {GAIN_MODE_AUTO, GAIN_MODE_LEVEL, GAIN_MODE_RSSI, GAIN_MODE_MAX,
+static const uint8_t s_gain_modes[] = {GAIN_MODE_LEVEL, GAIN_MODE_AUTO, GAIN_MODE_RSSI, GAIN_MODE_MAX,
                                        78, 72, 66, 60, 54, 48, 42, 36, 30, 24};
 
 uint8_t receiver_gain_mode(void) { return s_gain_mode; }
 
-/* MAX and fixed gains are never stored: such a boot starts AUTO (operator
+/* MAX and fixed gains are never stored: such a boot starts LEVEL (operator
  * decision 2026-10-20: a fixed gain pressed once used to survive every
  * reboot and cost tens of dB of range without a warning). The automatic
  * models are kept by the settings prefs (control.c). user: an operator
@@ -50,19 +50,19 @@ void receiver_set_gain_mode(uint8_t mode, bool user)
     if (user) flightlog_event(FLOG_E_GAIN_MODE, &mode, 1);
     char buf[16];
     printf("GAIN mode=%s (%s)\n", receiver_gain_mode_name(mode, buf, sizeof(buf)),
-           receiver_gain_mode_auto(mode) ? "kept across reboots" : "this boot only; the next boot starts AUTO");
+           receiver_gain_mode_auto(mode) ? "kept across reboots" : "this boot only; the next boot starts LEVEL");
 }
 
 uint8_t receiver_gain_mode_next(uint8_t mode)
 {
     for (unsigned k = 0; k < sizeof(s_gain_modes); ++k)
         if (s_gain_modes[k] == mode) return s_gain_modes[(k + 1u) % sizeof(s_gain_modes)];
-    return GAIN_MODE_AUTO;
+    return GAIN_MODE_DEFAULT;
 }
 
 const char *receiver_gain_mode_name(uint8_t mode, char *buf, unsigned size)
 {
-    if (mode == GAIN_MODE_AUTO) return "AUTO";
+    if (mode == GAIN_MODE_AUTO) return "KEEL";
     if (mode == GAIN_MODE_LEVEL) return "LEVEL";
     if (mode == GAIN_MODE_RSSI) return "RSSI";
     if (mode == GAIN_MODE_MAX) return "MAX";
@@ -972,7 +972,8 @@ void receiver_print(void)
            "map_imports=%lu preset_imports=%lu "
            "obs_windows=%lu obs_us_max=%lu\n",
            s_paused ? "paused" :
-           s_gain_mode == GAIN_MODE_AUTO ? "keel1" : "manual",
+           s_gain_mode == GAIN_MODE_AUTO ? "keel1" : s_gain_mode == GAIN_MODE_LEVEL ? "level" :
+           s_gain_mode == GAIN_MODE_RSSI ? "rssi" : "manual",
            receiver_gain_mode_name(s_gain_mode, mode, sizeof(mode)),
            s_current_gain, (unsigned)s_gain.state, s_obs_p50, s_obs_p95, s_obs_coherence, s_obs_env_ratio_x100,
            (unsigned)s_obs_stuck, receiver_obs_cn_x10(),

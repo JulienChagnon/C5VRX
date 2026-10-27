@@ -77,8 +77,10 @@ write-payback rule instead of the fixed hysteresis (70.1-70.2, more writes).
 At the edge LEVEL sits a home row under STATIC's top row (1.4 points, ~0.15
 dB); the difference is under the hysteresis.
 
-Host simulation only. Next: a board walk with GAIN LEVEL against AUTO on
-the same route (blackbox: writes, video %, edge level). KEEL-1 stays AUTO.
+LEVEL is the default gain mode (operator decision 2026-10-27, after the
+hand test above: "KEEL regulates too much"); KEEL-1 stays selectable as
+KEEL. Open: a walk to the edge on LEVEL against the KEEL-1 walk of sessions
+246/247 (video % per dBm, writes at the edge).
 
 ## Range edge audit: DC lockout, NTSC porch window, PHY FILT (blackbox, 2026-10-27)
 

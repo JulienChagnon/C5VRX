@@ -373,8 +373,8 @@
                 <div role="tabpanel" id="pane-gain" aria-labelledby="menu-gain" hidden>
                   <h2>RX GAIN</h2>
                   <dl class="readouts"><div><dt>Mode</dt><dd data-value="gainMode">—</dd></div><div><dt>Active gain</dt><dd data-value="gain">—</dd></div></dl>
-                  <p class="hint">AUTO uses KEEL-1: a peak AGC on a few home rows 3 dB apart, so the gain holds still instead of hopping. Cycle AUTO → MAX → fixed G78..G24. The choice lasts for this session; every boot starts AUTO. Requires firmware advertising G in its help.</p>
-                  <button type="button" class="command-button" data-command="G" data-hint="Cycle AUTO / MAX / fixed receive gain for this session. Every boot starts AUTO." disabled>Change gain mode <kbd>G</kbd></button>
+                  <p class="hint">LEVEL (the default) picks the gain row with the measured demodulator quality at the received level, so the gain holds still through fading and moves at once on a jump. Cycle LEVEL → KEEL (the older KEEL-1 peak AGC) → RSSI → MAX → fixed G78..G24. LEVEL/KEEL/RSSI are kept across reboots; MAX and fixed gains last for this session. Requires firmware advertising G in its help.</p>
+                  <button type="button" class="command-button" data-command="G" data-hint="Cycle LEVEL / KEEL / RSSI / MAX / fixed receive gain. MAX and fixed gains last for this session." disabled>Change gain mode <kbd>G</kbd></button>
                 </div>
                 <div role="tabpanel" id="pane-dac" aria-labelledby="menu-dac" hidden>
                   <h2>DAC SELF-TEST</h2>

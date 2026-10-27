@@ -259,7 +259,7 @@ static void prefs_save(void)
 {
     const uint8_t gain = receiver_gain_mode();
     const settings_prefs_t p = {SETTINGS_PREFS_VERSION, (int8_t)profile_selected(),
-                                receiver_gain_mode_auto(gain) ? gain : (uint8_t)GAIN_MODE_AUTO,
+                                receiver_gain_mode_auto(gain) ? gain : (uint8_t)GAIN_MODE_DEFAULT,
                                 (uint8_t)phy_dfilt_mode()};
     settings_prefs_store(&p);
 }
