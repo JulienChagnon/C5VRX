@@ -51,6 +51,19 @@ video (VIDEO_Q known=0). It ends with one 'CHECK result=pass|fail ...'
 line for scripts. With --monitor-only it checks the running board without
 waiting for a boot or comparing the image.
 
+The check also reads the heap from T and warns when the largest free block
+is below --heap-warn (8192 bytes) or, on firmware that prints heap_min, when
+the lowest free heap since boot is below --heap-min-warn (1024 bytes). The
+boot peak (menu splash chain plus the receiver tasks) leaves about 2 KB on
+a working build, which a reading after the boot cannot show.
+
+Before flashing, every value set in sdkconfig.defaults is compared with the
+build's configuration. ESP-IDF never reapplies the defaults to an existing
+sdkconfig, so an old one keeps old values: on 2026-10-26 a stale
+ESP_WIFI_STATIC_RX_BUFFER_NUM=4 (defaults: 2) cost 3.4 KB of heap and the
+board boot-looped with ESP_ERR_NO_MEM. A difference is a warning (delete
+sdkconfig and rebuild); it does not stop the flash.
+
 Run it in the ESP-IDF environment, which provides esptool and pyserial.
 """
 import argparse
@@ -116,6 +129,33 @@ def elf_sha256(build):
         desc = json.loads((build / "project_description.json").read_text())
         return hashlib.sha256((build / desc["app_elf"]).read_bytes()).hexdigest()
     return None
+
+
+def defaults_values(text):
+    """CONFIG_ values of an sdkconfig.defaults text, typed like sdkconfig.json."""
+    want = {}
+    for line in text.splitlines():
+        m = (re.fullmatch(r"CONFIG_(\w+)=(.*)", line.strip()) or
+             re.fullmatch(r"# CONFIG_(\w+) is not set()", line.strip()))
+        if not m:
+            continue
+        name, v = m.groups()
+        with contextlib.suppress(ValueError):
+            want[name] = (v == "y" if v in ("y", "n", "") else v[1:-1] if v.startswith('"') else int(v, 0))
+    return want
+
+
+def config_drift(build):
+    """Values the build's sdkconfig sets differently from the project's sdkconfig.defaults.
+
+    Options the build does not have (another target, a dependency off) are skipped.
+    """
+    with contextlib.suppress(OSError, ValueError, KeyError):
+        desc = json.loads((build / "project_description.json").read_text())
+        want = defaults_values((Path(desc["project_path"]) / "sdkconfig.defaults").read_text())
+        have = json.loads((build / "config" / "sdkconfig.json").read_text())
+        return [f"{k}={have[k]} (sdkconfig.defaults: {v})" for k, v in want.items() if k in have and have[k] != v]
+    return []
 
 
 class Console:
@@ -321,7 +361,7 @@ def check_board(port, console, booting, boot_timeout=60.0, settle=6.0, status_wa
     return console.lines[start:]
 
 
-def evaluate(lines, booting, elf=None, expect_video=False):
+def evaluate(lines, booting, elf=None, expect_video=False, heap_warn=8192, heap_min_warn=1024):
     """Judge the check from the console lines: (problems, warnings, summary fields)."""
     problems, warnings, fields = [], [], {}
     boot_at = next((i for i, line in enumerate(lines) if any(b in line for b in BOOT_DONE)), None)
@@ -347,6 +387,12 @@ def evaluate(lines, booting, elf=None, expect_video=False):
             fields["elf_match"] = int(bool(running) and elf.startswith(running))
             if not fields["elf_match"]:
                 problems.append(f"running image elf_sha256={running[:16] or '?'} is not the flashed build {elf[:16]}")
+    status = last("C5VRX5 version=") or {}
+    for key, floor in (("heap_largest", heap_warn), ("heap_min", heap_min_warn)):
+        if status.get(key, "").isdigit():   # heap_min only on firmware that prints it
+            fields[key] = int(status[key])
+            if fields[key] < floor:
+                warnings.append(f"{key}={fields[key]} below {floor} bytes (internal heap is nearly exhausted)")
     vq = last("VIDEO_Q ")
     if vq is not None:
         fields.update(video_known=vq.get("known"), snr_x10=vq.get("snr_x10"), lines_x100=vq.get("lines_x100"))
@@ -378,10 +424,11 @@ def evaluate(lines, booting, elf=None, expect_video=False):
     return problems, warnings, fields
 
 
-def run_check(port, console, booting, elf=None, expect_video=False, boot_timeout=60.0):
+def run_check(port, console, booting, elf=None, expect_video=False, boot_timeout=60.0,
+              heap_warn=8192, heap_min_warn=1024, drift=()):
     lines = check_board(port, console, booting, boot_timeout)
-    problems, warnings, fields = evaluate(lines, booting, elf, expect_video)
-    for w in warnings:
+    problems, warnings, fields = evaluate(lines, booting, elf, expect_video, heap_warn, heap_min_warn)
+    for w in ["sdkconfig differs from sdkconfig.defaults: " + d for d in drift] + warnings:
         console.note("CHECK warn: " + w)
     for p in problems:
         console.note("CHECK fail: " + p)
@@ -419,6 +466,11 @@ def main(argv=None):
                     help="with --check: also fail without video (VIDEO_Q known=0)")
     ap.add_argument("--boot-timeout", type=float, default=60.0, metavar="SECONDS",
                     help="with --check: how long to wait for CAL_BOOT (default: %(default)s)")
+    ap.add_argument("--heap-warn", type=int, default=8192, metavar="BYTES",
+                    help="with --check: warn when T's heap_largest is below this (default: %(default)s)")
+    ap.add_argument("--heap-min-warn", type=int, default=1024, metavar="BYTES",
+                    help="with --check: warn when T's heap_min (lowest since boot) is below this "
+                         "(default: %(default)s)")
     args = ap.parse_args(argv)
     if args.iq_every and not args.iq:
         ap.error("--iq-every needs --iq DIR")
@@ -448,13 +500,21 @@ def main(argv=None):
         console.write_log(f"# flash.py log {datetime.datetime.now().isoformat(timespec='seconds')} "
                           f"port={args.port} argv={' '.join(sys.argv[1:] if argv is None else argv)}")
         rc = 0
+        drift = []
         if not args.monitor_only:
+            drift = config_drift(args.build)
+            for d in drift:
+                console.note("flash: warning: sdkconfig differs from sdkconfig.defaults: " + d)
+            if drift:
+                console.note("flash: ESP-IDF keeps an existing sdkconfig; delete it and rebuild to take the "
+                             "defaults (flashing anyway)")
             rc = flash(args, args_file, console)
             if rc != 0:
                 return rc
         if args.check:
             elf = None if args.monitor_only else elf_sha256(args.build)
-            rc = run_check(args.port, console, not args.monitor_only, elf, args.expect_video, args.boot_timeout)
+            rc = run_check(args.port, console, not args.monitor_only, elf, args.expect_video, args.boot_timeout,
+                           args.heap_warn, args.heap_min_warn, drift)
         if args.monitor or (args.monitor_only and not args.check):
             with console_keys() as poll:
                 monitor(args.port, poll, console, args.iq_every)

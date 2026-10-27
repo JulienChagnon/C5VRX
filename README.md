@@ -203,7 +203,10 @@ KiCad ERC/DRC and schematic/PCB parity checks are clean; REV C has not been buil
   `--iq DIR` saves each IQ snapshot (key `I`, or every N seconds with
   `--iq-every N`) as `.bin` + `.json`, and `--check` waits for the boot,
   runs `T` and `D` and exits 1 if the board crashed, runs a different
-  image than the one flashed, or reports a chain fault.
+  image than the one flashed, or reports a chain fault (low heap only
+  warns). Before flashing it warns when the build's `sdkconfig` differs
+  from `sdkconfig.defaults`: ESP-IDF keeps an existing `sdkconfig`, so
+  delete it and rebuild after the defaults change.
 - **Local File** flashes your own `.bin`; **Legacy builds** contains archived
   C5VRX-3 firmware.
 

@@ -2,6 +2,7 @@
 import contextlib
 import importlib.util
 import io
+import json
 from pathlib import Path
 import sys
 import tempfile
@@ -282,6 +283,9 @@ GOOD = [
     "CAL_BOOT mode=baseline ms=410 searches=0 sweeps=0 dc_trim=0 boot_phase_budget_ms=600",
     "BOOT_PHASE ms=320 budget_ms=600 state=settled",
     f'FIRMWARE id=c5v5-1 version=1 commit=abc elf_sha256={ELF[:9]} built="Oct 26 2026" idf=v6.0.2 cal_dump=1',
+    # Board, 2026-10-26: main 45fb464 with heap_min, T about 6 s after the boot.
+    "C5VRX5 version=5.0.0-dev demod=U80P64-R1 lane=ultrafine gain_owner=keel1 uptime_s=6 heap_internal=24784 "
+    "heap_largest=17408 heap_min=2104 heap_dma=23236 heap_dma_largest=17408 heap_lp=1548 fw=c5v5-1",
     "VIDEO_Q known=1 snr_x10=312 lines_x100=9850 lines=15 windows=60 periods=4 (end-to-end)",
     "RANGE_DIAG gain index=54 max=83 rf_stage=3 rf_code=1 bb=2 fine=0 top_rf_stage_from=70 at_max=0 state=2",
     "RANGE_DIAG chain sphase=settled dc_ok=1 dc_held=1 lane=ultrafine faults=0",
@@ -348,6 +352,61 @@ class EvaluateTest(unittest.TestCase):
             "RANGE_DIAG verdict=CALIBRATION_OR_PHY sampling phase unverified (manual CALIBRATE only)"], True, ELF)
         self.assertEqual(problems, [])
         self.assertEqual(len(warnings), 2)
+
+    def test_heap_read_from_status_and_warned_when_low(self):
+        _, warnings, fields = flash.evaluate(GOOD, True, ELF)
+        self.assertEqual((fields["heap_largest"], fields["heap_min"]), (17408, 2104))
+        low = [line.replace("heap_largest=17408", "heap_largest=6144").replace("heap_min=2104", "heap_min=900")
+               for line in GOOD]
+        problems, warnings, _ = flash.evaluate(low, True, ELF)
+        self.assertEqual(problems, [])   # a warning, not a failure
+        self.assertEqual([w.split("=")[0] for w in warnings], ["heap_largest", "heap_min"])
+        _, warnings, _ = flash.evaluate(low, True, ELF, heap_warn=4096, heap_min_warn=512)
+        self.assertEqual(warnings, [])
+
+    def test_firmware_without_heap_min(self):
+        old = [line.replace(" heap_min=2104", "") for line in GOOD]
+        _, warnings, fields = flash.evaluate(old, True, ELF)
+        self.assertNotIn("heap_min", fields)
+        self.assertEqual(warnings, [])
+
+
+class ConfigDriftTest(unittest.TestCase):
+    def build(self, defaults, config):
+        d = Path(self.tmp.name)
+        (d / "build" / "config").mkdir(parents=True)
+        (d / "sdkconfig.defaults").write_text(defaults)
+        (d / "build" / "project_description.json").write_text(json.dumps({"project_path": str(d)}))
+        (d / "build" / "config" / "sdkconfig.json").write_text(json.dumps(config))
+        return d / "build"
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+
+    def test_defaults_parsed_like_sdkconfig_json(self):
+        self.assertEqual(flash.defaults_values('# note\nCONFIG_A=y\nCONFIG_B=n\n# CONFIG_C is not set\n'
+                                               'CONFIG_D=0x10\nCONFIG_E="esp32c5"\nCONFIG_F=2\n'),
+                         {"A": True, "B": False, "C": False, "D": 16, "E": "esp32c5", "F": 2})
+
+    def test_stale_sdkconfig_reported(self):
+        # The 2026-10-26 case: an sdkconfig from before the defaults cut the RX buffers.
+        build = self.build("CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=2\nCONFIG_ESP_WIFI_AMPDU_RX_ENABLED=n\n"
+                           "CONFIG_ESP_COEX_SW_COEXIST_ENABLE=n\n",
+                           {"ESP_WIFI_STATIC_RX_BUFFER_NUM": 4, "ESP_WIFI_AMPDU_RX_ENABLED": False})
+        self.assertEqual(flash.config_drift(build),
+                         ["ESP_WIFI_STATIC_RX_BUFFER_NUM=4 (sdkconfig.defaults: 2)"])
+
+    def test_no_project_description_is_no_drift(self):
+        self.assertEqual(flash.config_drift(Path(self.tmp.name)), [])
+
+    def test_drift_warned_before_flashing(self):
+        drift = mock.Mock(return_value=["ESP_WIFI_STATIC_RX_BUFFER_NUM=4 (sdkconfig.defaults: 2)"])
+        with mock.patch.object(flash, "config_drift", drift):
+            code, _, esptool, out, _ = run(["COM6"])
+        self.assertEqual(code, 0)
+        esptool.assert_called_once()   # a warning: the flash still runs
+        self.assertIn("sdkconfig differs from sdkconfig.defaults: ESP_WIFI_STATIC_RX_BUFFER_NUM=4", out)
 
 
 class CheckBoardTest(unittest.TestCase):
