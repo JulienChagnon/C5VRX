@@ -210,6 +210,23 @@ KiCad ERC/DRC and schematic/PCB parity checks are clean; REV C has not been buil
 - **Local File** flashes your own `.bin`; **Legacy builds** contains archived
   C5VRX-3 firmware.
 
+## Optional XIAO PSRAM build
+
+The standard release and web-flasher image also support boards without PSRAM.
+For a XIAO ESP32-C5HR8 with 8 MB PSRAM, build a separate image with ESP-IDF 6.0.2:
+
+```sh
+idf.py -B build-psram -DSDKCONFIG=sdkconfig.psram "-DSDKCONFIG_DEFAULTS=sdkconfig.defaults;sdkconfig.psram.defaults" build
+python tools/flash.py PORT --build build-psram --check
+```
+
+Use a fresh `sdkconfig.psram` when changing these defaults. Flash the full image
+when switching configurations, including the matching bootloader. This image
+requires PSRAM and will panic on a board without it. The contributor measured
+boot `heap_min` rising from about 2.1 KB to 21.9 KB on the XIAO; PAL and long-run
+checks remain pending. The live DMA/video buffers stay in internal RAM.
+See [PSRAM measurements and limits](docs/FINDINGS.md#psram-8-mb-on-the-xiao-now-mapped-board-2026-10-26).
+
 ## First boot
 
 1. Power the receiver: it loads saved values or a fixed baseline. A bounded

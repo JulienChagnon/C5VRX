@@ -36,3 +36,6 @@ CONFIG_GPTIMER_CTRL_FUNC_IN_IRAM=y
 # The manual native-output observer runs with the PHY lease and needs no
 # cache-disabled service. Preserve scarce SRAM for receiver task stacks.
 CONFIG_RMT_RX_ISR_HANDLER_IN_IRAM=n
+# The standard image must also boot on boards without PSRAM. XIAO owners
+# can select sdkconfig.psram.defaults on top of these defaults (README).
+CONFIG_SPIRAM=n

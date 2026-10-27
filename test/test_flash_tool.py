@@ -400,6 +400,17 @@ class ConfigDriftTest(unittest.TestCase):
     def test_no_project_description_is_no_drift(self):
         self.assertEqual(flash.config_drift(Path(self.tmp.name)), [])
 
+    def test_board_overlay_overrides_base_defaults(self):
+        build = self.build("CONFIG_SPIRAM=n\nCONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=2\n",
+                           {"SPIRAM": True, "ESP_WIFI_STATIC_RX_BUFFER_NUM": 4})
+        project = build.parent
+        (project / "sdkconfig.psram.defaults").write_text("CONFIG_SPIRAM=y\n")
+        (build / "project_description.json").write_text(json.dumps({
+            "project_path": str(project),
+            "config_defaults": "sdkconfig.defaults;sdkconfig.psram.defaults"}))
+        self.assertEqual(flash.config_drift(build),
+                         ["ESP_WIFI_STATIC_RX_BUFFER_NUM=4 (sdkconfig.defaults: 2)"])
+
     def test_drift_warned_before_flashing(self):
         drift = mock.Mock(return_value=["ESP_WIFI_STATIC_RX_BUFFER_NUM=4 (sdkconfig.defaults: 2)"])
         with mock.patch.object(flash, "config_drift", drift):
