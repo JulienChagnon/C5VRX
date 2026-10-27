@@ -232,19 +232,34 @@ int phy_dfilt_hw_mode(void)
 #endif
 }
 
+static int s_dfilt_mode = PHY_DFILT_MODE_DEFAULT;
+int phy_dfilt_mode(void) { return s_dfilt_mode; }
+int phy_dfilt_next(int mode) { return mode == 12 ? 0 : mode == 0 ? 4 : mode == 4 ? 8 : 12; }
+
 bool phy_dfilt_apply_default(void)
 {
 #ifdef C5VRX_PHY_PINNED
     /* Nested in restore_lock's transaction; standalone calls also invalidate
      * observations before the write and publish a fresh PHY generation. */
     phy_begin();
-    phy_rx_filter_mode(PHY_DFILT_MODE_DEFAULT);
-    const bool ok = phy_dfilt_hw_mode() == PHY_DFILT_MODE_DEFAULT;
+    phy_rx_filter_mode((uint32_t)s_dfilt_mode);
+    const bool ok = phy_dfilt_hw_mode() == s_dfilt_mode;
     phy_end();
     return ok;
 #else
     return false;
 #endif
+}
+
+bool phy_dfilt_select(int mode)
+{
+    if (mode != 0 && mode != 4 && mode != 8 && mode != 12) return false;
+    const int was = s_dfilt_mode;
+    s_dfilt_mode = mode;
+    if (phy_dfilt_apply_default()) return true;
+    s_dfilt_mode = was;
+    (void)phy_dfilt_apply_default();
+    return false;
 }
 
 /* ---- 11p receive baseline -----------------------------------------------

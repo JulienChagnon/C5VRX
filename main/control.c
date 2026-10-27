@@ -254,6 +254,19 @@ static void cycle_video_standard(void)
 }
 
 /* AFC OFF returns the synthesizer to the exact channel centre (0 kHz offset). */
+/* Menu PHY FILT: the digital RX filter mode 12 -> 0 -> 4 -> 8 (this boot
+ * only; phy.h). A different transfer function changes the receiver noise
+ * (PR #244: +0.24..+0.73 dB between modes) and the IQ the DC servo trims,
+ * so the gain observation restarts on the new mode. */
+static void cycle_dfilt(void)
+{
+    const int want = phy_dfilt_next(phy_dfilt_mode());
+    const bool ok = phy_dfilt_select(want);
+    receiver_dc_reset_all();
+    printf("[DFILT] mode=%d requested=%d applied=%u hw=%d (this boot only; boot default %d)\n", phy_dfilt_mode(), want,
+           ok, phy_dfilt_hw_mode(), PHY_DFILT_MODE_DEFAULT);
+}
+
 static void toggle_afc(void)
 {
     s_afc_enabled = !s_afc_enabled;
@@ -294,6 +307,7 @@ static void menu_action(void)
     case MENU_SCAN: scan(); break;
     case MENU_FILTER: (void)profile_select_cycle(); break;
     case MENU_AFC: toggle_afc(); break;
+    case MENU_DFILT: cycle_dfilt(); break;
     case MENU_CALIBRATE: s_cal_sub = MENU_CAL_QUICK; break;   /* opens the QUICK / FULL / BACK submenu */
     case MENU_OUTPUT: (void)transport_set_output((transport_output() + 1u) % OUTPUT_LEVELS); break;
     case MENU_GAIN: receiver_set_gain_mode(receiver_gain_mode_next(receiver_gain_mode()), true); break;

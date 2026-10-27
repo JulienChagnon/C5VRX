@@ -13,8 +13,8 @@
 #include <stdint.h>
 #include "menu_raster.h"
 
-enum { MENU_BAND, MENU_CHANNEL, MENU_SCAN, MENU_VIDEO, MENU_FILTER, MENU_AFC, MENU_CALIBRATE, MENU_OUTPUT, MENU_GAIN,
-       MENU_DAC, MENU_EXIT, MENU_ITEMS };
+enum { MENU_BAND, MENU_CHANNEL, MENU_SCAN, MENU_VIDEO, MENU_FILTER, MENU_DFILT, MENU_AFC, MENU_CALIBRATE, MENU_OUTPUT,
+       MENU_GAIN, MENU_DAC, MENU_EXIT, MENU_ITEMS };
 #define MENU_VISIBLE_ROWS 9   /* the list scrolls when it has more items */
 /* CALIBRATE submenu (hold on CALIBRATE): QUICK = the active filter and its
  * DC rows (console F), FULL = every filter class (console B), BACK. */
@@ -74,6 +74,8 @@ typedef struct {
     const char *filter_recommended; /* what AUTO picks for the measured VTX deviation, NULL unknown */
     unsigned filter_width_khz;      /* measured -3 dB width of the active filter, 0 unknown */
     bool narrow_ok, wide_ok;        /* class calibrated with its own DC table */
+    int dfilt_mode;                 /* digital RX filter mode 0/4/8/12 (menu PHY FILT) */
+    bool dfilt_default;             /* the boot default (12) */
     /* VTX and link quality. */
     int deviation_x100;             /* measured this session, < 0 unknown */
     int offset_khz;                 /* AFC tuning offset */

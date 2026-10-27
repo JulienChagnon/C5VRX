@@ -45,15 +45,16 @@ static menu_view_t base(void)
         .level_above_noise = true, .level_dbm = -71, .dc_need = "", .std_mode = 0, .std_out_pal = true,
         .detected_valid = true, .detected_pal = true, .output = 1, .output_name = "1.5x", .gain_mode = "AUTO",
         .gain_auto = true, .gain = 42, .gain_max = 78, .filter_mode = "AUTO", .filter_active = "NORMAL",
-        .filter_width_khz = 14375, .narrow_ok = true, .wide_ok = true, .deviation_x100 = 73, .offset_khz = 81,
+        .filter_width_khz = 14375, .narrow_ok = true, .wide_ok = true, .dfilt_mode = 12, .dfilt_default = true,
+        .deviation_x100 = 73, .offset_khz = 81,
         .cn_x10 = 124, .firmware = "5.0.0-afcwin",
     };
 }
 
 int main(int argc, char **argv)
 {
-    static const char *const names[MENU_ITEMS] = {"band", "channel", "scan", "video", "filter", "afc", "calibrate",
-                                                  "output", "gain", "dac", "exit"};
+    static const char *const names[MENU_ITEMS] = {"band", "channel", "scan", "video", "filter", "dfilt", "afc",
+                                                  "calibrate", "output", "gain", "dac", "exit"};
     s_dir = argc > 1 ? argv[1] : NULL;
     char name[64];
     for (int i = 0; i < MENU_ITEMS; ++i) {
@@ -100,6 +101,10 @@ int main(int argc, char **argv)
     v = base(); v.cursor = MENU_FILTER; v.filter_mode = "NARROW"; v.filter_active = "NARROW";
     v.filter_width_khz = 19950; v.offset_khz = -2500; v.deviation_x100 = 400; v.wide_ok = false;
     menu_ui_render(ui, &v); check("filter_worst", false);
+    for (int m = 0; m <= 12; m += 4) {   /* every PHY FILT mode, with the BOOT note off the default */
+        v = base(); v.cursor = MENU_DFILT; v.dfilt_mode = m; v.dfilt_default = m == 12;
+        menu_ui_render(ui, &v); check(m == 12 ? "dfilt_12" : m == 0 ? "dfilt_0" : m == 4 ? "dfilt_4" : "dfilt_8", false);
+    }
     v = base(); v.cursor = MENU_AFC; v.afc_off = true;
     menu_ui_render(ui, &v); check("afc_off", false);
     v.cursor = MENU_FILTER; menu_ui_render(ui, &v); check("filter_afc_off", false);
