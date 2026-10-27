@@ -7,6 +7,37 @@ scripts and data live in that branch under `v4/docs/PICTURE_CLIFF_STUDY.md`,
 Synthetic results are host simulations; board results are labelled as such.
 Measured range is not established.
 
+## Boot heap margin: about 2 KB at the boot peak (board, 2026-10-26)
+
+Board COM6 (XIAO ESP32-C5), main `9699550` and `07ece42`, with temporary
+heap prints after every boot stage in `app_main` and inside `rf_start`
+(not committed). Internal heap free / largest block:
+
+| After | `07ece42` | `9699550`, fresh sdkconfig |
+|---|---|---|
+| `rf_start` (NVS 5.8 KB, Wi-Fi init 23.2 KB, start 2.4 KB) | 41,752 / 38,912 | 41,640 / 36,864 |
+| `transport_start` | 28,016 / 25,600 | 27,904 / 25,600 |
+| menu splash (DMA descriptor chain) | 9,780 / 8,192 | 9,668 / 7,936 |
+| receiver and control tasks | 2,216 / 1,536 | 2,104 / 1,536 |
+| splash end (chain freed) | 20,452 / 17,408 | 20,340 / 17,408 |
+
+The splash chain (about 18 KB, interlaced) is held while `receiver_start`
+creates `gain_obs` (4 KB stack) and `gain_fast` (3 KB), so the lowest free
+heap of a boot is about 2.1 KB, while `T` a few seconds later reads 17 KB
+largest. Any extra ~2 KB allocated before `receiver_start` makes
+`gain_fast` fail with `ESP_ERR_NO_MEM` and the board boot-loops. That
+happened here: an `sdkconfig` generated before the defaults cut
+`CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM` to 2 still had 4, and `esp_wifi_init`
+took 3,440 bytes more. ESP-IDF does not reapply `sdkconfig.defaults` to an
+existing `sdkconfig`; delete it and rebuild after a defaults change.
+
+`T` now prints `heap_min` (lowest free since boot, 2,096 on `9699550`
+plus this change), and `tools/flash.py --check` warns below 1024 bytes; it
+also warns before flashing when the build's configuration differs from
+`sdkconfig.defaults`. Not changed here: the splash could be built after the
+receiver tasks (it already skips itself when the raster cannot be built),
+which would trade the margin against a progressive splash on some boards.
+
 ## VTX-on PHY lab, AFC window and digital mode 12 (board, 2026-10-26)
 
 Board COM10 (NiceMCU), 5865 MHz / A1, PAL VTX on a table, firmware

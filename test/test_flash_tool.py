@@ -2,6 +2,7 @@
 import contextlib
 import importlib.util
 import io
+import json
 from pathlib import Path
 import sys
 import tempfile
@@ -368,6 +369,44 @@ class EvaluateTest(unittest.TestCase):
         _, warnings, fields = flash.evaluate(old, True, ELF)
         self.assertNotIn("heap_min", fields)
         self.assertEqual(warnings, [])
+
+
+class ConfigDriftTest(unittest.TestCase):
+    def build(self, defaults, config):
+        d = Path(self.tmp.name)
+        (d / "build" / "config").mkdir(parents=True)
+        (d / "sdkconfig.defaults").write_text(defaults)
+        (d / "build" / "project_description.json").write_text(json.dumps({"project_path": str(d)}))
+        (d / "build" / "config" / "sdkconfig.json").write_text(json.dumps(config))
+        return d / "build"
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+
+    def test_defaults_parsed_like_sdkconfig_json(self):
+        self.assertEqual(flash.defaults_values('# note\nCONFIG_A=y\nCONFIG_B=n\n# CONFIG_C is not set\n'
+                                               'CONFIG_D=0x10\nCONFIG_E="esp32c5"\nCONFIG_F=2\n'),
+                         {"A": True, "B": False, "C": False, "D": 16, "E": "esp32c5", "F": 2})
+
+    def test_stale_sdkconfig_reported(self):
+        # The 2026-10-26 case: an sdkconfig from before the defaults cut the RX buffers.
+        build = self.build("CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=2\nCONFIG_ESP_WIFI_AMPDU_RX_ENABLED=n\n"
+                           "CONFIG_ESP_COEX_SW_COEXIST_ENABLE=n\n",
+                           {"ESP_WIFI_STATIC_RX_BUFFER_NUM": 4, "ESP_WIFI_AMPDU_RX_ENABLED": False})
+        self.assertEqual(flash.config_drift(build),
+                         ["ESP_WIFI_STATIC_RX_BUFFER_NUM=4 (sdkconfig.defaults: 2)"])
+
+    def test_no_project_description_is_no_drift(self):
+        self.assertEqual(flash.config_drift(Path(self.tmp.name)), [])
+
+    def test_drift_warned_before_flashing(self):
+        drift = mock.Mock(return_value=["ESP_WIFI_STATIC_RX_BUFFER_NUM=4 (sdkconfig.defaults: 2)"])
+        with mock.patch.object(flash, "config_drift", drift):
+            code, _, esptool, out, _ = run(["COM6"])
+        self.assertEqual(code, 0)
+        esptool.assert_called_once()   # a warning: the flash still runs
+        self.assertIn("sdkconfig differs from sdkconfig.defaults: ESP_WIFI_STATIC_RX_BUFFER_NUM=4", out)
 
 
 class CheckBoardTest(unittest.TestCase):

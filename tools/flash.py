@@ -57,6 +57,13 @@ the lowest free heap since boot is below --heap-min-warn (1024 bytes). The
 boot peak (menu splash chain plus the receiver tasks) leaves about 2 KB on
 a working build, which a reading after the boot cannot show.
 
+Before flashing, every value set in sdkconfig.defaults is compared with the
+build's configuration. ESP-IDF never reapplies the defaults to an existing
+sdkconfig, so an old one keeps old values: on 2026-10-26 a stale
+ESP_WIFI_STATIC_RX_BUFFER_NUM=4 (defaults: 2) cost 3.4 KB of heap and the
+board boot-looped with ESP_ERR_NO_MEM. A difference is a warning (delete
+sdkconfig and rebuild); it does not stop the flash.
+
 Run it in the ESP-IDF environment, which provides esptool and pyserial.
 """
 import argparse
@@ -122,6 +129,33 @@ def elf_sha256(build):
         desc = json.loads((build / "project_description.json").read_text())
         return hashlib.sha256((build / desc["app_elf"]).read_bytes()).hexdigest()
     return None
+
+
+def defaults_values(text):
+    """CONFIG_ values of an sdkconfig.defaults text, typed like sdkconfig.json."""
+    want = {}
+    for line in text.splitlines():
+        m = (re.fullmatch(r"CONFIG_(\w+)=(.*)", line.strip()) or
+             re.fullmatch(r"# CONFIG_(\w+) is not set()", line.strip()))
+        if not m:
+            continue
+        name, v = m.groups()
+        with contextlib.suppress(ValueError):
+            want[name] = (v == "y" if v in ("y", "n", "") else v[1:-1] if v.startswith('"') else int(v, 0))
+    return want
+
+
+def config_drift(build):
+    """Values the build's sdkconfig sets differently from the project's sdkconfig.defaults.
+
+    Options the build does not have (another target, a dependency off) are skipped.
+    """
+    with contextlib.suppress(OSError, ValueError, KeyError):
+        desc = json.loads((build / "project_description.json").read_text())
+        want = defaults_values((Path(desc["project_path"]) / "sdkconfig.defaults").read_text())
+        have = json.loads((build / "config" / "sdkconfig.json").read_text())
+        return [f"{k}={have[k]} (sdkconfig.defaults: {v})" for k, v in want.items() if k in have and have[k] != v]
+    return []
 
 
 class Console:
@@ -391,10 +425,10 @@ def evaluate(lines, booting, elf=None, expect_video=False, heap_warn=8192, heap_
 
 
 def run_check(port, console, booting, elf=None, expect_video=False, boot_timeout=60.0,
-              heap_warn=8192, heap_min_warn=1024):
+              heap_warn=8192, heap_min_warn=1024, drift=()):
     lines = check_board(port, console, booting, boot_timeout)
     problems, warnings, fields = evaluate(lines, booting, elf, expect_video, heap_warn, heap_min_warn)
-    for w in warnings:
+    for w in ["sdkconfig differs from sdkconfig.defaults: " + d for d in drift] + warnings:
         console.note("CHECK warn: " + w)
     for p in problems:
         console.note("CHECK fail: " + p)
@@ -466,14 +500,21 @@ def main(argv=None):
         console.write_log(f"# flash.py log {datetime.datetime.now().isoformat(timespec='seconds')} "
                           f"port={args.port} argv={' '.join(sys.argv[1:] if argv is None else argv)}")
         rc = 0
+        drift = []
         if not args.monitor_only:
+            drift = config_drift(args.build)
+            for d in drift:
+                console.note("flash: warning: sdkconfig differs from sdkconfig.defaults: " + d)
+            if drift:
+                console.note("flash: ESP-IDF keeps an existing sdkconfig; delete it and rebuild to take the "
+                             "defaults (flashing anyway)")
             rc = flash(args, args_file, console)
             if rc != 0:
                 return rc
         if args.check:
             elf = None if args.monitor_only else elf_sha256(args.build)
             rc = run_check(args.port, console, not args.monitor_only, elf, args.expect_video, args.boot_timeout,
-                           args.heap_warn, args.heap_min_warn)
+                           args.heap_warn, args.heap_min_warn, drift)
         if args.monitor or (args.monitor_only and not args.check):
             with console_keys() as poll:
                 monitor(args.port, poll, console, args.iq_every)
