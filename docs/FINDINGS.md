@@ -81,6 +81,21 @@ What stays internal, and why (board, same session):
   microsecond deadline), transport restart buffers, and the AGC table
   check buffer (filled in a critical section that changes clocks).
 
+Long gapless IQ captures into PSRAM do not work while RX runs (board,
+same session). 8 MB would hold ~200 ms of the 40 MB/s IQ stream (a
+snapshot is 204.75 us), so a console capture was tried: an AHB GDMA
+memory-to-memory channel (`esp_async_memcpy`) copies each completed part
+of the RX ring into PSRAM, 32-byte aligned (PSRAM burst limit and cache
+line), with every chunk checked against the time RX needs to come back
+to it. Result on COM6 at 80 MHz: 20-22 MB/s, 16-24 KiB before the copy
+fell behind, and each capture added one `rx_overflow` and one
+`tx_empty`: the PSRAM writes starve the RX DMA, so live video glitches
+and the stream itself has a gap. 16-byte chunks were worse (6.6 MB/s;
+the driver splits them through a stash buffer its ISR merges). 120 MHz
+PSRAM does not build with this flash configuration (ESP-IDF's MSPI
+timing tables). A long capture needs another path, such as a decimated
+stream or a capture with the RX ring paused.
+
 ## VTX-on PHY lab, AFC window and digital mode 12 (board, 2026-10-26)
 
 Board COM10 (NiceMCU), 5865 MHz / A1, PAL VTX on a table, firmware
