@@ -14,11 +14,16 @@
  * by the video standard:
  *
  *   sync tip   : sync_start + 0.5 us .. sync_end - 0.5 us
- *   back porch : sync_end + 3.4 us .. sync_end + 4.4 us
+ *   back porch : sync_end + 1.2 us .. sync_end + 3.6 us
  *
- * The back-porch window starts after the colour burst for both standards
- * (NTSC burst ends ~3.1 us after sync end, PAL ~3.15 us) and ends before
- * active video (NTSC porch ends at 4.7 us, PAL at 5.7 us).
+ * The back-porch window spans the colour burst and averages it out (2.4 us
+ * is 8.6 NTSC and 10.6 PAL subcarrier periods) and ends before active video
+ * for both standards. The former window (3.4-4.4 us, set for PAL) already
+ * reached NTSC active video: on board snapshots (blackbox 2026-10-27, NTSC
+ * VTX, afc2_measure replay) the picture began ~4.0 us after the detected sync
+ * end, and the old window read the porch at -1019 kHz where the flat porch
+ * sits at -1248 (1.2-3.6 us), so the AFC took a VTX ~230 kHz off for centred
+ * and never locked. PAL (lab snapshots 2026-10-26): -1044 vs -1040 kHz.
  *
  * Sync is found on the demodulated frequency itself, independent of FM
  * polarity: a 3.5-5.5 us plateau at one extreme (inner 15 % of the range),
@@ -45,8 +50,12 @@
 #define AFC2_SYNC_MIN          140u   /* 3.5 us */
 #define AFC2_SYNC_MAX          220u   /* 5.5 us */
 #define AFC2_TIP_GUARD         20u    /* 0.5 us */
-#define AFC2_PORCH_START       136u   /* 3.4 us after sync end */
-#define AFC2_PORCH_LEN         40u    /* 1.0 us */
+#ifndef AFC2_PORCH_START
+#define AFC2_PORCH_START       48u    /* 1.2 us after sync end */
+#endif
+#ifndef AFC2_PORCH_LEN
+#define AFC2_PORCH_LEN         96u    /* 2.4 us */
+#endif
 #define AFC2_MAX_SAMPLES       8192u  /* the control loop's 8190-byte AFC window (3.2 lines) */
 #define AFC2_BURST_START       40u    /* 1.0 us after sync end */
 #define AFC2_BURST_LEN         80u    /* 2.0 us, inside NTSC and PAL burst */
