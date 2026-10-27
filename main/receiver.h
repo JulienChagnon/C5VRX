@@ -197,6 +197,9 @@ bool receiver_dc_take_row(uint8_t gain, uint32_t min_samples, int64_t *si, int64
                           uint32_t *samples);
 void receiver_dc_reset_row(uint8_t gain);
 void receiver_dc_reset_all(void);
+/* A row's sample count and sign counts so far, without taking them: the
+ * servo decides early on a saturated sign share (dc_servo.h). */
+bool receiver_dc_peek_row(uint8_t gain, uint32_t neg[2], uint32_t *samples);
 /* DC CAL NEEDED on this channel (dc_health.h): the flagged profiles in buf
  * ("NARROW", "NORMAL+WIDE"), the number of flags as the result; the next
  * boot re-measures them. */

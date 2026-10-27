@@ -698,6 +698,16 @@ bool receiver_dc_take_row(uint8_t gain, uint32_t min_samples, int64_t *si, int64
     return enough;
 }
 
+bool receiver_dc_peek_row(uint8_t gain, uint32_t neg[2], uint32_t *samples)
+{
+    if (gain > ARC_VENDOR_GAIN_MAX) return false;
+    taskENTER_CRITICAL(&s_dc_acc_lock);
+    *samples = s_dc_rows[gain].samples;
+    neg[0] = s_dc_rows[gain].ni; neg[1] = s_dc_rows[gain].nq;
+    taskEXIT_CRITICAL(&s_dc_acc_lock);
+    return *samples != 0;
+}
+
 void receiver_dc_reset_row(uint8_t gain)
 {
     if (gain > ARC_VENDOR_GAIN_MAX) return;
