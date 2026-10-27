@@ -42,7 +42,8 @@ typedef struct {
     uint16_t noise_x16[DG_STATES];    /* receiver noise power per row, cells^2 x16 */
     uint16_t noise_top_x16;
     int8_t quality[AGC_MAX_HOMES][AGC_BINS];
-    uint32_t hist[AGC_BINS];
+    uint32_t hist[AGC_BINS];          /* slow level history (LEVEL_DECAY_Q8): the fading */
+    uint32_t fast[AGC_BINS];          /* fast level history (LEVEL_FAST_DECAY_Q8): a jump */
     uint64_t decide_us;
     bool fold_pending;
     /* Self-calibration: the input level just before and just after a move
@@ -54,7 +55,7 @@ typedef struct {
     uint8_t move_to, move_windows;
     int32_t move_pre_q8, move_sum_q8;
     uint64_t move_us;
-    uint32_t folds, decisions, moves, learned;
+    uint32_t folds, decisions, moves, learned, jumps;
 } agc_level_t;
 
 typedef struct {

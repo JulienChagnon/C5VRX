@@ -77,7 +77,7 @@ void app_main(void)
         if (settings_prefs_load(&p)) {
             if (p.dfilt_mode != PHY_DFILT_MODE_DEFAULT && !phy_dfilt_select(p.dfilt_mode))
                 printf("PREFS dfilt=%u not applied; mode %d\n", p.dfilt_mode, phy_dfilt_mode());
-            if (receiver_gain_mode_auto(p.gain_mode) && p.gain_mode != GAIN_MODE_AUTO)
+            if (receiver_gain_mode_auto(p.gain_mode) && p.gain_mode != GAIN_MODE_DEFAULT)
                 receiver_set_gain_mode(p.gain_mode, false);
             profile_select_restore(p.filter_select);
             printf("PREFS restored filter_select=%d gain_mode=%u dfilt=%d\n", p.filter_select, receiver_gain_mode(),

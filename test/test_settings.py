@@ -148,8 +148,8 @@ int main(void) {
     assert(writes == 1 && !commits); fail_set = 0; boot(); assert(output == 2);
     fail_commit = 1; settings_save_output(1); fail_commit = 0; boot(); assert(output == 2);
     settings_save_output(1); boot(); assert(output == 1);
-    /* Gain mode: never restored, every boot starts AUTO, even with a fixed
-     * mode left in NVS by an earlier firmware. */
+    /* The legacy "gain_mode" key is never restored (a fixed mode left in NVS
+     * by an earlier firmware); the gain model comes from the prefs only. */
     boot(); assert(!gain_restores);
     const unsigned char old_fixed = 42; seed(2, &old_fixed, 1); boot(); assert(!gain_restores && gain_mode == 0);
     /* A "flywheel" key left by an earlier firmware is ignored (flywheel removed). */

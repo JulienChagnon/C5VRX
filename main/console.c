@@ -39,9 +39,11 @@ void firmware_print(void)
 static void status(void)
 {
     firmware_print();
-    printf("C5VRX5 version=%s demod=%s lane=ultrafine gain_owner=keel1 "
+    const uint8_t gm = receiver_gain_mode();
+    printf("C5VRX5 version=%s demod=%s lane=ultrafine gain_owner=%s "
            "uptime_s=%lld heap_internal=%u heap_largest=%u heap_min=%u heap_dma=%u heap_dma_largest=%u heap_lp=%u heap_psram=%u fw=%s\n",
            esp_app_get_description()->version, transport_program_name(),
+           gm == GAIN_MODE_AUTO ? "keel1" : gm == GAIN_MODE_LEVEL ? "level" : gm == GAIN_MODE_RSSI ? "rssi" : "manual",
            esp_timer_get_time() / 1000000, (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
            (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),
            /* Lowest free since boot: the boot peak (splash chain plus the
@@ -96,7 +98,7 @@ static void help(void)
 {
     printf("C5VRX-5 keys: T status, C calibration data dump (read only), D range/health report, M gain map (for a preset), R per-second FIELD_DIAG lines on/off,\n"
            "  g OUTPUT 0.5x..5.0x in 0.5x steps (saved after application; restored at boot),\n"
-           "  G RX gain AUTO (KEEL-1) -> MAX -> fixed G78..G24 (until the next boot; every boot starts AUTO),\n"
+           "  G RX gain LEVEL -> KEEL (KEEL-1) -> RSSI -> MAX -> fixed G78..G24 (models kept across reboots; MAX/fixed: next boot LEVEL),\n"
            "  A live VTX profile switch on/off (continuous matching every 30 s; off = report only),\n"
            "  I IQ snapshot, o menu open/close, n/x menu next/select, c next channel, b next band, s scan,\n"
            "  v video standard AUTO/NTSC/PAL, f analog filter AUTO/NARROW/NORMAL/WIDE (this boot; calibrated classes),\n"

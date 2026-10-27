@@ -124,15 +124,21 @@ void receiver_resume(void);
 void receiver_set_gain(uint8_t gain);
 void receiver_print(void);
 void receiver_print_map(void);   /* console M: GAINMAP line */
-/* Gain mode: GAIN_MODE_AUTO (KEEL-1, gain.c), the research AGC models
- * GAIN_MODE_LEVEL / GAIN_MODE_RSSI (agc.h, for a board comparison),
- * GAIN_MODE_MAX (table maximum) or a fixed gain index 20..max. Fixed modes
- * skip the controller entirely; paused owners (calibration, scan) still
- * write and the mode returns after. */
+/* Gain mode: GAIN_MODE_LEVEL (agc.h, the measured-quality AGC, the
+ * default), GAIN_MODE_AUTO (KEEL-1, gain.c; shown as KEEL), GAIN_MODE_RSSI
+ * (agc.h, a baseline), GAIN_MODE_MAX (table maximum) or a fixed gain index
+ * 20..max. Fixed modes skip the controller entirely; paused owners
+ * (calibration, scan) still write and the mode returns after. The codes
+ * are stored (prefs) and logged (flight log), so they keep their values. */
 #define GAIN_MODE_AUTO  0u
 #define GAIN_MODE_RSSI  253u
 #define GAIN_MODE_LEVEL 254u
 #define GAIN_MODE_MAX   255u
+/* The boot mode without saved prefs, and after MAX or a fixed gain: LEVEL
+ * (operator decision 2026-10-27, docs/FINDINGS.md "LEVEL on the measured
+ * demod quality": KEEL-1 wrote 10-30 times a second on a strong signal and
+ * kept writing on noise at the edge). */
+#define GAIN_MODE_DEFAULT GAIN_MODE_LEVEL
 /* A mode with an automatic controller (not a fixed gain). */
 static inline bool receiver_gain_mode_auto(uint8_t mode)
 {

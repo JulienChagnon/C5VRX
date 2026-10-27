@@ -1,5 +1,6 @@
 /* C5VRX-5 by Twotoz and the C5VRX contributors: LEVEL and RSSI AGC (agc.h). */
 #include "agc.h"
+#include "level_quality.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,7 +10,14 @@
 #define LEVEL_DECIDE_US 5000u
 #endif
 #ifndef LEVEL_DECAY_Q8
-#define LEVEL_DECAY_Q8 199u     /* per 5 ms: exp(-5 / 20 ms) */
+#define LEVEL_DECAY_Q8 250u     /* per 5 ms: exp(-5 / 200 ms); 20 ms (199) followed the fading
+                                   * itself and wrote 5 a second (test_agc_compare.c, PICTURE_Q) */
+#endif
+#ifndef LEVEL_FAST_DECAY_Q8
+#define LEVEL_FAST_DECAY_Q8 199u   /* per 5 ms: exp(-5 / 20 ms) */
+#endif
+#ifndef LEVEL_JUMP_Q8
+#define LEVEL_JUMP_Q8 (9 * 256)    /* best rows of the two histories this far apart (3 home rows): a jump, not fading; 6 dB wrote 2.6/s, 9 dB 1.7/s at the same score */
 #endif
 #ifndef LEVEL_WEIGHT
 #define LEVEL_WEIGHT 256u     /* one window */
@@ -20,14 +28,8 @@
 #ifndef LEVEL_HYST
 #define LEVEL_HYST 6        /* quality units (of 100) needed to move */
 #endif
-#ifndef LEVEL_FOLD_K
-#define LEVEL_FOLD_K 1.15f    /* noise radii the peak may reach */
-#endif
-#ifndef LEVEL_DC_MARGIN
-#define LEVEL_DC_MARGIN 0.35f    /* cells kept free for DC */
-#endif
-#ifndef LEVEL_RAIL
-#define LEVEL_RAIL 7.5f
+#ifndef LEVEL_FOLD_OVER_Q8
+#define LEVEL_FOLD_OVER_Q8 (3 * 256)   /* a folded window: its measured level this much over */
 #endif
 #ifndef LEVEL_LEARN_MAX_Q8
 #define LEVEL_LEARN_MAX_Q8 (8 * 256)   /* learned model correction per row, at most */
@@ -37,18 +39,6 @@
 #endif
 #ifndef LEVEL_LEARN_SETTLE_US
 #define LEVEL_LEARN_SETTLE_US 600u     /* the write transient */
-#endif
-#ifndef LEVEL_SYNC_DB
-#define LEVEL_SYNC_DB 3.0f     /* a picture holds above ~3 dB (FINDINGS, static edge) */
-#endif
-#ifndef LEVEL_PIC_DB
-#define LEVEL_PIC_DB 10.0f
-#endif
-#ifndef LEVEL_SYNC_SHARE
-#define LEVEL_SYNC_SHARE 0.6f
-#endif
-#ifndef LEVEL_FOLD_Q
-#define LEVEL_FOLD_Q (-100)   /* a folded moment, against 100 for a full picture */
 #endif
 
 /* RSSI parameters. */
@@ -107,25 +97,34 @@ static unsigned nearest_home(const uint8_t *home, unsigned homes, const int16_t 
 
 /* ---- LEVEL ---- */
 
-static float small_signal_loss_db(float rms)
+/* Linear interpolation position of x on an ascending axis: index and weight. */
+static int axis_at(const int16_t *axis, int n, float x, float *w)
 {
-    static const float at[] = {1.5f, 2.2f, 3.0f, 4.2f}, loss[] = {2.9f, 1.4f, 0.6f, 0.0f};
-    if (rms <= at[0]) return loss[0] + (at[0] - rms) * 2.0f;
-    for (int k = 1; k < 4; ++k)
-        if (rms <= at[k]) return loss[k - 1] + (loss[k] - loss[k - 1]) * (rms - at[k - 1]) / (at[k] - at[k - 1]);
-    return 0.0f;
+    if (x <= axis[0]) { *w = 0.0f; return 0; }
+    for (int k = 1; k < n; ++k)
+        if (x < axis[k]) { *w = (x - axis[k - 1]) / (float)(axis[k] - axis[k - 1]); return k - 1; }
+    *w = 1.0f;
+    return n - 2;
 }
 
 /* Quality 0..100 of a carrier at input level `level_db` on a row `rel_db`
- * under the top one: sync first, then picture; a fold is LEVEL_FOLD_Q. */
+ * under the top one: the measured U80P64-R1 table (level_quality.h) at the
+ * row's C/N and total radius. The gain sets no C/N (the noise enters before
+ * it), only the radius: rows differ by the radius window (best ~2.5-6 cells
+ * rms; a fold above ~7 costs far more than a small radius below). */
 static int quality(float level_db, float rel_db, float noise_top)
 {
     const float c = powf(10.0f, (level_db + rel_db) / 10.0f), n = noise_top * powf(10.0f, rel_db / 10.0f);
-    if (sqrtf(c) + LEVEL_FOLD_K * sqrtf(n) + LEVEL_DC_MARGIN > LEVEL_RAIL) return LEVEL_FOLD_Q;
-    const float snr = 10.0f * log10f(c / (n + 1.0f / 6.0f) + 1e-9f) - small_signal_loss_db(sqrtf(c + n));
-    const float sync = 1.0f / (1.0f + expf(-(snr - LEVEL_SYNC_DB)));
-    const float pic = 1.0f / (1.0f + expf(-(snr - LEVEL_PIC_DB) / 1.5f));
-    return (int)lroundf(100.0f * sync * (LEVEL_SYNC_SHARE + (1.0f - LEVEL_SYNC_SHARE) * pic));
+    const float rms = sqrtf(c + n);
+    if (rms * 100.0f >= level_q_rms_x100[LEVEL_Q_RMS - 1]) return 0;
+    float wc, wr;
+    const int i = axis_at(level_q_cn_x10, LEVEL_Q_CNS, 100.0f * log10f(c / n + 1e-9f), &wc);
+    const int j = axis_at(level_q_rms_x100, LEVEL_Q_RMS, rms * 100.0f, &wr);
+    const float lo = level_q[i][j] + (level_q[i][j + 1] - level_q[i][j]) * wr;
+    const float hi = level_q[i + 1][j] + (level_q[i + 1][j + 1] - level_q[i + 1][j]) * wr;
+    float q = lo + (hi - lo) * wc;
+    if (rms * 100.0f < level_q_rms_x100[0]) q *= rms * 100.0f / level_q_rms_x100[0];   /* toward no signal */
+    return (int)lroundf(q);
 }
 
 static void row_noise(agc_level_t *a, unsigned k)
@@ -177,13 +176,28 @@ static void level_add(agc_level_t *a, int level_q8, uint32_t weight)
     if (level_q8 < AGC_LMIN_DB * 256) b = 0;
     b = b < 0 ? 0 : b >= AGC_BINS ? AGC_BINS - 1 : b;
     a->hist[b] += weight;
+    a->fast[b] += weight;
 }
 
-static int32_t level_utility(const agc_level_t *a, unsigned h, uint64_t total)
+static int32_t level_utility(const agc_level_t *a, const uint32_t *hist, unsigned h, uint64_t total)
 {
     int64_t u = 0;
-    for (int b = 0; b < AGC_BINS; ++b) u += (int64_t)a->hist[b] * a->quality[h][b];
+    for (int b = 0; b < AGC_BINS; ++b) u += (int64_t)hist[b] * a->quality[h][b];
     return total ? (int32_t)(u * 256 / (int64_t)total) : 0;   /* quality x256 */
+}
+
+/* The home with the highest utility over `hist` (ties: listen high). */
+static unsigned level_best(const agc_level_t *a, const uint32_t *hist, int32_t *best_u)
+{
+    uint64_t total = 0;
+    for (int b = 0; b < AGC_BINS; ++b) total += hist[b];
+    unsigned best = 0;
+    *best_u = INT32_MIN;
+    for (unsigned h = 0; h < a->homes; ++h) {
+        const int32_t u = level_utility(a, hist, h, total) + (h == 0);
+        if (u > *best_u) { *best_u = u; best = h; }
+    }
+    return best;
 }
 
 uint8_t agc_level_tick(agc_level_t *a, const dg_observation_t *o, uint8_t current, uint64_t now_us)
@@ -192,10 +206,16 @@ uint8_t agc_level_tick(agc_level_t *a, const dg_observation_t *o, uint8_t curren
     const int rel = a->rel_q8[current];
     const uint32_t noise = a->noise_x16[current];
     if (agc_folded(o)) {
-        /* Above the fold the level is unknown: count it a few dB over. */
-        const float lim = LEVEL_RAIL - LEVEL_FOLD_K * sqrtf(noise / 16.0f);
-        const float c = lim > 0.5f ? lim * lim : 0.25f;
-        level_add(a, agc_db_q8((uint32_t)(c * 16.0f)) - agc_db_q8(16) - rel + 3 * 256, LEVEL_FOLD_WEIGHT);
+        /* Above the fold the level is unknown: the folded window's own power
+         * (the wrapped samples read low), counted LEVEL_FOLD_OVER_Q8 over when
+         * the carrier dominates it. At the edge the noise peaks fold windows
+         * while the carrier is weak, which costs nothing (level_quality.h). A
+         * fixed level at the rails instead read every such window as a strong
+         * carrier: with the measured table it held the top row on a strong
+         * folding carrier (the rails map to ~6 cells rms, the table's best). */
+        const uint32_t c = o->pwr_x16 > noise ? o->pwr_x16 - noise : noise / 50u + 1u;
+        const int over = c >= 2u * noise ? LEVEL_FOLD_OVER_Q8 : 0;
+        level_add(a, agc_db_q8(c) - agc_db_q8(16) - rel + over, LEVEL_FOLD_WEIGHT);
         a->fold_pending = true;
         a->move_pending = false;   /* a folded level says nothing about the row's gain */
         a->level_windows = 0;
@@ -225,17 +245,31 @@ uint8_t agc_level_tick(agc_level_t *a, const dg_observation_t *o, uint8_t curren
     a->decide_us = now_us;
     a->fold_pending = false;
     ++a->decisions;
+    /* Two histories: the slow one (200 ms) sizes the row for the fading,
+     * the fast one (20 ms) sees a jump (a hand over the antenna, an
+     * obstacle, coming closer). When their best rows are LEVEL_JUMP_Q8 or
+     * more apart the level has moved, not faded: the slow history restarts
+     * from the fast one. Board 2026-10-27 (hand on the antenna, -30..-60
+     * dBm): the slow history alone held a row that folded 180 windows a
+     * second and climbed late when the hand came. */
+    int32_t fast_u;
+    const unsigned fast_best = level_best(a, a->fast, &fast_u);
+    int32_t best_u;
+    unsigned best = level_best(a, a->hist, &best_u);
+    if (abs(a->rel_q8[a->home[fast_best]] - a->rel_q8[a->home[best]]) >= LEVEL_JUMP_Q8) {
+        memcpy(a->hist, a->fast, sizeof(a->hist));
+        best = fast_best;
+        best_u = fast_u;
+        ++a->jumps;
+    }
     uint64_t total = 0;
     for (int b = 0; b < AGC_BINS; ++b) total += a->hist[b];
     const unsigned cur_h = nearest_home(a->home, a->homes, a->rel_q8, current);
-    const int32_t cur_u = level_utility(a, cur_h, total);
-    int32_t best_u = INT32_MIN;
-    unsigned best = cur_h;
-    for (unsigned h = 0; h < a->homes; ++h) {
-        const int32_t u = level_utility(a, h, total) + (h == 0);   /* ties: listen high */
-        if (u > best_u) { best_u = u; best = h; }
+    const int32_t cur_u = level_utility(a, a->hist, cur_h, total);
+    for (int b = 0; b < AGC_BINS; ++b) {
+        a->hist[b] = (uint32_t)(((uint64_t)a->hist[b] * LEVEL_DECAY_Q8) >> 8);
+        a->fast[b] = (uint32_t)(((uint64_t)a->fast[b] * LEVEL_FAST_DECAY_Q8) >> 8);
     }
-    for (int b = 0; b < AGC_BINS; ++b) a->hist[b] = (uint32_t)(((uint64_t)a->hist[b] * LEVEL_DECAY_Q8) >> 8);
     if (best == cur_h || best_u <= cur_u + LEVEL_HYST * 256) return current;
     ++a->moves;
     a->move_pending = a->level_windows >= 4u;

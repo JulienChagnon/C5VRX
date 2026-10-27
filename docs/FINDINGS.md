@@ -7,6 +7,81 @@ scripts and data live in that branch under `v4/docs/PICTURE_CLIFF_STUDY.md`,
 Synthetic results are host simulations; board results are labelled as such.
 Measured range is not established.
 
+## LEVEL on the measured demod quality (2026-10-27)
+
+**Blackbox (sessions 245-249, walking with the VTX on, GAIN AUTO = KEEL-1).**
+At -40..-70 dBm and C/N 10-20 dB the video was only 60-90 % while KEEL-1
+wrote 10-30 times a second, nearly always for `overload`. Over the seconds
+with C/N >= 10 dB: video % = 87.9 - 0.74 x writes/s + 0.15 x overloads/s
+(n = 141), i.e. ~7 ms of picture per gain write, and no extra cost for an
+overload (fold). 0-2 writes/s: 95 % video; more than 6: 78 %. A
+correlation (walking also fades), but every AGC host model had assumed
+2 ms per write and a fold as a lost moment.
+
+**Demod quality grid** (`research/level_quality_grid.py`, 1080 cases:
+bit-exact U80P64-R1, physical-ADC model with the ultrafine fold, 12 MHz
+filter, PAL/NTSC, C/N 15 values, total rms radius 0.75-13 cells):
+
+- best radius 2.5-6 cells rms, flat within ~0.5 dB SINAD at every C/N;
+- at C/N <= ~6 dB after the filter the radius matters little from 1.25
+  to 7 cells (within ~1 dB): the row choice hardly matters at the edge;
+- a small radius is mild (1.5 cells: lock kept, ~5 dB SINAD less on a
+  strong signal); overshoot is not: 8 cells drops SINAD to 2-5 dB and
+  10 cells loses the line lock completely from C/N ~6 dB.
+
+`research/level_quality.py` turns it into `main/level_quality.h` (lock
+first, then luma SINAD, monotonic around each C/N's best radius; CI checks
+it is current).
+
+**LEVEL** (`main/agc.c`) now scores every home row with that table at the
+row's C/N and total radius, instead of the hand-made sigmoid/fold formula.
+The level history is 200 ms (was 20 ms, which followed the fading itself),
+and a folded window counts its own measured level 3 dB over when the
+carrier dominates it (a fixed level at the rails read like ~6 cells rms,
+the table's best, and held the top row on a strong folding carrier).
+
+**First board check (session 267, hand on the antenna, -30..-60 dBm, C/N
+10-20 dB)** with the 200 ms history alone: 272 moves in ~45 s (~6 a
+second), 8176 folded windows, video 40-85 %. The slow history held a row
+that folded when the hand came off and climbed late when it covered. The
+harness had no such scenario; it now has "hand on the antenna" (-25 dB in
+random 40-250 ms spells) and reproduced it (close: LEVEL 72.1, 8.7 writes/s,
+against KEEL-1 78.5). Fix: a second, fast history (20 ms); when the best
+rows of the two are 9 dB (three home rows) apart the level jumped rather
+than faded, and the slow history restarts from the fast one (`jumps` in
+`T`). Close hand: 78.5 at 15.9 writes/s (KEEL-1 78.5 at 29.2); mid hand
+66.0 against 68.8, the one scenario LEVEL still loses. The blackbox
+`gain_writes` column counts KEEL-1 writes only; LEVEL moves show in the
+gain min/max per second and in `T`.
+
+**Host comparison** (`test/test_agc_compare.c -DPICTURE_Q
+-DWRITE_COST_US=7000`, CI): score (mean picture quality), writes/s, edge
+3 dB C/N.
+
+| | nominal | gain-model error 1/6 dB | old threshold judge |
+| --- | ---: | ---: | ---: |
+| LEVEL (this) | **70.5**, 1.7/s, 42.6 | **70.1**, 1.9/s, 43.1 | 58.9, 35.0 |
+| KEEL-1 (AUTO) | 68.7, 6.1/s, 40.7 | 68.4, 6.6/s, 41.1 | 62.3, 28.7 |
+| STATIC (best fixed row, a posteriori) | 70.9, 44.0 | 70.9, 44.0 | 60.4, 35.0 |
+| IDEAL (no write cost, any row per tick) | 74.1, 44.6 | 74.0, 44.6 | 74.7, 41.8 |
+
+(With the hand scenarios; the old-judge column is from before them.)
+
+With the measured demod one well-chosen row is almost the ideal, so the
+best AGC writes rarely and only on a clear change. LEVEL beats STATIC on
+steps (+15 dB closer: 94.3 against 82.6; -12 dB obstacle 88.3 against
+85.6). The old threshold judge (fold = a lost moment, 10 dB SNR at close
+range) disagrees: it is the hand-made model the blackbox does not support.
+Tried and dropped: averaging windows before the histogram (no change), a
+write-payback rule instead of the fixed hysteresis (70.1-70.2, more writes).
+At the edge LEVEL sits a home row under STATIC's top row (1.4 points, ~0.15
+dB); the difference is under the hysteresis.
+
+LEVEL is the default gain mode (operator decision 2026-10-27, after the
+hand test above: "KEEL regulates too much"); KEEL-1 stays selectable as
+KEEL. Open: a walk to the edge on LEVEL against the KEEL-1 walk of sessions
+246/247 (video % per dBm, writes at the edge).
+
 ## Range edge audit: DC lockout, NTSC porch window, PHY FILT (blackbox, 2026-10-27)
 
 Board b26ef545, A1 5865 MHz, NTSC VTX, firmware `5.0.0-menu+local` (the

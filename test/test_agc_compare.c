@@ -17,7 +17,15 @@
  * changes the fold rule's noise multiple (default 1.0) and -DDC0_CELLS the
  * DC. A controller tuned on one model has to hold up on the others.
  *
- *   cc -O2 -std=c11 -I../main test_agc_compare.c ../main/agc.c ../main/gain.c ../main/arc_phy.c -lm -o t && ./t
+ * Picture: -DPICTURE_Q (CI) scores every tick with the measured U80P64-R1
+ * quality (main/level_quality.h); without it, the older threshold model
+ * (fold = a lost moment plus FOLD_COST_US). The blackbox supports the
+ * measured table: at C/N >= 10 dB the video fell 0.74 % per gain write a
+ * second while overloads (folds) cost nothing extra (sessions 245-249), so
+ * CI also uses that write cost, -DWRITE_COST_US=7000. -DCTL_MASK=bits runs
+ * only those controllers (a faster search).
+ *
+ *   cc -O2 -std=c11 -I../main -DPICTURE_Q -DWRITE_COST_US=7000 test_agc_compare.c ../main/agc.c ../main/gain.c ../main/arc_phy.c -lm -o t && ./t
  */
 #include <math.h>
 #include <stdio.h>
@@ -124,6 +132,7 @@ static dg_observation_t observe(double level_db, unsigned k, uint64_t t)
     return dg_measure_gain(b, sizeof(b), c5vrx_phase8_gain_lut, t);
 }
 
+#ifndef PICTURE_Q
 /* Picture model of test_keel_track.c: detector small-signal loss from the
  * bit-exact U85Q chain, a fold is a lost moment. */
 static double small_signal_loss_db(double rms)
@@ -141,6 +150,25 @@ static double snr_dc(double level_db, unsigned k, double d)
     return 10.0 * log10(r * r / (rn * rn + 1.0 / 6.0 + d * d) + 1e-9) - small_signal_loss_db(sqrt(r * r + rn * rn));
 }
 static double snr_db(double level_db, unsigned k) { return snr_dc(level_db, k, dc_cells(k)); }
+#endif
+
+/* Hand spells: alternating covered/free intervals of 40-250 ms, drawn per
+ * seed; the cover depth varies 50-100 % of hand_db. */
+static double hand_db(uint64_t t_us, double depth, uint32_t seed)
+{
+    if (depth == 0.0) return 0.0;
+    uint32_t h = seed * 2654435761u + 12345u;
+    uint64_t at = 0;
+    for (unsigned n = 0;; ++n) {
+        h = h * 1664525u + 1013904223u;
+        const uint64_t len = 40000u + (h >> 8) % 210000u;
+        if (t_us < at + len) {
+            h = h * 1664525u + 1013904223u;
+            return (n & 1u) ? depth * (0.5 + 0.5 * (h >> 8) / 16777216.0) : 0.0;
+        }
+        at += len;
+    }
+}
 
 #define PATHS 12
 static double s_phase[PATHS], s_cos[PATHS];
@@ -167,8 +195,45 @@ static double fading_db(uint64_t t_us, double doppler_hz, double k_factor)
 typedef struct {
     const char *name;
     double level_db, doppler, k, step_db, threshold_db, weight;
+    double hand_db;   /* a hand over the antenna: this much weaker in random 40-250 ms spells (board 2026-10-27) */
 } scenario_t;
 typedef struct { double usable_pct, writes_s, mean_gain; } result_t;
+
+/* -DPICTURE_Q: the picture is the measured U80P64-R1 quality (0..100,
+ * level_quality.h, the table LEVEL decides with) at the row's C/N and total
+ * radius, the DC added to the radius; a fold is graded there, not a lost
+ * moment. Default: usable (100) when snr_dc reaches the scenario threshold. */
+#ifdef PICTURE_Q
+#include "level_quality.h"
+static double table_at(const int16_t *axis, int n, double x, int *k)
+{
+    if (x <= axis[0]) { *k = 0; return 0.0; }
+    for (int i = 1; i < n; ++i)
+        if (x < axis[i]) { *k = i - 1; return (x - axis[i - 1]) / (axis[i] - axis[i - 1]); }
+    *k = n - 2;
+    return 1.0;
+}
+#endif
+static double picture(const scenario_t *sc, double level_db, unsigned k, double d)
+{
+#ifdef PICTURE_Q
+    (void)sc;
+    const double r = radius(level_db, k), rn = noise_radius(k);
+    const double rms = sqrt(r * r + rn * rn) + d;
+    if (rms * 100.0 >= level_q_rms_x100[LEVEL_Q_RMS - 1]) return 0.0;
+    int i, j;
+    const double wc = table_at(level_q_cn_x10, LEVEL_Q_CNS, 100.0 * log10(r * r / (rn * rn) + 1e-12), &i);
+    const double wr = table_at(level_q_rms_x100, LEVEL_Q_RMS, rms * 100.0, &j);
+    const double lo = level_q[i][j] + (level_q[i][j + 1] - level_q[i][j]) * wr;
+    const double hi = level_q[i + 1][j] + (level_q[i + 1][j + 1] - level_q[i + 1][j]) * wr;
+    double q = lo + (hi - lo) * wc;
+    if (rms * 100.0 < level_q_rms_x100[0]) q *= rms * 100.0 / level_q_rms_x100[0];
+    return q;
+#else
+    return snr_dc(level_db, k, d) >= sc->threshold_db ? 100.0 : 0.0;
+#endif
+}
+
 
 /* ---- controllers ---- */
 typedef enum { C_KEEL, C_LEVEL, C_RSSI, C_STATIC, C_IDEAL, C_COUNT } ctl_t;
@@ -205,15 +270,19 @@ static result_t run(const scenario_t *sc, uint32_t seed, ctl_t ctl, int fixed_ro
     }
     uint64_t t = 1000, last_write = 0, last_fold = 0;
     const unsigned settle_ticks = 5000u, ticks = 25000u;
-    unsigned ok = 0, writes = 0;
+    double ok = 0;
+    unsigned writes = 0;
     double gain_sum = 0;
     for (unsigned n = 0; n < settle_ticks + ticks; ++n, t += TICK_US) {
-        double lv = sc->level_db + fading_db(t, sc->doppler, sc->k);
+        double lv = sc->level_db + fading_db(t, sc->doppler, sc->k) + hand_db(t, sc->hand_db, seed);
         if (sc->step_db != 0 && n >= settle_ticks + ticks / 2u) lv = sc->step_db <= -300 ? -300 : lv + sc->step_db;
         if (ctl == C_IDEAL) {
-            bool any = false;
-            for (unsigned h = 0; h < s_homes && !any; ++h) any = snr_dc(lv, s_home[h], DC_FLOOR_CELLS) >= sc->threshold_db;
-            if (n >= settle_ticks) ok += any;
+            double best = 0;
+            for (unsigned h = 0; h < s_homes; ++h) {
+                const double p = picture(sc, lv, s_home[h], DC_FLOOR_CELLS);
+                if (p > best) best = p;
+            }
+            if (n >= settle_ticks) ok += best;
             continue;
         }
         uint8_t target = applied;
@@ -228,14 +297,16 @@ static result_t run(const scenario_t *sc, uint32_t seed, ctl_t ctl, int fixed_ro
             last_write = t;
             if (n >= settle_ticks) ++writes;
         } else if (!last_write || t - last_write >= 400u) s_dwell[applied] += TICK_US;
+#ifndef PICTURE_Q
         if (snr_db(lv, applied) < -90.0) last_fold = t;
+#endif
         if (n >= settle_ticks) {
             const bool fresh = (!last_write || t - last_write >= WRITE_COST_US) && (!last_fold || t - last_fold >= FOLD_COST_US);
-            ok += fresh && snr_db(lv, applied) >= sc->threshold_db;
+            if (fresh) ok += picture(sc, lv, applied, dc_cells(applied));
             gain_sum += applied;
         }
     }
-    return (result_t){100.0 * ok / ticks, writes / 5.0, gain_sum / ticks};
+    return (result_t){ok / ticks, writes / 5.0, gain_sum / ticks};
 }
 
 static result_t run_static(const scenario_t *sc, uint32_t seed)
@@ -258,30 +329,33 @@ int main(int argc, char **argv)
     const double edge0 = 20.0 * log10(2.8) - top, edge3 = 20.0 * log10(3.9) - top, edge6 = 20.0 * log10(5.5) - top;
     const double edge10 = 20.0 * log10(8.7) - top, edge18 = 20.0 * log10(21.9) - top;
     const scenario_t sc[] = {
-        {"close, walking (K 10, 5 Hz)", close, 5, 10, 0, 10, 1},
-        {"close, moving (K 3, 30 Hz)", close, 30, 3, 0, 10, 1},
-        {"close, Rayleigh 30 Hz", close, 30, 0, 0, 10, 1},
-        {"close, fast (K 3, 80 Hz)", close, 80, 3, 0, 10, 1},
-        {"mid, moving (K 3, 30 Hz)", mid, 30, 3, 0, 10, 1},
-        {"mid, Rayleigh 30 Hz", mid, 30, 0, 0, 10, 1},
-        {"mid, -12 dB behind an obstacle", mid, 30, 3, -12, 10, 1},
-        {"edge 6 dB C/N (K 3, 30 Hz)", edge6, 30, 3, 0, 3, 2},
-        {"edge 3 dB C/N (K 3, 30 Hz)", edge3, 30, 3, 0, 3, 2},
-        {"edge 3 dB C/N, Rayleigh", edge3, 30, 0, 0, 3, 2},
-        {"edge 0 dB C/N (K 3, 30 Hz)", edge0, 30, 3, 0, 3, 2},
-        {"edge 3 dB C/N, walking (K 10, 5 Hz)", edge3, 5, 10, 0, 3, 2},
-        {"walk-out 10 dB C/N (K 3, 10 Hz)", edge10, 10, 3, 0, 3, 2},
-        {"walk-out 10 dB C/N, Rayleigh 10 Hz", edge10, 10, 0, 0, 3, 2},
-        {"walk-out 18 dB C/N (K 3, 10 Hz)", edge18, 10, 3, 0, 10, 2},
-        {"walk-out 18 dB C/N, Rayleigh 10 Hz", edge18, 10, 0, 0, 10, 2},
-        {"walking 18 dB C/N (K 3, 2 Hz)", edge18, 2, 3, 0, 10, 2},
-        {"walking 18 dB C/N, Rayleigh 5 Hz", edge18, 5, 0, 0, 10, 2},
-        {"walking 6 dB C/N (K 3, 2 Hz)", edge6, 2, 3, 0, 3, 2},
-        {"close, walking Rayleigh 2 Hz", close, 2, 0, 0, 10, 1},
-        {"fast drone 100 km/h, mid (K 3, 540 Hz)", mid, 540, 3, 0, 10, 1},
-        {"fast drone 100 km/h, edge 6 dB (K 3)", edge6, 540, 3, 0, 3, 2},
-        {"fast drone 200 km/h, edge 3 dB (K 3)", edge3, 1070, 3, 0, 3, 2},
-        {"fast drone 100 km/h, walk-out 18 dB Rayleigh", edge18, 540, 0, 0, 10, 2},
+        {"close, walking (K 10, 5 Hz)", close, 5, 10, 0, 10, 1, 0},
+        {"close, moving (K 3, 30 Hz)", close, 30, 3, 0, 10, 1, 0},
+        {"close, Rayleigh 30 Hz", close, 30, 0, 0, 10, 1, 0},
+        {"close, fast (K 3, 80 Hz)", close, 80, 3, 0, 10, 1, 0},
+        {"mid, moving (K 3, 30 Hz)", mid, 30, 3, 0, 10, 1, 0},
+        {"mid, Rayleigh 30 Hz", mid, 30, 0, 0, 10, 1, 0},
+        {"mid, -12 dB behind an obstacle", mid, 30, 3, -12, 10, 1, 0},
+        {"mid, +15 dB step (coming closer)", mid, 30, 3, 15, 10, 1, 0},
+        {"close, hand on the antenna (-25 dB spells)", close, 30, 3, 0, 10, 1, -25},
+        {"mid, hand on the antenna (-25 dB spells)", mid, 30, 3, 0, 10, 1, -25},
+        {"edge 6 dB C/N (K 3, 30 Hz)", edge6, 30, 3, 0, 3, 2, 0},
+        {"edge 3 dB C/N (K 3, 30 Hz)", edge3, 30, 3, 0, 3, 2, 0},
+        {"edge 3 dB C/N, Rayleigh", edge3, 30, 0, 0, 3, 2, 0},
+        {"edge 0 dB C/N (K 3, 30 Hz)", edge0, 30, 3, 0, 3, 2, 0},
+        {"edge 3 dB C/N, walking (K 10, 5 Hz)", edge3, 5, 10, 0, 3, 2, 0},
+        {"walk-out 10 dB C/N (K 3, 10 Hz)", edge10, 10, 3, 0, 3, 2, 0},
+        {"walk-out 10 dB C/N, Rayleigh 10 Hz", edge10, 10, 0, 0, 3, 2, 0},
+        {"walk-out 18 dB C/N (K 3, 10 Hz)", edge18, 10, 3, 0, 10, 2, 0},
+        {"walk-out 18 dB C/N, Rayleigh 10 Hz", edge18, 10, 0, 0, 10, 2, 0},
+        {"walking 18 dB C/N (K 3, 2 Hz)", edge18, 2, 3, 0, 10, 2, 0},
+        {"walking 18 dB C/N, Rayleigh 5 Hz", edge18, 5, 0, 0, 10, 2, 0},
+        {"walking 6 dB C/N (K 3, 2 Hz)", edge6, 2, 3, 0, 3, 2, 0},
+        {"close, walking Rayleigh 2 Hz", close, 2, 0, 0, 10, 1, 0},
+        {"fast drone 100 km/h, mid (K 3, 540 Hz)", mid, 540, 3, 0, 10, 1, 0},
+        {"fast drone 100 km/h, edge 6 dB (K 3)", edge6, 540, 3, 0, 3, 2, 0},
+        {"fast drone 200 km/h, edge 3 dB (K 3)", edge3, 1070, 3, 0, 3, 2, 0},
+        {"fast drone 100 km/h, walk-out 18 dB Rayleigh", edge18, 540, 0, 0, 10, 2, 0},
     };
     const unsigned n = sizeof(sc) / sizeof(sc[0]);
     double score[C_COUNT] = {0}, writes[C_COUNT] = {0}, edge3u[C_COUNT] = {0}, weights = 0;
@@ -293,6 +367,9 @@ int main(int argc, char **argv)
 #ifdef SKIP_BOUNDS
                 if (c == C_STATIC || c == C_IDEAL) continue;
 #endif
+#ifdef CTL_MASK
+                if (!((CTL_MASK >> c) & 1)) continue;   /* a faster search: only these controllers */
+#endif
                 const result_t b = c == C_STATIC ? run_static(&sc[k], seed) : run(&sc[k], seed, (ctl_t)c, 0);
                 a[c].usable_pct += b.usable_pct / SEEDS; a[c].writes_s += b.writes_s / SEEDS; a[c].mean_gain += b.mean_gain / SEEDS;
             }
@@ -302,7 +379,7 @@ int main(int argc, char **argv)
         for (int c = 0; c < C_COUNT; ++c) {
             score[c] += sc[k].weight * a[c].usable_pct;
             writes[c] += a[c].writes_s / n;
-            if (k == 8u) edge3u[c] = a[c].usable_pct;
+            if (!strcmp(sc[k].name, "edge 3 dB C/N (K 3, 30 Hz)")) edge3u[c] = a[c].usable_pct;
         }
         weights += sc[k].weight;
     }
@@ -311,13 +388,15 @@ int main(int argc, char **argv)
         printf("%-10s %8.2f %10.1f %12.1f\n", s_ctl_name[c], score[c] / weights, writes[c], edge3u[c]);
     (void)verbose;
 #ifdef AGC_CHECKS
-    /* Regression floor for LEVEL against KEEL-1 on the same draws (nominal
-     * model 63.6 / 5.5 writes / 34.0 % against 61.6 / 4.5 / 28.7 %; with
-     * -DGAIN_ERR_DB=1.0 -DGAIN_ERR_LOW_DB=6.0 62.0 / 6.8 / 33.4 against 60.6). */
+    /* Regression floor for LEVEL against KEEL-1 on the same draws, with
+     * -DPICTURE_Q -DWRITE_COST_US=7000 (CI): nominal 70.5 / 1.7 writes /
+     * 42.6 % against 68.7 / 6.1 / 40.7 %; with -DGAIN_ERR_DB=1.0
+     * -DGAIN_ERR_LOW_DB=6.0 70.1 / 1.9 / 43.1 against 68.4 / 6.6 / 41.1.
+     * Bounds: STATIC 70.9 / 44.0, IDEAL 74.1 / 44.6. */
     unsigned fail = 0;
-    if ((score[C_LEVEL] - score[C_KEEL]) / weights < 0.5) { printf("FAIL LEVEL score %.2f < KEEL-1 %.2f + 0.5\n", score[C_LEVEL] / weights, score[C_KEEL] / weights); ++fail; }
-    if (edge3u[C_LEVEL] < edge3u[C_KEEL] + 2.0) { printf("FAIL LEVEL edge %.1f < KEEL-1 %.1f + 2\n", edge3u[C_LEVEL], edge3u[C_KEEL]); ++fail; }
-    if (writes[C_LEVEL] > 8.0) { printf("FAIL LEVEL writes %.1f/s > 8\n", writes[C_LEVEL]); ++fail; }
+    if ((score[C_LEVEL] - score[C_KEEL]) / weights < 1.0) { printf("FAIL LEVEL score %.2f < KEEL-1 %.2f + 1\n", score[C_LEVEL] / weights, score[C_KEEL] / weights); ++fail; }
+    if (edge3u[C_LEVEL] < edge3u[C_KEEL] + 1.0) { printf("FAIL LEVEL edge %.1f < KEEL-1 %.1f + 1\n", edge3u[C_LEVEL], edge3u[C_KEEL]); ++fail; }
+    if (writes[C_LEVEL] > 3.0) { printf("FAIL LEVEL writes %.1f/s > 3\n", writes[C_LEVEL]); ++fail; }
     printf("%s: LEVEL checks\n", fail ? "FAIL" : "PASS");
     return fail != 0;
 #endif
