@@ -36,3 +36,15 @@ CONFIG_GPTIMER_CTRL_FUNC_IN_IRAM=y
 # The manual native-output observer runs with the PHY lease and needs no
 # cache-disabled service. Preserve scarce SRAM for receiver task stacks.
 CONFIG_RMT_RX_ISR_HANDLER_IN_IRAM=n
+# The XIAO's ESP32-C5HR8 has 8 MB of in-package PSRAM (AP Memory, 3.3 V).
+# Mapped, ESP-IDF moves the Wi-Fi library's own .bss (~16 KB) out of
+# internal SRAM: boot heap_min 2,104 -> 14,564 bytes, menu open 6.4 -> 18.9
+# KB free (board 2026-10-26). CAPS_ALLOC: nothing else goes to PSRAM unless
+# the code asks, so the video path stays in internal SRAM. A board without
+# PSRAM panics at boot with this; the variant that tolerates one (Wi-Fi
+# heap in PSRAM, IGNORE_NOTFOUND) only reached heap_min 6,348.
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_QUAD=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM_USE_CAPS_ALLOC=y
+CONFIG_SPIRAM_ALLOW_BSS_SEG_EXTERNAL_MEMORY=y

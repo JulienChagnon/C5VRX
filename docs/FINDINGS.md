@@ -38,6 +38,32 @@ also warns before flashing when the build's configuration differs from
 receiver tasks (it already skips itself when the raster cannot be built),
 which would trade the margin against a progressive splash on some boards.
 
+## PSRAM: 8 MB on the XIAO, now mapped (board, 2026-10-26)
+
+esptool on COM6 reads `ESP32-C5HR8 (revision v1.0)`, "Embedded PSRAM 8MB
+(AP_3v3)". Every generation so far left it off. Same source (`ab2edee`),
+VTX off, three PSRAM configurations against the baseline:
+
+| Configuration | `heap_min` | `heap_internal` live | free with the menu open | without PSRAM |
+|---|---|---|---|---|
+| baseline | 2,104 | 24,672 | ~6,400 (computed) | boots |
+| Wi-Fi `.bss` in PSRAM (`ALLOW_BSS_SEG_EXTERNAL_MEMORY`) | 14,564 | 37,120 | 18,884 | panics |
+| Wi-Fi heap in PSRAM (`TRY_ALLOCATE_WIFI_LWIP`, `IGNORE_NOTFOUND`) | 6,348 | 28,904 | 10,668 | boots |
+| both | boot loop (`gain_obs` `ESP_ERR_NO_MEM`) | | | |
+
+The first row is the default now (quad, 80 MHz, `USE_CAPS_ALLOC`). The
+linker moves the `.bss` of `libnet80211`/`liblwip` (`g_cnxMgr` 5.9 KB,
+`s_wifi_nvs`, TWT timers; 16,456 bytes), which costs 3.4 KB of extra IRAM
+code: static HP SRAM 288,850 -> 276,518 bytes. `--check` passed with no
+transport faults, ready time 3.84 s against 3.93 s, and the menu opened
+and closed with no faults and no leak. With both options ESP-IDF forces 16
+static Wi-Fi TX buffers (`esp_wifi/Kconfig`), which is the likely cause of
+the boot loop (not investigated). `T` prints `heap_psram`.
+
+Not tested yet: live video with a VTX, flight-log writes under load, the
+PAL menu, long runs. PSRAM shares the MSPI bus with the flash; the video
+path (PARLIO, GDMA, BitScrambler, the RX ring) stays in internal SRAM.
+
 ## VTX-on PHY lab, AFC window and digital mode 12 (board, 2026-10-26)
 
 Board COM10 (NiceMCU), 5865 MHz / A1, PAL VTX on a table, firmware

@@ -40,15 +40,17 @@ static void status(void)
 {
     firmware_print();
     printf("C5VRX5 version=%s demod=%s lane=ultrafine gain_owner=keel1 "
-           "uptime_s=%lld heap_internal=%u heap_largest=%u heap_min=%u heap_dma=%u heap_dma_largest=%u heap_lp=%u fw=%s\n",
+           "uptime_s=%lld heap_internal=%u heap_largest=%u heap_min=%u heap_dma=%u heap_dma_largest=%u heap_lp=%u heap_psram=%u fw=%s\n",
            esp_app_get_description()->version, transport_program_name(),
            esp_timer_get_time() / 1000000, (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
            (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),
            /* Lowest free since boot: the boot peak (splash chain plus the
-            * receiver tasks) leaves ~2 KB, which a reading now cannot show. */
+            * receiver tasks) leaves ~14.5 KB with PSRAM mapped (~2 KB
+            * without), which a reading now cannot show. */
            (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL),
            (unsigned)heap_caps_get_free_size(MALLOC_CAP_DMA), (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_DMA),
-           (unsigned)heap_caps_get_free_size(MALLOC_CAP_RTCRAM), firmware_id());
+           (unsigned)heap_caps_get_free_size(MALLOC_CAP_RTCRAM),
+           (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM), firmware_id());
     control_print();
     receiver_print();
     profile_print();
