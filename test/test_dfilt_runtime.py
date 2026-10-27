@@ -55,7 +55,7 @@ static void vendor_mode(unsigned mode) {
     reg_word=(reg_word & ~DFILT_MASK) | (mode << DFILT_SHIFT);
 }
 void phy_rx_filter_mode(uint32_t mode) {
-    assert(locks && phy_busy() && notified && mode==PHY_DFILT_MODE_DEFAULT);
+    assert(locks && phy_busy() && notified && (mode==0 || mode==4 || mode==8 || mode==12));
     ++writes; if(!fail_write) vendor_mode(mode);
 }
 static void invalidate(void){assert(locks);++hooks;notified=true;}
@@ -129,6 +129,19 @@ int main(void) {
     }
     fail_write=true;
     assert(!rf_set_filter(s_filter) && !rf_filter_applied() && !locks);
+    /* Menu PHY FILT: 0/4/8/12 only, kept through every RF restore; a failed
+     * readback keeps the previous mode; never another value. */
+    fail_write=false;
+    assert(phy_dfilt_next(12)==0 && phy_dfilt_next(0)==4 && phy_dfilt_next(4)==8 && phy_dfilt_next(8)==12);
+    for(int m=0;m<=12;m+=4) {
+        assert(phy_dfilt_select(m) && phy_dfilt_mode()==m && phy_dfilt_hw_mode()==m && !locks);
+        vendor_mode(8);phy_begin();restore_lock();phy_end();
+        assert(phy_dfilt_hw_mode()==m && rf_filter_applied() && !locks);
+    }
+    assert(!phy_dfilt_select(5) && !phy_dfilt_select(16) && phy_dfilt_mode()==12);
+    assert(phy_dfilt_select(4));fail_write=true;
+    assert(!phy_dfilt_select(0) && phy_dfilt_mode()==4);
+    fail_write=false;assert(phy_dfilt_select(PHY_DFILT_MODE_DEFAULT) && !locks);
     puts("PASS: production DFILT readback, restore, failure and ownership");
 }
 '''

@@ -26,6 +26,10 @@ void settings_load(void);
 void settings_save(void);
 void settings_save_output(unsigned);
 void receiver_set_gain_mode(uint8_t mode, bool save);
+#define SETTINGS_PREFS_VERSION 1u
+typedef struct { uint8_t version; int8_t filter_select; uint8_t gain_mode, dfilt_mode; } settings_prefs_t;
+bool settings_prefs_load(settings_prefs_t *p);
+void settings_prefs_store(const settings_prefs_t *p);
 '''
 NVS = r'''
 #pragma once
@@ -58,7 +62,7 @@ HARNESS = r'''
 #include <stdio.h>
 #include <string.h>
 typedef struct { unsigned char bytes[16]; size_t n; } slot_t;
-static slot_t slots[4], pending;
+static slot_t slots[5], pending;
 static int pending_index = -1, writes, commits, fail_open, fail_set, fail_commit;
 static unsigned output, channel, output_applied, gain_mode, gain_restores;
 std_mode_t s_std_mode;
@@ -67,6 +71,7 @@ static int index_of(const char *key) {
     if (!strcmp(key, "output")) return 1;
     if (!strcmp(key, "gain_mode")) return 2;
     if (!strcmp(key, "flywheel")) return 3;
+    if (!strcmp(key, "prefs")) return 4;
     assert(0); return -1;
 }
 esp_err_t nvs_open(const char *ns, int mode, nvs_handle_t *h) {
@@ -150,6 +155,17 @@ int main(void) {
     /* A "flywheel" key left by an earlier firmware is ignored (flywheel removed). */
     const unsigned char old_flywheel = 1; seed(3, &old_flywheel, 1);
     writes = commits = 0; boot(); assert(!writes && !commits && output == 1 && gain_mode == 0);
+    /* Menu prefs (FILTER, GAIN model, PHY FILT): saved once, read back after
+     * a reboot, unchanged values not rewritten, another version ignored. */
+    settings_prefs_t p = {SETTINGS_PREFS_VERSION, 1, 254, 0}, q;
+    assert(!settings_prefs_load(&q));
+    writes = commits = 0; settings_prefs_store(&p); assert(writes == 1 && commits == 1);
+    boot(); assert(settings_prefs_load(&q) && !memcmp(&p, &q, sizeof(p)));
+    settings_prefs_store(&p); assert(writes == 1);
+    p.dfilt_mode = 8; settings_prefs_store(&p); assert(writes == 2);
+    assert(settings_prefs_load(&q) && q.dfilt_mode == 8 && q.filter_select == 1 && q.gain_mode == 254);
+    const unsigned char future[] = {2, 1, 0, 12}; seed(4, future, sizeof(future));
+    assert(!settings_prefs_load(&q));
     puts("PASS: actual settings.c output save/reboot, legacy compatibility, invalid data, wear and NVS failures");
     return 0;
 }

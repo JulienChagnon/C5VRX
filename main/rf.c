@@ -370,7 +370,7 @@ bool rf_filter_applied(void)
     const int digital = phy_dfilt_hw_mode();
     const int p11 = phy_11p_hw_enabled();
     return phy_filter_code() == s_filter.code && phy_filter_skirt() == (int)s_filter.skirt &&
-           (digital < 0 || digital == PHY_DFILT_MODE_DEFAULT) && p11 != 0;
+           (digital < 0 || digital == phy_dfilt_mode()) && p11 != 0;
 }
 
 /* 6 bands x 8 channels. */

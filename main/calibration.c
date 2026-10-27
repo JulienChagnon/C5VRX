@@ -788,7 +788,8 @@ static uint8_t s_dco_banned[ARC_VENDOR_GAIN_MAX + 1u];
 #define DCO_BAN_US     2000000LL
 #define DCO_BAN_MAX_US 32000000LL
 static int64_t s_dco_ban_until[ARC_VENDOR_GAIN_MAX + 1u], s_dco_ban_len[ARC_VENDOR_GAIN_MAX + 1u];
-static uint32_t s_dco_unbans;
+static uint32_t s_dco_unbans, s_dco_guard_deferred;
+static bool dc_servo_can_fix(unsigned g);
 static uint8_t s_dco_floor;
 static bool s_dco_dirty;
 static uint32_t s_dco_searches, s_dco_hook_holds, s_dco_aborts, s_dco_carrier_searches;
@@ -1482,6 +1483,10 @@ static void dc_health_print(void)
 /* Startup: only the rows of the channel that are still missing (all rows
  * on a manual request). Rows that have codes or a measured noise floor are
  * kept, so a boot after a complete calibration does nothing here. */
+/* Result of the last DC pass on the live filter ("done", "floor", or why it
+ * stopped), for the end screen of a manual calibration. */
+static const char *s_dco_last_why = "not_run";
+
 static void dco_startup(bool manual, int64_t deadline)
 {
     dco_select();
@@ -1542,6 +1547,7 @@ static void dco_startup(bool manual, int64_t deadline)
                carrier, ok ? "stored_current_row" : "skip", s_current_gain, missing);
     }
     const bool complete = !strcmp(why, "floor") || !strcmp(why, "done");
+    s_dco_last_why = why;
     /* The noise floor ends the search before the last row: that is the
      * normal end, not a stall, so the bar completes and says so. */
     if (complete)
@@ -1689,11 +1695,19 @@ static void dco_service(void)
     const int64_t now = esp_timer_get_time();
     for (unsigned r = 0; r <= ARC_VENDOR_GAIN_MAX; ++r)
         if (s_dco_banned[r] && now >= s_dco_ban_until[r]) { s_dco_banned[r] = 0; ++s_dco_unbans; }
-    /* Hold guard: held codes must never coincide with dead or railing IQ. */
+    /* Hold guard: held codes the servo cannot correct must not keep the IQ
+     * dead or on a rail. Railing IQ on a row the servo can still trim is the
+     * servo's job (sign-bit bracket, dc_servo.h): releasing it fell back to
+     * the chip's own DC (cells off on this board) and the ban kept the servo
+     * off that row for 2-32 s. Blackbox 2026-10-27 (sessions 246-249): edge
+     * rows G73-G83 sat 2-4.4 cells off for tens of seconds with their held
+     * trims unchanged, and RECOVER lasted 3-10 s. */
     static unsigned bad_ticks;
     const uint8_t g = s_current_gain;
     if (phy_dco_held()) {
-        bad_ticks = (s_obs_origin_pm >= 900 || s_obs_clip_pm >= 500) ? bad_ticks + 1u : 0u;
+        const bool bad = s_obs_origin_pm >= 900 || s_obs_clip_pm >= 500;
+        if (bad && dc_servo_can_fix(g)) { calibration_dc_urgent(); bad_ticks = 0; ++s_dco_guard_deferred; }
+        else bad_ticks = bad ? bad_ticks + 1u : 0u;
         if (bad_ticks >= 3u) {
             (void)phy_dco_release();
             s_dco_banned[g] = 1u;
@@ -1747,8 +1761,9 @@ _Static_assert(DC_SERVO_ROW0 + DC_SERVO_ROWS == ARC_VENDOR_GAIN_MAX + 1u, "servo
 static bool s_servo_ready;
 /* No step: state (menu, scan, startup), row without codes or another table,
  * sampling phase not settled, PHY busy, write refused. */
-static uint32_t s_servo_skip[5], s_servo_estimates;
+static uint32_t s_servo_skip[5], s_servo_estimates, s_servo_fast;
 static int s_servo_dc[2];      /* last mean of the active row (T DC_SERVO) */
+static int64_t s_servo_dc_us;  /* when s_servo_dc was measured */
 static bool s_servo_phase_hold; /* waiting for a settled sampling phase */
 static struct { uint32_t control, reloads; uint16_t freq, key; } s_servo_ctx;
 
@@ -1789,13 +1804,20 @@ static bool servo_write_active(uint8_t g, const int step[2], int applied[2], boo
     if (!phy_dco_read_pair(pair)) { phy_end_actuator(); return false; }
     int cur[2] = {pair[0], pair[1]};
     for (int a = 0; a < 2 && !*fault; ++a) {
-        if (!step[a]) continue;
-        int target[2] = {cur[0], cur[1]};
-        target[a] += step[a];
-        if (target[a] < 0 || target[a] > 511) continue;
-        const esp_err_t err = phy_dco_try_pair(context.packed_gain, cur, target);
-        if (err == ESP_OK) { cur[0] = target[0]; cur[1] = target[1]; }
-        else { *fault = err == ESP_ERR_INVALID_RESPONSE; ++s_servo_skip[4]; break; }
+        /* Verified trials of at most PHY_DCO_TRY_MAX codes each: the sign
+         * bracket asks for up to DC_SERVO_FOLD_STEP_MAX. */
+        int left = step[a];
+        bool stop = false;
+        while (left && !stop) {
+            const int part = left > PHY_DCO_TRY_MAX ? PHY_DCO_TRY_MAX : left < -PHY_DCO_TRY_MAX ? -PHY_DCO_TRY_MAX : left;
+            int target[2] = {cur[0], cur[1]};
+            target[a] += part;
+            if (target[a] < 0 || target[a] > 511) break;
+            const esp_err_t err = phy_dco_try_pair(context.packed_gain, cur, target);
+            if (err == ESP_OK) { cur[0] = target[0]; cur[1] = target[1]; left -= part; }
+            else { *fault = err == ESP_ERR_INVALID_RESPONSE; ++s_servo_skip[4]; stop = true; }
+        }
+        if (stop) break;
     }
     applied[0] = cur[0] - pair[0];
     applied[1] = cur[1] - pair[1];
@@ -1849,11 +1871,26 @@ static void servo_service(void)
         int64_t si, sq;
         uint32_t samples, neg[2];
         int dc[2];
-        if (!receiver_dc_take_row(g, DC_SERVO_MIN_SAMPLES, &si, &sq, neg, &samples) ||
-            !dc_servo_mean(si, sq, samples, dc)) continue;
+        /* A saturated sign share is decided on DC_SERVO_FAST_SAMPLES: a row
+         * on a rail is corrected in one short visit, not after 40000 samples
+         * that a row hopped through at the edge rarely collects. */
+        uint32_t need = DC_SERVO_MIN_SAMPLES, peek_neg[2], peek_n;
+        if (receiver_dc_peek_row(g, peek_neg, &peek_n) && peek_n >= DC_SERVO_FAST_SAMPLES &&
+            (dc_servo_saturated(dc_servo_pneg(peek_neg[0], peek_n)) || dc_servo_saturated(dc_servo_pneg(peek_neg[1], peek_n))))
+            need = DC_SERVO_FAST_SAMPLES;
+        if (!receiver_dc_take_row(g, need, &si, &sq, neg, &samples)) continue;
+        if (samples < DC_SERVO_MIN_SAMPLES) {     /* dc_servo_mean wants the full count: scale */
+            si = si * (int64_t)DC_SERVO_MIN_SAMPLES / (int64_t)samples;
+            sq = sq * (int64_t)DC_SERVO_MIN_SAMPLES / (int64_t)samples;
+            neg[0] = (uint32_t)((uint64_t)neg[0] * DC_SERVO_MIN_SAMPLES / samples);
+            neg[1] = (uint32_t)((uint64_t)neg[1] * DC_SERVO_MIN_SAMPLES / samples);
+            samples = DC_SERVO_MIN_SAMPLES;
+            ++s_servo_fast;
+        }
+        if (!dc_servo_mean(si, sq, samples, dc)) continue;
         const int pneg[2] = {dc_servo_pneg(neg[0], samples), dc_servo_pneg(neg[1], samples)};
         ++s_servo_estimates;
-        if (g == s_current_gain) { s_servo_dc[0] = dc[0]; s_servo_dc[1] = dc[1]; }
+        if (g == s_current_gain) { s_servo_dc[0] = dc[0]; s_servo_dc[1] = dc[1]; s_servo_dc_us = esp_timer_get_time(); }
         if (s_dco.e[g].valid != DCO_ROW_OK || s_dco_banned[g]) {
             ++s_servo_skip[1];
             dc_servo_forget_step(&s_servo, sr);
@@ -2296,6 +2333,29 @@ static void startup_phase(bool full)
         status_screen("GAIN NOT AUTO", line, "MENU > GAIN, HOLD TO CHANGE", -1);
         vTaskDelay(pdMS_TO_TICKS(3000));
     }
+    /* A calibration never ends silently half done: blackbox 2026-10-27 had
+     * six and three manual runs in a row (sessions 240, 242) leaving 30 and 15
+     * of 30 DC rows from templates, with only an 0.8 s DC NOT COMPLETE line.
+     * The end screen names the result for 3 s; the live servo still trims
+     * every row, so an incomplete table costs time to converge, not range. */
+    {
+        const unsigned templ = dco_template_rows(), missing = dco_rows(0);
+        const bool dc_ok = dco_current_complete();
+        char line1[48], line2[48];
+        if (dc_ok) {
+            snprintf(line1, sizeof(line1), "DC %u ROWS MEASURED", dco_valid_rows() + dco_rows(DCO_ROW_FLOOR));
+            snprintf(line2, sizeof(line2), "FILTER %s", s_filter_result);
+        } else {
+            snprintf(line1, sizeof(line1), "DC: %u TEMPLATE %u MISSING", templ, missing);
+            snprintf(line2, sizeof(line2), "%s: VTX OFF, CALIBRATE AGAIN",
+                     !strcmp(s_dco_last_why, "carrier_detected") || !strcmp(s_dco_last_why, "need_vtx_off") ? "CARRIER" :
+                     !strcmp(s_dco_last_why, "timeout") ? "TIMEOUT" : "STOPPED");
+        }
+        printf("CAL_RESULT dc=%s why=%s template_rows=%u missing_rows=%u filter=%s\n", dc_ok ? "complete" : "incomplete",
+               s_dco_last_why, templ, missing, s_filter_result);
+        status_screen(dc_ok ? "CALIBRATION OK" : "CALIBRATION INCOMPLETE", line1, line2, dc_ok ? 100 : -1);
+        vTaskDelay(pdMS_TO_TICKS(3000));
+    }
     status_screen_end();
     s_startup = false;
     calib_record(manual, t0);
@@ -2682,7 +2742,13 @@ static uint8_t sphase_code(void)
 
 void calibration_flog_live(int dc[2], int off[2], uint32_t *servo_writes, uint8_t *sphase, int8_t *temp_c)
 {
-    dc[0] = s_drift_avg[0]; dc[1] = s_drift_avg[1];
+    /* The active row's DC as the servo measured it (>= 4096 observer samples,
+     * the means of every settled probe), while fresh. The health block's
+     * circle fit is kept only as the fallback: on a weak carrier it read
+     * -4.15 cells for 9 s where the IQ held -0.09 (blackbox session 249). */
+    const bool fresh = s_servo_dc_us && esp_timer_get_time() - s_servo_dc_us < 2000000;
+    dc[0] = fresh ? s_servo_dc[0] : s_drift_avg[0];
+    dc[1] = fresh ? s_servo_dc[1] : s_drift_avg[1];
     off[0] = dco_offset(s_current_gain, 0); off[1] = dco_offset(s_current_gain, 1);
     *servo_writes = s_servo_writes;
     *sphase = sphase_code();
@@ -2751,7 +2817,7 @@ void calibration_print(void)
     const int bad = phy_filter_hw_mismatch(hw, want);
     printf("PHY11P want=1 hw_enabled=%d (-1=unsupported; analog profile checked below)\n", phy_11p_hw_enabled());
     printf("DFILT want=%d hw_mode=%d (-1=unsupported)\n",
-           PHY_DFILT_MODE_DEFAULT, phy_dfilt_hw_mode());
+           phy_dfilt_mode(), phy_dfilt_hw_mode());
     printf("FILTER_HW mismatch=%d hw=%02x%02x%02x%02x%02x%02x%02x%02x want=%02x%02x%02x%02x%02x%02x%02x%02x\n", bad,
            hw[0], hw[1], hw[2], hw[3], hw[4], hw[5], hw[6], hw[7],
            want[0], want[1], want[2], want[3], want[4], want[5], want[6], want[7]);
@@ -2787,16 +2853,18 @@ void calibration_print(void)
            dco_mask_count(s_dco_preset, s_dco.lo, s_dco.hi), (unsigned long)s_dco_preset_holds);
     printf("DC_SERVO dc_mcells=%d/%d slope_mcells_per_code=%d/%d known=%u/%u pol_votes=%d/%d offset=%d/%d own_trim=%u "
            "steps=%lu writes=%lu estimates=%lu learned=%lu relearned=%lu sign_rejects=%lu turns=%lu forgotten=%lu "
-           "adopted=%lu urgent_wakes=%lu skip=%lu/%lu/%lu/%lu/%lu fault=%u\n", s_servo_dc[0], s_servo_dc[1],
+           "adopted=%lu urgent_wakes=%lu fast=%lu brackets=%lu skip=%lu/%lu/%lu/%lu/%lu fault=%u\n", s_servo_dc[0], s_servo_dc[1],
            s_servo.slope[0], s_servo.slope[1], s_servo.known[0], s_servo.known[1], s_servo.pol_votes[0],
            s_servo.pol_votes[1], dco_offset(s_current_gain, 0), dco_offset(s_current_gain, 1),
            s_current_gain <= ARC_VENDOR_GAIN_MAX ? (unsigned)s_drift_set[s_current_gain] : 0u,
            (unsigned long)s_servo.steps, (unsigned long)s_servo_writes, (unsigned long)s_servo_estimates,
            (unsigned long)s_servo.learned, (unsigned long)s_servo.relearned, (unsigned long)s_servo.sign_rejects,
            (unsigned long)s_servo.turns, (unsigned long)s_servo.forgotten, (unsigned long)s_dco_adopted,
-           (unsigned long)s_dc_urgent_wakes, (unsigned long)s_servo_skip[0], (unsigned long)s_servo_skip[1],
+           (unsigned long)s_dc_urgent_wakes, (unsigned long)s_servo_fast, (unsigned long)s_servo.brackets,
+           (unsigned long)s_servo_skip[0], (unsigned long)s_servo_skip[1],
            (unsigned long)s_servo_skip[2], (unsigned long)s_servo_skip[3], (unsigned long)s_servo_skip[4], s_dc_fault);
-    printf("DCO_BAN unbans=%lu (a railing hold is released for 2-32 s, then held again)\n", (unsigned long)s_dco_unbans);
+    printf("DCO_BAN unbans=%lu deferred_to_servo=%lu (a hold is released for 2-32 s only where the servo cannot trim it)\n",
+           (unsigned long)s_dco_unbans, (unsigned long)s_dco_guard_deferred);
     printf("DCO_ADOPT disabled=manual_only\n");
     for (unsigned g = s_dco.lo; g <= s_dco.hi && g <= ARC_VENDOR_GAIN_MAX; ++g)
         printf("CAL_ROW freq=%u filter_key=%04x gain=%u codes=%d/%d residual_mcells=%d/%d valid=%u template=%u\n",

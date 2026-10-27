@@ -125,7 +125,10 @@ int main(void)
     /* A wrong default polarity is relearned. */
     dc_servo_init(&s);
     const int flipped = run(2.5, 2.5, -150, -150, 1.9, 0., 25, &s, NULL);
-    check("inverted DAC polarity: learned, converges", flipped <= 350 && s.learned > 0);
+    /* The sign-bit bracket finds the polarity by its fold walk (a turn) and
+     * often reaches zero before a linear-zone step could measure a slope. */
+    check("inverted DAC polarity: found, converges", flipped <= 350 && s.slope[0] < 0 && s.slope[1] < 0 &&
+          (s.learned > 0 || s.turns > 0));
 
     /* Steps never exceed the DAC trial limit. */
     dc_servo_init(&s);
@@ -257,6 +260,40 @@ int main(void)
         }
         printf("     polarity votes %d/%d, slope after folding %d/%d, turns %lu\n", p.pol_votes[0], p.pol_votes[1], p.slope[0], p.slope[1], (unsigned long)p.turns);
         check("a proven polarity is not flipped by seconds of folded IQ", votes_ok && p.slope[0] > 0 && p.slope[1] > 0);
+    }
+    {   /* A row whose noise is under a cell (sigma 0.3): every sample in one
+         * cell, the sign share jumps 0 <-> 1000. The bracket must settle on
+         * the one-code crossing instead of hunting +-8 codes. */
+        dc_servo_t b;
+        dc_servo_init(&b);
+        int code_end[2];
+        unsigned steps_before;
+        const int e = run(1.1, -0.9, 250, 250, 0.3, 0., 30, &b, code_end);
+        steps_before = b.steps;
+        (void)run(1.1 + code_end[0] * .25, -0.9 + code_end[1] * .25, 250, 250, 0.3, 0., 30, &b, NULL);
+        printf("     sigma 0.3: |DC| %d mcells, brackets %lu, steps %u then %lu more in 30 periods\n", e,
+               (unsigned long)b.brackets, steps_before, (unsigned long)(b.steps - steps_before));
+        check("sub-cell noise: settles within one code (<= 0.25 cells), then holds", e <= 250 &&
+              b.steps - steps_before <= 2u);
+    }
+    {   /* Blackbox 2026-10-27: edge rows 13-48 codes off their table codes. A
+         * 48-code error (12 cells at 250 mcells/code, folded) with sigma 0.8
+         * reaches 0.35 cells in few decisions; 8-code steps needed >= 6 plus
+         * the fold walk. */
+        unsigned worst_periods = 0;
+        static const double err[] = {-12.0, -6.0, 6.0, 12.0};
+        for (unsigned k = 0; k < sizeof(err) / sizeof(err[0]); ++k) {
+            unsigned p = 1;
+            for (; p <= 40u; ++p) {
+                dc_servo_t t;
+                dc_servo_init(&t);
+                t.pol_votes[0] = t.pol_votes[1] = 1;        /* a learned polarity (stored per board) */
+                if (run(err[k], -err[k] / 2, 250, 250, 0.8, 0., p, &t, NULL) <= 350) break;
+            }
+            worst_periods = p > worst_periods ? p : worst_periods;
+        }
+        printf("     template rows 6-12 cells off, sigma 0.8: within 0.35 cells after <= %u decisions\n", worst_periods);
+        check("template rows 6-12 cells off: corrected within 8 decisions", worst_periods <= 8u);
     }
     printf("%u/%u dc servo checks passed\n", s_run - s_fail, s_run);
     return s_fail != 0;

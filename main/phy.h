@@ -50,8 +50,17 @@ int phy_filter_hw_mismatch(uint8_t hw[8], uint8_t want[8]);
  * remain lab research. The vendor-selected ADC rate is preserved.
  * Unsupported PHYs refuse the write and report -1 for readback. */
 #define PHY_DFILT_MODE_DEFAULT 12
+/* Applies the selected mode (PHY_DFILT_MODE_DEFAULT unless the operator
+ * chose another in menu PHY FILT); every RF restore reapplies it. */
 bool phy_dfilt_apply_default(void);
 int phy_dfilt_hw_mode(void);
+/* Operator choice among the bench-safe modes 0/4/8/12 (PR #244, #279), kept
+ * across reboots by the settings prefs; the noise maps and the C/N reference
+ * are measured in PHY_DFILT_MODE_DEFAULT. Returns false for another value or
+ * a failed readback (then the previous mode is restored). */
+bool phy_dfilt_select(int mode);
+int phy_dfilt_mode(void);
+int phy_dfilt_next(int mode);
 
 /* PR #254 11p baseline, pinned helper (1,0). Verified full entry and exact
  * saved-state rollback; ESP_ERR_INVALID_RESPONSE = entry failed/restored,

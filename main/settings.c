@@ -57,6 +57,19 @@ void settings_load(void)
     if (s.std_mode <= STD_MODE_PAL) s_std_mode = (std_mode_t)s.std_mode;
 }
 
+bool settings_prefs_load(settings_prefs_t *p)
+{
+    return blob_load("prefs", p, sizeof(*p)) && p->version == SETTINGS_PREFS_VERSION;
+}
+
+void settings_prefs_store(const settings_prefs_t *p)
+{
+    settings_prefs_t old;
+    if (blob_load("prefs", &old, sizeof(old)) && old.version == p->version && old.filter_select == p->filter_select &&
+        old.gain_mode == p->gain_mode && old.dfilt_mode == p->dfilt_mode) return;   /* flash wear */
+    (void)blob_store("prefs", p, sizeof(*p));
+}
+
 void settings_save_output(unsigned level)
 {
     if (level >= OUTPUT_LEVELS) return;

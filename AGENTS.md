@@ -686,6 +686,14 @@ hand) as template rows. Live, the per-row DC servo of main (`servo_service`,
 template/base-map row it holds within 0.3 cells as an own row. Calibration is
 recommended only at the servo's trim limit, without a row, after a fault, or
 after 30 s of qualified DC above 1.5 cells. See docs/FASTER_CALIBRATION.md.
+Range edge audit (2026-10-27, docs/FINDINGS.md "Range edge audit"): the hold
+guard in `dco_service()` releases/bans a row only where the servo cannot trim
+it (a ban used to lock the servo out of railing edge rows for 2-32 s); the
+servo brackets the sign bit where its share saturates (double / halve, hold a
+one-code crossing) and decides on 4096 samples there. Do not restore the
+unconditional rail ban. Manual calibration ends on CALIBRATION OK /
+INCOMPLETE (`CAL_RESULT`). The AFC porch window is 1.2-3.6 us after the
+detected sync end (the PAL-set 3.4-4.4 us read NTSC active video).
 
 ## Startup calibration acceleration (2026-10-25, hardware pending)
 
@@ -790,6 +798,10 @@ requirements by themselves**.
 - Digital RX filter mode 12 (`PHY_DFILT_MODE_DEFAULT`) is reapplied after
   every vendor restore on the pinned PHY. Mode 0 (PR #244) was chosen on
   VTX-off noise; the VTX-on lab (2026-10-26) reproduced mode 12 better.
+  Menu PHY FILT selects 12/0/4/8 (`phy_dfilt_select`, kept in NVS `prefs`
+  with the FILTER choice and the GAIN model; maps are measured in 12).
+  MAX and fixed gains are never restored: every boot starts on an automatic
+  gain model.
   Preserve the vendor ADC-rate choice; other mode values and ADC-rate
   overrides are lab research. Readback and calibration migration are
   required when changing the receive transfer function. See
@@ -979,7 +991,7 @@ This section supersedes older C5VRX-5 default/feature notes above.
 Direct Gain V6 extends V5 with same-context carrier memory: hold 10 ms,
 then climb eight indices per 3 ms; overload above the remembered healthy gain
 returns to it in one write. Learned maps still require exact provenance.
-GAIN (console `G`): AUTO (KEEL-1), the research AGC models LEVEL and RSSI (`main/agc.c`, PR #266, host-simulated, for an operator board A/B; KEEL-1 stays the default), MAX or fixed G78..G24, never stored: every boot starts AUTO (operator decision 2026-10-20). See docs/FINDINGS.md "AGC research".
+GAIN (console `G`): AUTO (KEEL-1), the research AGC models LEVEL and RSSI (`main/agc.c`, PR #266, host-simulated, for an operator board A/B; KEEL-1 stays the default), MAX or fixed G78..G24. The automatic models are kept across reboots (NVS `prefs`, 2026-10-27); MAX and fixed gains are never stored: such a boot starts AUTO (operator decision 2026-10-20). See docs/FINDINGS.md "AGC research".
 FLYWHEEL (console `U`) was removed on 2026-10-25 (operator: extreme
 desyncs and poor range); see the realtime invariants above.
 Menu entry allocates internal DMA descriptors in 384-byte chunks before

@@ -14,6 +14,7 @@
 #include "rf.h"
 #include "dac_check.h"
 #include "menu_ui.h"
+#include "phy.h"
 #include "profile_logic.h"
 
 void transport_start_chain(dma_descriptor_t *first);
@@ -201,6 +202,7 @@ void menu_render(void)
         .filter_active = active >= 0 && active < PROFILES ? s_class[active] : "?",
         .filter_width_khz = calibration_filter_width_khz(),
         .narrow_ok = profile_selectable(PROFILE_NARROW), .wide_ok = profile_selectable(PROFILE_WIDE),
+        .dfilt_mode = phy_dfilt_mode(), .dfilt_default = phy_dfilt_mode() == PHY_DFILT_MODE_DEFAULT,
         .filter_recommended = dev > 0 ? s_class[profile_for_deviation(dev)] : NULL,
         .deviation_x100 = dev, .offset_khz = rf_offset_khz(),
         .cn_x10 = receiver_obs_cn_x10(), .firmware = esp_app_get_description()->version,

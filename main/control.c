@@ -254,6 +254,30 @@ static void cycle_video_standard(void)
 }
 
 /* AFC OFF returns the synthesizer to the exact channel centre (0 kHz offset). */
+/* Menu choices kept across reboots (settings prefs). */
+static void prefs_save(void)
+{
+    const uint8_t gain = receiver_gain_mode();
+    const settings_prefs_t p = {SETTINGS_PREFS_VERSION, (int8_t)profile_selected(),
+                                receiver_gain_mode_auto(gain) ? gain : (uint8_t)GAIN_MODE_AUTO,
+                                (uint8_t)phy_dfilt_mode()};
+    settings_prefs_store(&p);
+}
+
+/* Menu PHY FILT: the digital RX filter mode 12 -> 0 -> 4 -> 8 (saved;
+ * phy.h). A different transfer function changes the receiver noise
+ * (PR #244: +0.24..+0.73 dB between modes) and the IQ the DC servo trims,
+ * so the gain observation restarts on the new mode. */
+static void cycle_dfilt(void)
+{
+    const int want = phy_dfilt_next(phy_dfilt_mode());
+    const bool ok = phy_dfilt_select(want);
+    receiver_dc_reset_all();
+    if (ok) prefs_save();
+    printf("[DFILT] mode=%d requested=%d applied=%u hw=%d (saved; boot default %d)\n", phy_dfilt_mode(), want,
+           ok, phy_dfilt_hw_mode(), PHY_DFILT_MODE_DEFAULT);
+}
+
 static void toggle_afc(void)
 {
     s_afc_enabled = !s_afc_enabled;
@@ -292,11 +316,12 @@ static void menu_action(void)
     case MENU_BAND: rf_next_band(); after_retune(); break;
     case MENU_CHANNEL: rf_next_channel(); after_retune(); break;
     case MENU_SCAN: scan(); break;
-    case MENU_FILTER: (void)profile_select_cycle(); break;
+    case MENU_FILTER: (void)profile_select_cycle(); prefs_save(); break;
     case MENU_AFC: toggle_afc(); break;
+    case MENU_DFILT: cycle_dfilt(); break;
     case MENU_CALIBRATE: s_cal_sub = MENU_CAL_QUICK; break;   /* opens the QUICK / FULL / BACK submenu */
     case MENU_OUTPUT: (void)transport_set_output((transport_output() + 1u) % OUTPUT_LEVELS); break;
-    case MENU_GAIN: receiver_set_gain_mode(receiver_gain_mode_next(receiver_gain_mode()), true); break;
+    case MENU_GAIN: receiver_set_gain_mode(receiver_gain_mode_next(receiver_gain_mode()), true); prefs_save(); break;
     case MENU_DAC: menu_dac_step(); break;
     case MENU_VIDEO:
         cycle_video_standard();
@@ -314,7 +339,7 @@ static void command(int c, unsigned *menu_idle)
         return;
     }
     switch (c) {
-    case 'G': receiver_set_gain_mode(receiver_gain_mode_next(receiver_gain_mode()), true); break;
+    case 'G': receiver_set_gain_mode(receiver_gain_mode_next(receiver_gain_mode()), true); prefs_save(); break;
     /* Bench: the real gain step of every table row pair (receiver.c). */
     case 'Q': receiver_pair_sweep_toggle(); break;
     /* DAC self-test: open the menu on DAC TEST, then step like a hold. */
@@ -326,7 +351,7 @@ static void command(int c, unsigned *menu_idle)
     case 'o': if (s_menu_active) menu_close(); else (void)menu_open_checked(); break;
     case 'e': menu_close(); break;  /* idempotent web-menu EXIT */
     case 'v': cycle_video_standard(); break;
-    case 'f': (void)profile_select_cycle(); if (s_menu_active) menu_render(); break;   /* menu FILTER hold */
+    case 'f': (void)profile_select_cycle(); prefs_save(); if (s_menu_active) menu_render(); break;   /* menu FILTER hold */
     case 'n': if (s_menu_active) menu_next(); break;
     case 'x': if (s_menu_active) menu_action(); break;
     case 'c': rf_next_channel(); after_retune(); break;

@@ -56,14 +56,37 @@
 #define DC_SERVO_FOLD_MCELLS   2000
 #define DC_SERVO_FOLD_FLIP     64
 #define DC_SERVO_FOLD_FLIP_MAX 512   /* the window doubles per flip (an expanding search) */
+/* A bracketing search on the sign bit where the sign share saturates (the
+ * cloud on one side of zero: a DC beyond ~1.3 sigma, or a row whose noise is
+ * under one cell). Still on the same side after a step: the next step
+ * doubles (up to DC_SERVO_FOLD_STEP_MAX); across zero: it halves, down to one
+ * code. The sign bit is the ADC's own and never folds, so the crossing it
+ * brackets is the true zero, at any DC and any noise level. A one-code
+ * crossing is held (DC within one code of zero) until the mean moves by
+ * DC_SERVO_BRACKET_MOVE_MCELLS. Blackbox 2026-10-27, sessions 246-249: the
+ * edge rows G73-G83 sat 13-48 codes from their table codes; with 8-code
+ * steps on 40000-sample means that took seconds per row, and rows with
+ * noise under a cell hunted +-8 codes around zero. */
+#define DC_SERVO_FOLD_STEP_MAX 16
+#define DC_SERVO_BRACKET_MOVE_MCELLS 800
+/* Decisions on a saturated sign share need far fewer samples: at 4096
+ * samples a share below DC_SERVO_PNEG_SAT_LO or above _HI is > 9 sigma from
+ * one half (the binomial sd is 7.8 per mille). */
+#define DC_SERVO_FAST_SAMPLES  4096u
+#define DC_SERVO_PNEG_SAT_LO   30
+#define DC_SERVO_PNEG_SAT_HI   970
 
 typedef struct {
     int slope[2];       /* mcells per code, signed, shared by the rows */
     uint8_t known[2];   /* slope measured (not the default) */
     int8_t pol_votes[2]; /* polarity evidence from linear-zone steps (+ / -), kept across relearns */
-    struct { int last_dc[2], last_step[2]; uint8_t bad[2], last_folded[2]; int fold_walk[2], last_pneg[2], fold_window[2]; uint8_t fold_bad[2]; } row[DC_SERVO_ROWS];
-    uint32_t steps, learned, relearned, sign_rejects, forgotten, turns;
+    struct { int last_dc[2], last_step[2]; uint8_t bad[2], last_folded[2]; int fold_walk[2], last_pneg[2], fold_window[2]; uint8_t fold_bad[2];
+             int8_t prev_step[2]; uint8_t bracket[2]; int16_t bracket_dc[2]; } row[DC_SERVO_ROWS];
+    uint32_t steps, learned, relearned, sign_rejects, forgotten, turns, brackets;
 } dc_servo_t;
+
+/* Whether a sign share is saturated (the fast-decision condition). */
+static inline bool dc_servo_saturated(int pneg) { return pneg < DC_SERVO_PNEG_SAT_LO || pneg > DC_SERVO_PNEG_SAT_HI; }
 
 static inline int dc_servo_abs(int v) { return v < 0 ? -v : v; }
 
@@ -159,8 +182,55 @@ static inline void dc_servo_decide_sign(dc_servo_t *s, unsigned r, const int dc[
         s->row[r].last_pneg[a] = pneg ? pneg[a] : 500;
         if (!folded) s->row[r].fold_walk[a] = s->row[r].fold_bad[a] = s->row[r].fold_window[a] = 0;
         if (!s->row[r].fold_window[a]) s->row[r].fold_window[a] = DC_SERVO_FOLD_FLIP;
-        if (!folded && dc_servo_abs(dc[a]) <= DC_SERVO_DEADBAND) continue;
+        if (!folded) s->row[r].bracket[a] = 0;
+        if (!folded && dc_servo_abs(dc[a]) <= DC_SERVO_DEADBAND) { s->row[r].prev_step[a] = 0; continue; }
+        /* A held one-code crossing: the row is within a code of zero. */
+        if (folded && pneg && s->row[r].bracket[a]) {
+            if (dc_servo_abs(dc[a] - s->row[r].bracket_dc[a]) <= DC_SERVO_BRACKET_MOVE_MCELLS) continue;
+            s->row[r].bracket[a] = 0;
+            s->row[r].prev_step[a] = 0;
+        }
         int st;
+        if (folded && pneg) {
+            /* Bracketing search on the sign bit (see DC_SERVO_FOLD_STEP_MAX). */
+            const bool proven = s->pol_votes[a] >= 1 ? s->slope[a] > 0 : s->pol_votes[a] <= -1 ? s->slope[a] < 0 : false;
+            if (proven && s->row[r].fold_walk[a] >= s->row[r].fold_window[a]) {
+                s->row[r].fold_walk[a] = 0;
+                s->row[r].fold_window[a] = s->row[r].fold_window[a] * 2 > DC_SERVO_FOLD_FLIP_MAX ?
+                                           DC_SERVO_FOLD_FLIP_MAX : s->row[r].fold_window[a] * 2;
+            }
+            if (s->row[r].fold_walk[a] >= s->row[r].fold_window[a]) {
+                s->slope[a] = -s->slope[a];          /* walked this far and still folded: wrong polarity */
+                s->known[a] = 0;
+                s->row[r].fold_walk[a] = 0;
+                s->row[r].prev_step[a] = 0;          /* the old direction says nothing now */
+                s->row[r].fold_window[a] = s->row[r].fold_window[a] * 2 > DC_SERVO_FOLD_FLIP_MAX ?
+                                           DC_SERVO_FOLD_FLIP_MAX : s->row[r].fold_window[a] * 2;
+                ++s->turns;
+            }
+            const int dir = (sign > 0) == (s->slope[a] > 0) ? -1 : 1;
+            const int prev = s->row[r].prev_step[a];
+            int mag = DC_SERVO_STEP_MAX;
+            if (prev && (prev > 0) == (dir > 0)) {
+                mag = 2 * dc_servo_abs(prev);        /* same side: expand */
+                if (mag > DC_SERVO_FOLD_STEP_MAX) mag = DC_SERVO_FOLD_STEP_MAX;
+            } else if (prev) {
+                mag = dc_servo_abs(prev) / 2;        /* crossed zero: halve */
+                if (!mag) {                          /* a one-code crossing: hold here */
+                    s->row[r].bracket[a] = 1;
+                    s->row[r].bracket_dc[a] = (int16_t)(dc[a] > 30000 ? 30000 : dc[a] < -30000 ? -30000 : dc[a]);
+                    s->row[r].prev_step[a] = 0;
+                    s->row[r].fold_walk[a] = 0;
+                    ++s->brackets;
+                    continue;
+                }
+            }
+            st = dir * mag;
+            s->row[r].fold_walk[a] += mag;
+            s->row[r].prev_step[a] = (int8_t)st;
+            step[a] = st;
+            continue;
+        }
         if (folded) {
             /* A polarity with net linear-zone evidence is not flipped here:
              * a strong carrier folds the IQ and the sign share says nothing
@@ -194,6 +264,7 @@ static inline void dc_servo_decide_sign(dc_servo_t *s, unsigned r, const int dc[
         }
         if (st > DC_SERVO_STEP_MAX) st = DC_SERVO_STEP_MAX;
         if (st < -DC_SERVO_STEP_MAX) st = -DC_SERVO_STEP_MAX;
+        s->row[r].prev_step[a] = (int8_t)st;
         step[a] = st;
     }
 }
@@ -220,6 +291,8 @@ static inline void dc_servo_forget_step(dc_servo_t *s, unsigned r)
     if (r >= DC_SERVO_ROWS) return;
     if (s->row[r].last_step[0] || s->row[r].last_step[1]) ++s->forgotten;
     s->row[r].last_step[0] = s->row[r].last_step[1] = 0;
+    s->row[r].prev_step[0] = s->row[r].prev_step[1] = 0;
+    s->row[r].bracket[0] = s->row[r].bracket[1] = 0;
 }
 
 static inline void dc_servo_forget_all(dc_servo_t *s)

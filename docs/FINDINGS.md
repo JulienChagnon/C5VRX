@@ -7,6 +7,93 @@ scripts and data live in that branch under `v4/docs/PICTURE_CLIFF_STUDY.md`,
 Synthetic results are host simulations; board results are labelled as such.
 Measured range is not established.
 
+## Range edge audit: DC lockout, NTSC porch window, PHY FILT (blackbox, 2026-10-27)
+
+Board b26ef545, A1 5865 MHz, NTSC VTX, firmware `5.0.0-menu+local` (the
+#280 menu build). Blackbox sessions 237-251 and 64 IQ snapshots, read with
+`tools/flight_log.py` and `tools/edge_audit.py`. Operator report: "range is
+bad, gone at about -84 dBm".
+
+**Where the edge is.** Walking (sessions 246-249), binned by RX_LEVEL:
+video 70-100 % at -84 dBm, ~50 % at -86..-87, 10-25 % at -88..-90, against
+the 2026-10-20 rating of ~-88..-90 walking (U85Q). The meter carries
++-1-2 dB, so the walk gap is 2-3 dB, not 6-8.
+
+**Ruled out on the data:**
+- I-LSB on the user-LED GPIO27: across all snapshots the I and Q LSB have the
+  same duty (~50 %), the same lag-1 agreement and the same odd/even code
+  balance, and the same correlation with the upper bits' slope at lags -2..2
+  (+-0.40 at -1/0 for both): no load, no late edge.
+- U80P64-R1: edge snapshots that the record calls lost (video 11-37 %)
+  hold clean syncs on every line through P64, U85Q and a float
+  discriminator alike (C/N 8.7-11 dB in the IQ, M2M4).
+- XNARROW: chosen by the smallest -3 dB width; its noise bandwidth (11.7
+  MHz in the mode 12 sweep) is NARROW's, so it cannot add range.
+
+**What costs the edge.**
+1. *DC rows locked out.* `dco_service()` released a held DC pair after
+   three windows of >= 50 % clipping and banned the row for 2-32 s, during
+   which `servo_service()` skips it. A row the servo could still trim fell
+   back to the chip's own DC (4.8/2.2 cells at one boot on this board) and
+   could not be corrected: session 247, G73 with no carrier, Q at +4.4
+   cells for about a minute at the same held trim that read -0.2 cells with
+   a carrier later; RECOVER lasted 3-10 s after each fade while the level
+   was already back at -85..-88 dBm.
+2. *Slow rows.* The edge rows G73-G83 needed 13-48 codes of trim after the
+   manual calibrations (old build, session 230: 0-5). With 8-code steps on
+   40000-sample means a row hopped through at the edge took seconds per
+   row; rows with noise under a cell hunted +-8 codes around zero.
+3. *Telemetry.* The per-second DC (`s_drift_avg`, the health block's circle
+   fit) holds its last qualified value: session 249 logged -4.15/+1.44 cells
+   for 9 s while the snapshot IQ read -0.09/-0.09.
+4. *Calibration results.* Session 240: six manual runs, final table 30/30
+   template rows; session 242: three runs, 15/30. The only sign was an
+   0.8 s DC NOT COMPLETE line.
+5. *NTSC AFC.* Board snapshots, `afc2_measure` replay with the porch window
+   moved: the old window (3.4-4.4 us after the detected sync end, set for
+   PAL) read the NTSC porch at -1019 kHz; 1.2-3.6 us reads -1248 (PAL lab
+   snapshots: -1044 vs -1040). NTSC picture starts ~4.0 us after the
+   detected end (float discriminator profile), so the old window averaged
+   video and took a VTX ~230 kHz off for centred: `afc_locked=0` all session.
+
+**Changes.**
+- Sign-bit bracket (`dc_servo.h`): where the sign share saturates the step
+  doubles while the cloud stays on one side (8 -> 16 codes) and halves
+  across zero down to one code, where the row is held until its mean moves
+  0.8 cells. The sign bit is the ADC's own and never folds. Steps above
+  `PHY_DCO_TRY_MAX` are written as verified 8-code trials.
+- Fast decisions: a saturated share decides on 4096 samples (> 9 sigma from
+  one half) instead of 40000 (`receiver_dc_peek_row`).
+- The hold guard releases and bans only rows the servo cannot trim (trim
+  limit, no row, fault); otherwise it wakes the servo
+  (`DCO_BAN deferred_to_servo=`).
+- Blackbox DC: the servo's fresh active-row mean, the circle fit only as a
+  fallback.
+- Manual calibration ends on CALIBRATION OK / INCOMPLETE for 3 s with the
+  template and missing rows and the reason (`CAL_RESULT`).
+- AFC porch window 1.2-3.6 us (2.4 us spans 8.6 NTSC / 10.6 PAL subcarrier
+  periods, so the burst averages out).
+- Menu PHY FILT: digital RX filter mode 12 -> 0 -> 4 -> 8 (noise maps and
+  the C/N reference are measured in 12; another mode shows LAB), reapplied
+  on every RF restore, read back, previous mode kept on a failed readback;
+  the DC row sums restart on a change.
+- Menu choices kept across reboots (NVS `prefs`, operator request): FILTER,
+  PHY FILT and the GAIN model (AUTO/LEVEL/RSSI). MAX and fixed gains still
+  return to AUTO at boot (2026-10-20: a forgotten fixed gain costs range
+  without a sign). Channel, VIDEO, OUTPUT and AFC were already kept.
+
+**Host evidence.** `test/test_dc_servo.c`: template rows 6-12 cells off
+(sigma 0.8) within 0.35 cells after <= 5 decisions, sub-cell noise settles
+within one code and holds, all earlier cases pass (an inverted polarity is
+now found by a fold turn within 10 decisions). `test_dfilt_runtime.py`
+covers the mode choice through RF restores; `test_menu_ui.c` every PHY
+FILT mode. **Board, VTX off** (same board, this build, fixed G78/G72/G66,
+three 8190-byte snapshots each): DC +0.06/+0.21, <= 0.25 and <= 0.33 cells,
+servo offsets 10/-15, 5/-6, 2/-3 codes, `fault=0`, `unbans=0`,
+`deferred_to_servo=274` (holds the old guard would have released and
+banned). PHY FILT 0/4/8/12 applied and read back. The walk with the VTX
+on is the deciding test; no dB or range claim.
+
 ## Boot heap margin: about 2 KB at the boot peak (board, 2026-10-26)
 
 Board COM6 (XIAO ESP32-C5), main `9699550` and `07ece42`, with temporary

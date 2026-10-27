@@ -38,17 +38,19 @@ static const uint8_t s_gain_modes[] = {GAIN_MODE_AUTO, GAIN_MODE_LEVEL, GAIN_MOD
 
 uint8_t receiver_gain_mode(void) { return s_gain_mode; }
 
-/* The gain mode is never stored: every boot starts AUTO (operator decision
- * 2026-10-20). A fixed gain pressed once used to survive every reboot and
- * cost tens of dB of range without a warning. user: an operator change
- * (logged in the flight log). */
+/* MAX and fixed gains are never stored: such a boot starts AUTO (operator
+ * decision 2026-10-20: a fixed gain pressed once used to survive every
+ * reboot and cost tens of dB of range without a warning). The automatic
+ * models are kept by the settings prefs (control.c). user: an operator
+ * change (logged in the flight log). */
 void receiver_set_gain_mode(uint8_t mode, bool user)
 {
     if (!receiver_gain_mode_auto(mode) && mode != GAIN_MODE_MAX && (mode < 2u || mode > ARC_VENDOR_GAIN_MAX)) return;
     s_gain_mode = mode;
     if (user) flightlog_event(FLOG_E_GAIN_MODE, &mode, 1);
     char buf[16];
-    printf("GAIN mode=%s (until the next boot; every boot starts AUTO)\n", receiver_gain_mode_name(mode, buf, sizeof(buf)));
+    printf("GAIN mode=%s (%s)\n", receiver_gain_mode_name(mode, buf, sizeof(buf)),
+           receiver_gain_mode_auto(mode) ? "kept across reboots" : "this boot only; the next boot starts AUTO");
 }
 
 uint8_t receiver_gain_mode_next(uint8_t mode)
@@ -696,6 +698,16 @@ bool receiver_dc_take_row(uint8_t gain, uint32_t min_samples, int64_t *si, int64
     }
     taskEXIT_CRITICAL(&s_dc_acc_lock);
     return enough;
+}
+
+bool receiver_dc_peek_row(uint8_t gain, uint32_t neg[2], uint32_t *samples)
+{
+    if (gain > ARC_VENDOR_GAIN_MAX) return false;
+    taskENTER_CRITICAL(&s_dc_acc_lock);
+    *samples = s_dc_rows[gain].samples;
+    neg[0] = s_dc_rows[gain].ni; neg[1] = s_dc_rows[gain].nq;
+    taskEXIT_CRITICAL(&s_dc_acc_lock);
+    return *samples != 0;
 }
 
 void receiver_dc_reset_row(uint8_t gain)

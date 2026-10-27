@@ -197,6 +197,9 @@ bool receiver_dc_take_row(uint8_t gain, uint32_t min_samples, int64_t *si, int64
                           uint32_t *samples);
 void receiver_dc_reset_row(uint8_t gain);
 void receiver_dc_reset_all(void);
+/* A row's sample count and sign counts so far, without taking them: the
+ * servo decides early on a saturated sign share (dc_servo.h). */
+bool receiver_dc_peek_row(uint8_t gain, uint32_t neg[2], uint32_t *samples);
 /* DC CAL NEEDED on this channel (dc_health.h): the flagged profiles in buf
  * ("NARROW", "NORMAL+WIDE"), the number of flags as the result; the next
  * boot re-measures them. */
@@ -282,6 +285,9 @@ void profile_print(void);
 int profile_selected(void);
 bool profile_selectable(int profile);      /* calibrated filter with its own DC table (DEFAULT: always) */
 int profile_select_cycle(void);            /* hold on FILTER / console f: next choice, applied */
+/* Boot: the saved FILTER choice (settings prefs); a class without its own
+ * calibrated DC table flies DEFAULT until it has one. */
+void profile_select_restore(int select);
 bool profile_live_mode(void);              /* live profile switch on (NVS prof_live) */
 void profile_set_live_mode(bool on);
 
@@ -296,6 +302,14 @@ void diag_toggle_stream(void);          /* console R */
 void settings_load(void);
 void settings_save(void);
 void settings_save_output(unsigned level); /* only after verified output application */
+/* Menu preferences kept across reboots (NVS "prefs", operator 2026-10-27):
+ * FILTER choice, GAIN model and PHY FILT mode. Only the automatic gain
+ * models are kept: MAX and fixed gains still return to AUTO at boot (a
+ * forgotten fixed gain costs range without a sign, 2026-10-20). */
+#define SETTINGS_PREFS_VERSION 1u
+typedef struct { uint8_t version; int8_t filter_select; uint8_t gain_mode, dfilt_mode; } settings_prefs_t;
+bool settings_prefs_load(settings_prefs_t *p);
+void settings_prefs_store(const settings_prefs_t *p);   /* written only when changed */
 bool blob_load(const char *key, void *data, size_t size);
 bool blob_store(const char *key, const void *data, size_t size);
 
