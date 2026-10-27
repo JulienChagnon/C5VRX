@@ -117,6 +117,7 @@ power and channel, whether line of sight is really clear, and the firmware
 build. Capture the serial log with `R` on, then compare runs:
 
 ```
+python3 tools/flash.py COM6 --monitor-only --log run_a.log   # press R, then Ctrl+] at the end
 python3 tools/field_diag_compare.py run_a.log run_b.log run_a2.log
 ```
 

@@ -3,7 +3,8 @@
 #
 # Capture each test setup (indoor/outdoor at the same distance, low/high
 # antenna, stock/other antenna, channel A/B, firmware A/B) as a serial log
-# with the per-second stream on (console R), then:
+# with the per-second stream on (console R; tools/flash.py --monitor-only
+# --log run.log records one with timestamps, which are skipped here), then:
 #
 #   python3 tools/field_diag_compare.py low.log high.log [more.log ...]
 #
@@ -16,13 +17,15 @@ import statistics
 import sys
 
 KV = re.compile(r"(\w+)=(-?\d+)")
+# tools/flash.py --log puts a local time in front of each console line.
+STAMP = re.compile(r"^\d\d:\d\d:\d\d\.\d{3} ")
 
 
 def parse(path):
     seconds, events, chain = [], [], 0
     with open(path, errors="replace") as f:
         for line in f:
-            line = line.strip()
+            line = STAMP.sub("", line.strip())
             if line.startswith("FIELD_DIAG t="):
                 rec = {k: int(v) for k, v in KV.findall(line)}
                 # Old video_pct used measurable windows as denominator.
