@@ -46,7 +46,7 @@ static portMUX_TYPE s_lock = portMUX_INITIALIZER_UNLOCKED;
  * the (since removed) sync flywheel (board 2026-10-18: ~15 KiB DMA-capable
  * free, 18 KiB needed). */
 static RTC_FAST_ATTR diag_record_t s_hist[DIAG_HISTORY];
-static diag_trace_t s_trace;
+static EXT_RAM_BSS_ATTR diag_trace_t s_trace;   /* control task and console only: PSRAM */
 static uint32_t s_seq;                  /* records written */
 static diag_event_t s_events[DIAG_EVENTS];
 static uint32_t s_event_seq;

@@ -64,6 +64,23 @@ Not tested yet: live video with a VTX, flight-log writes under load, the
 PAL menu, long runs. PSRAM shares the MSPI bus with the flash; the video
 path (PARLIO, GDMA, BitScrambler, the RX ring) stays in internal SRAM.
 
+Three cold static buffers moved on top (`EXT_RAM_BSS_ATTR`, 7.4 KB): the
+lab's `s_dyn`, the diag trace and the flight-log queue. Static HP SRAM
+276,518 -> 269,118 bytes; on COM6 `heap_min` 14,576 -> 21,956,
+`heap_internal` 37,132 -> 44,512, largest block 17,408 -> 19,456, 26,276
+free with the menu open, no transport faults, 19 of 20 `I` snapshots.
+
+What stays internal, and why (board, same session):
+- IQ snapshot buffers. Copying the 8,190 bytes into PSRAM missed the
+  copy deadline (about 500 us before RX reaches the window): 1 of 10 `I`
+  snapshots against 19 of 20 into internal RAM. CPU writes into PSRAM at
+  80 MHz therefore run below about 16 MB/s.
+- Flash-write sources (`s_flush_buf`, snapshot buffers): from PSRAM,
+  esp_flash copies 32 bytes per page program with the cache off.
+- The gain loop's state, the control window scratch (copied under a
+  microsecond deadline), transport restart buffers, and the AGC table
+  check buffer (filled in a critical section that changes clocks).
+
 ## VTX-on PHY lab, AFC window and digital mode 12 (board, 2026-10-26)
 
 Board COM10 (NiceMCU), 5865 MHz / A1, PAL VTX on a table, firmware
