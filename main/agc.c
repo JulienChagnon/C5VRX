@@ -13,6 +13,12 @@
 #define LEVEL_DECAY_Q8 250u     /* per 5 ms: exp(-5 / 200 ms); 20 ms (199) followed the fading
                                    * itself and wrote 5 a second (test_agc_compare.c, PICTURE_Q) */
 #endif
+#ifndef LEVEL_FAST_DECAY_Q8
+#define LEVEL_FAST_DECAY_Q8 199u   /* per 5 ms: exp(-5 / 20 ms) */
+#endif
+#ifndef LEVEL_JUMP_Q8
+#define LEVEL_JUMP_Q8 (9 * 256)    /* best rows of the two histories this far apart (3 home rows): a jump, not fading; 6 dB wrote 2.6/s, 9 dB 1.7/s at the same score */
+#endif
 #ifndef LEVEL_WEIGHT
 #define LEVEL_WEIGHT 256u     /* one window */
 #endif
@@ -170,13 +176,28 @@ static void level_add(agc_level_t *a, int level_q8, uint32_t weight)
     if (level_q8 < AGC_LMIN_DB * 256) b = 0;
     b = b < 0 ? 0 : b >= AGC_BINS ? AGC_BINS - 1 : b;
     a->hist[b] += weight;
+    a->fast[b] += weight;
 }
 
-static int32_t level_utility(const agc_level_t *a, unsigned h, uint64_t total)
+static int32_t level_utility(const agc_level_t *a, const uint32_t *hist, unsigned h, uint64_t total)
 {
     int64_t u = 0;
-    for (int b = 0; b < AGC_BINS; ++b) u += (int64_t)a->hist[b] * a->quality[h][b];
+    for (int b = 0; b < AGC_BINS; ++b) u += (int64_t)hist[b] * a->quality[h][b];
     return total ? (int32_t)(u * 256 / (int64_t)total) : 0;   /* quality x256 */
+}
+
+/* The home with the highest utility over `hist` (ties: listen high). */
+static unsigned level_best(const agc_level_t *a, const uint32_t *hist, int32_t *best_u)
+{
+    uint64_t total = 0;
+    for (int b = 0; b < AGC_BINS; ++b) total += hist[b];
+    unsigned best = 0;
+    *best_u = INT32_MIN;
+    for (unsigned h = 0; h < a->homes; ++h) {
+        const int32_t u = level_utility(a, hist, h, total) + (h == 0);
+        if (u > *best_u) { *best_u = u; best = h; }
+    }
+    return best;
 }
 
 uint8_t agc_level_tick(agc_level_t *a, const dg_observation_t *o, uint8_t current, uint64_t now_us)
@@ -224,17 +245,31 @@ uint8_t agc_level_tick(agc_level_t *a, const dg_observation_t *o, uint8_t curren
     a->decide_us = now_us;
     a->fold_pending = false;
     ++a->decisions;
+    /* Two histories: the slow one (200 ms) sizes the row for the fading,
+     * the fast one (20 ms) sees a jump (a hand over the antenna, an
+     * obstacle, coming closer). When their best rows are LEVEL_JUMP_Q8 or
+     * more apart the level has moved, not faded: the slow history restarts
+     * from the fast one. Board 2026-10-27 (hand on the antenna, -30..-60
+     * dBm): the slow history alone held a row that folded 180 windows a
+     * second and climbed late when the hand came. */
+    int32_t fast_u;
+    const unsigned fast_best = level_best(a, a->fast, &fast_u);
+    int32_t best_u;
+    unsigned best = level_best(a, a->hist, &best_u);
+    if (abs(a->rel_q8[a->home[fast_best]] - a->rel_q8[a->home[best]]) >= LEVEL_JUMP_Q8) {
+        memcpy(a->hist, a->fast, sizeof(a->hist));
+        best = fast_best;
+        best_u = fast_u;
+        ++a->jumps;
+    }
     uint64_t total = 0;
     for (int b = 0; b < AGC_BINS; ++b) total += a->hist[b];
     const unsigned cur_h = nearest_home(a->home, a->homes, a->rel_q8, current);
-    const int32_t cur_u = level_utility(a, cur_h, total);
-    int32_t best_u = INT32_MIN;
-    unsigned best = cur_h;
-    for (unsigned h = 0; h < a->homes; ++h) {
-        const int32_t u = level_utility(a, h, total) + (h == 0);   /* ties: listen high */
-        if (u > best_u) { best_u = u; best = h; }
+    const int32_t cur_u = level_utility(a, a->hist, cur_h, total);
+    for (int b = 0; b < AGC_BINS; ++b) {
+        a->hist[b] = (uint32_t)(((uint64_t)a->hist[b] * LEVEL_DECAY_Q8) >> 8);
+        a->fast[b] = (uint32_t)(((uint64_t)a->fast[b] * LEVEL_FAST_DECAY_Q8) >> 8);
     }
-    for (int b = 0; b < AGC_BINS; ++b) a->hist[b] = (uint32_t)(((uint64_t)a->hist[b] * LEVEL_DECAY_Q8) >> 8);
     if (best == cur_h || best_u <= cur_u + LEVEL_HYST * 256) return current;
     ++a->moves;
     a->move_pending = a->level_windows >= 4u;

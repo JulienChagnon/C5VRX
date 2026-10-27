@@ -915,9 +915,10 @@ void receiver_start(void)
 void receiver_print(void)
 {
     if (s_gain_mode == GAIN_MODE_LEVEL)
-        printf("AGC model=LEVEL decisions=%lu moves=%lu folds=%lu learned=%lu (agc.c; rows corrected from the "
-               "level before/after a move)\n", (unsigned long)s_agc.level.decisions, (unsigned long)s_agc.level.moves,
-               (unsigned long)s_agc.level.folds, (unsigned long)s_agc.level.learned);
+        printf("AGC model=LEVEL decisions=%lu moves=%lu folds=%lu learned=%lu jumps=%lu (agc.c; rows corrected from the "
+               "level before/after a move; jumps: the fast history took over)\n", (unsigned long)s_agc.level.decisions,
+               (unsigned long)s_agc.level.moves, (unsigned long)s_agc.level.folds, (unsigned long)s_agc.level.learned,
+               (unsigned long)s_agc.level.jumps);
     else if (s_gain_mode == GAIN_MODE_RSSI)
         printf("AGC model=RSSI moves=%lu folds=%lu (agc.c)\n", (unsigned long)s_agc.rssi.moves,
                (unsigned long)s_agc.rssi.folds);

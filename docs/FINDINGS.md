@@ -40,16 +40,32 @@ and a folded window counts its own measured level 3 dB over when the
 carrier dominates it (a fixed level at the rails read like ~6 cells rms,
 the table's best, and held the top row on a strong folding carrier).
 
+**First board check (session 267, hand on the antenna, -30..-60 dBm, C/N
+10-20 dB)** with the 200 ms history alone: 272 moves in ~45 s (~6 a
+second), 8176 folded windows, video 40-85 %. The slow history held a row
+that folded when the hand came off and climbed late when it covered. The
+harness had no such scenario; it now has "hand on the antenna" (-25 dB in
+random 40-250 ms spells) and reproduced it (close: LEVEL 72.1, 8.7 writes/s,
+against KEEL-1 78.5). Fix: a second, fast history (20 ms); when the best
+rows of the two are 9 dB (three home rows) apart the level jumped rather
+than faded, and the slow history restarts from the fast one (`jumps` in
+`T`). Close hand: 78.5 at 15.9 writes/s (KEEL-1 78.5 at 29.2); mid hand
+66.0 against 68.8, the one scenario LEVEL still loses. The blackbox
+`gain_writes` column counts KEEL-1 writes only; LEVEL moves show in the
+gain min/max per second and in `T`.
+
 **Host comparison** (`test/test_agc_compare.c -DPICTURE_Q
 -DWRITE_COST_US=7000`, CI): score (mean picture quality), writes/s, edge
 3 dB C/N.
 
 | | nominal | gain-model error 1/6 dB | old threshold judge |
 | --- | ---: | ---: | ---: |
-| LEVEL (this) | **70.4**, 0.2/s, 42.6 | **70.1**, 0.4/s, 43.1 | 58.9, 35.0 |
-| KEEL-1 (AUTO) | 68.4, 4.6/s, 40.7 | 68.2, 5.1/s, 41.1 | 62.3, 28.7 |
-| STATIC (best fixed row, a posteriori) | 70.7, 44.0 | 70.7, 44.0 | 60.4, 35.0 |
-| IDEAL (no write cost, any row per tick) | 73.3, 44.6 | 73.2, 44.6 | 74.7, 41.8 |
+| LEVEL (this) | **70.5**, 1.7/s, 42.6 | **70.1**, 1.9/s, 43.1 | 58.9, 35.0 |
+| KEEL-1 (AUTO) | 68.7, 6.1/s, 40.7 | 68.4, 6.6/s, 41.1 | 62.3, 28.7 |
+| STATIC (best fixed row, a posteriori) | 70.9, 44.0 | 70.9, 44.0 | 60.4, 35.0 |
+| IDEAL (no write cost, any row per tick) | 74.1, 44.6 | 74.0, 44.6 | 74.7, 41.8 |
+
+(With the hand scenarios; the old-judge column is from before them.)
 
 With the measured demod one well-chosen row is almost the ideal, so the
 best AGC writes rarely and only on a clear change. LEVEL beats STATIC on
