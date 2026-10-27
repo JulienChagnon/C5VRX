@@ -83,8 +83,12 @@ the 2026-10-20 rating of ~-88..-90 walking (U85Q). The meter carries
 within one code and holds, all earlier cases pass (an inverted polarity is
 now found by a fold turn within 10 decisions). `test_dfilt_runtime.py`
 covers the mode choice through RF restores; `test_menu_ui.c` every PHY
-FILT mode. **Board:** pending (the console stopped answering during this
-audit; reflash and repeat the walk). No dB or range claim.
+FILT mode. **Board, VTX off** (same board, this build, fixed G78/G72/G66,
+three 8190-byte snapshots each): DC +0.06/+0.21, <= 0.25 and <= 0.33 cells,
+servo offsets 10/-15, 5/-6, 2/-3 codes, `fault=0`, `unbans=0`,
+`deferred_to_servo=274` (holds the old guard would have released and
+banned). PHY FILT 0/4/8/12 applied and read back. The walk with the VTX
+on is the deciding test; no dB or range claim.
 
 ## VTX-on PHY lab, AFC window and digital mode 12 (board, 2026-10-26)
 
