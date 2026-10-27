@@ -789,32 +789,6 @@ static uint8_t s_dco_banned[ARC_VENDOR_GAIN_MAX + 1u];
 #define DCO_BAN_MAX_US 32000000LL
 static int64_t s_dco_ban_until[ARC_VENDOR_GAIN_MAX + 1u], s_dco_ban_len[ARC_VENDOR_GAIN_MAX + 1u];
 static uint32_t s_dco_unbans, s_dco_guard_deferred;
-/* Live DC fault: a row the servo cannot hold. It used to be silent (board
- * 2026-10-27: G83 off the ADC for minutes after a walk, the menu clean and
- * the calibration answering "VTX on"). Reasons: 1 the guard released a
- * held row, 2 a row's trim sits at its limit with the DC still off. Shown
- * as DC CAL! in the menu for DC_FAULT_SHOW_US after the last evidence, in
- * T (DC_FAULT) and once per episode in the flight log (DC_CAL_NEEDED). */
-#define DC_FAULT_SHOW_US 10000000LL
-#define DC_FAULT_DC_MCELLS 1500
-static uint8_t s_dcf_reason, s_dcf_gain;
-static int64_t s_dcf_us;
-static uint32_t s_dcf_episodes;
-static const char *dc_fault_name(uint8_t r) { return r == 1 ? "released" : r == 2 ? "trim_limit" : "none"; }
-static bool dc_fault_live(void) { return s_dcf_reason && esp_timer_get_time() - s_dcf_us < DC_FAULT_SHOW_US; }
-static void dc_fault_mark(uint8_t reason, uint8_t g)
-{
-    if (!dc_fault_live()) {
-        ++s_dcf_episodes;
-        printf("DC_FAULT reason=%s gain=%u (the servo cannot hold this row: calibrate with the VTX off)\n",
-               dc_fault_name(reason), g);
-        const uint8_t data[2] = {reason, g};
-        flightlog_event(FLOG_E_DC_CAL_NEEDED, data, 2);
-    }
-    s_dcf_reason = reason;
-    s_dcf_gain = g;
-    s_dcf_us = esp_timer_get_time();
-}
 static bool dc_servo_can_fix(unsigned g);
 static uint8_t s_dco_floor;
 static bool s_dco_dirty;
@@ -962,6 +936,33 @@ static void dco_index_load(void)
 
 static void dco_load_table(const dco_want_t *w);
 static void dco_preset_fill(void);
+
+/* Live DC fault: a row the servo cannot hold. It used to be silent (board
+ * 2026-10-27: G83 off the ADC for minutes after a walk, the menu clean and
+ * the calibration answering "VTX on"). Reasons: 1 the guard released a
+ * held row, 2 a row's trim sits at its limit with the DC still off. Shown
+ * as DC CAL! in the menu for DC_FAULT_SHOW_US after the last evidence, in
+ * T (DC_FAULT) and once per episode in the flight log (DC_CAL_NEEDED). */
+#define DC_FAULT_SHOW_US 10000000LL
+#define DC_FAULT_DC_MCELLS 1500
+static uint8_t s_dcf_reason, s_dcf_gain;
+static int64_t s_dcf_us;
+static uint32_t s_dcf_episodes;
+static const char *dc_fault_name(uint8_t r) { return r == 1 ? "released" : r == 2 ? "trim_limit" : "none"; }
+static bool dc_fault_live(void) { return s_dcf_reason && esp_timer_get_time() - s_dcf_us < DC_FAULT_SHOW_US; }
+static void dc_fault_mark(uint8_t reason, uint8_t g)
+{
+    if (!dc_fault_live()) {
+        ++s_dcf_episodes;
+        printf("DC_FAULT reason=%s gain=%u (the servo cannot hold this row: calibrate with the VTX off)\n",
+               dc_fault_name(reason), g);
+        const uint8_t data[2] = {reason, g};
+        flightlog_event(FLOG_E_DC_CAL_NEEDED, data, 2);
+    }
+    s_dcf_reason = reason;
+    s_dcf_gain = g;
+    s_dcf_us = esp_timer_get_time();
+}
 
 static void dco_select(void)
 {

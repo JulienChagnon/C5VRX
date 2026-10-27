@@ -91,14 +91,19 @@ int main(void){
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 static bool s_cal_notice;
 static uint16_t s_cal_notice_freq=5865,s_cal_notice_key=42;
 static unsigned frequency=5865,key=42;
 static unsigned rf_frequency_mhz(void){return frequency;}
 static unsigned live_filter_key(void){return key;}
+static bool fault;
+static bool dc_fault_live(void){return fault;}
 ''' + body + r'''
 int main(void){char label[24];
  assert(!calibration_dc_needed(label,sizeof(label))); /* missing data alone */
+ fault=true;assert(calibration_dc_needed(label,sizeof(label)) && !strcmp(label,"FAULT")); /* a live DC fault asks too */
+ fault=false;
  s_cal_notice=true;assert(calibration_dc_needed(label,sizeof(label)));
  assert(calibration_dc_needed(NULL,0)); /* menu may stay open indefinitely */
  frequency=5805;assert(!calibration_dc_needed(NULL,0));
