@@ -2817,7 +2817,7 @@ void calibration_print(void)
     const int bad = phy_filter_hw_mismatch(hw, want);
     printf("PHY11P want=1 hw_enabled=%d (-1=unsupported; analog profile checked below)\n", phy_11p_hw_enabled());
     printf("DFILT want=%d hw_mode=%d (-1=unsupported)\n",
-           PHY_DFILT_MODE_DEFAULT, phy_dfilt_hw_mode());
+           phy_dfilt_mode(), phy_dfilt_hw_mode());
     printf("FILTER_HW mismatch=%d hw=%02x%02x%02x%02x%02x%02x%02x%02x want=%02x%02x%02x%02x%02x%02x%02x%02x\n", bad,
            hw[0], hw[1], hw[2], hw[3], hw[4], hw[5], hw[6], hw[7],
            want[0], want[1], want[2], want[3], want[4], want[5], want[6], want[7]);
