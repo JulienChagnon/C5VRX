@@ -12,7 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 INPUT_DIRS = ('main/',)
-INPUT_FILES = ('CMakeLists.txt', 'partitions.csv', 'sdkconfig.defaults', 'dependencies.lock',
+INPUT_FILES = ('CMakeLists.txt', 'partitions.csv', 'sdkconfig.defaults', 'sdkconfig.psram.defaults', 'dependencies.lock',
                '.github/workflows/c5vrx5.yml', 'tools/firmware_input_hash.py')
 
 

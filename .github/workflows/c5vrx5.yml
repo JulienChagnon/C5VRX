@@ -11,6 +11,7 @@ on:
       - 'CMakeLists.txt'
       - 'partitions.csv'
       - 'sdkconfig.defaults'
+      - 'sdkconfig.psram.defaults'
       - '!**/*.md'
       - '.github/workflows/c5vrx5.yml'
   pull_request:
@@ -24,6 +25,7 @@ on:
       - 'CMakeLists.txt'
       - 'partitions.csv'
       - 'sdkconfig.defaults'
+      - 'sdkconfig.psram.defaults'
       - '!**/*.md'
       - '.github/workflows/c5vrx5.yml'
 permissions:
@@ -32,6 +34,19 @@ concurrency:
   group: c5vrx5-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
+  build-psram:
+    runs-on: ubuntu-latest
+    container: espressif/idf:v6.0.2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Build opt-in XIAO PSRAM image
+        shell: bash
+        run: |
+          . "$IDF_PATH/export.sh"
+          idf.py -B build-psram -DSDKCONFIG=sdkconfig.psram \
+            "-DSDKCONFIG_DEFAULTS=sdkconfig.defaults;sdkconfig.psram.defaults" build
   build:
     runs-on: ubuntu-latest
     container: espressif/idf:v6.0.2
@@ -186,7 +201,7 @@ jobs:
           if-no-files-found: error
           path: release/
   publish:
-    needs: build
+    needs: [build, build-psram]
     # Fork builds never get write-capable publication.
     if: >-
       (github.event_name != 'pull_request' && github.ref == 'refs/heads/main') ||

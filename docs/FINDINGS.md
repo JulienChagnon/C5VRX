@@ -51,7 +51,9 @@ VTX off, three PSRAM configurations against the baseline:
 | Wi-Fi heap in PSRAM (`TRY_ALLOCATE_WIFI_LWIP`, `IGNORE_NOTFOUND`) | 6,348 | 28,904 | 10,668 | boots |
 | both | boot loop (`gain_obs` `ESP_ERR_NO_MEM`) | | | |
 
-The first row is the default now (quad, 80 MHz, `USE_CAPS_ALLOC`). The
+The Wi-Fi BSS configuration is available in the opt-in
+`sdkconfig.psram.defaults` overlay (quad, 80 MHz, `USE_CAPS_ALLOC`). The
+standard image keeps PSRAM disabled so boards without it still boot. The
 linker moves the `.bss` of `libnet80211`/`liblwip` (`g_cnxMgr` 5.9 KB,
 `s_wifi_nvs`, TWT timers; 16,456 bytes), which costs 3.4 KB of extra IRAM
 code: static HP SRAM 288,850 -> 276,518 bytes. `--check` passed with no
@@ -60,8 +62,11 @@ and closed with no faults and no leak. With both options ESP-IDF forces 16
 static Wi-Fi TX buffers (`esp_wifi/Kconfig`), which is the likely cause of
 the boot loop (not investigated). `T` prints `heap_psram`.
 
-Not tested yet: live video with a VTX, flight-log writes under load, the
-PAL menu, long runs. PSRAM shares the MSPI bus with the flash; the video
+The contributor subsequently tested about two minutes of R7 NTSC video:
+three menu cycles without a leak, five of five IQ snapshots, eleven flight-log
+blocks and one snapshot with no flash errors or drops, and no transport faults
+([PR #283 board report](https://github.com/Twotoz/C5VRX/pull/283#issuecomment-6432708418)).
+The PAL menu and long runs remain untested. PSRAM shares the MSPI bus with the flash; the video
 path (PARLIO, GDMA, BitScrambler, the RX ring) stays in internal SRAM.
 
 Three cold static buffers moved on top (`EXT_RAM_BSS_ATTR`, 7.4 KB): the

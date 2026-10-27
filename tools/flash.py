@@ -152,7 +152,14 @@ def config_drift(build):
     """
     with contextlib.suppress(OSError, ValueError, KeyError):
         desc = json.loads((build / "project_description.json").read_text())
-        want = defaults_values((Path(desc["project_path"]) / "sdkconfig.defaults").read_text())
+        project = Path(desc["project_path"])
+        want = {}
+        # ESP-IDF records the ordered defaults list, including board overlays.
+        # Later files override earlier values, just as they do at configure time.
+        defaults = desc.get("config_defaults", "sdkconfig.defaults")
+        for path in defaults.split(";"):
+            if path:
+                want.update(defaults_values((project / path).read_text()))
         have = json.loads((build / "config" / "sdkconfig.json").read_text())
         return [f"{k}={have[k]} (sdkconfig.defaults: {v})" for k, v in want.items() if k in have and have[k] != v]
     return []
