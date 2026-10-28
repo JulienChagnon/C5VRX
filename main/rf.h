@@ -35,6 +35,10 @@ const arc_gain_table_t *rf_gain_table(void);
  * matched, and the first differing row (-1 none); checked = 0: not checked. */
 void rf_gain_table_hw(unsigned *checked, unsigned *match, int *first_bad);
 uint32_t rf_table_generation(void);
+/* DC bank-1 watch: the vendor table against its boot snapshot, every AGC
+ * memory row against the table, the live words. Prints a BANK1_CHECK line
+ * when a layer changes, and always with print. */
+void rf_bank1_check(bool print);
 
 /* Analog receive filter. code PHY_FILTER_CALIBRATED = the chip's own
  * calibration; skirt = second stage offset; bw20 = digital filter BW20. */
