@@ -9,9 +9,9 @@ on:
       - 'research/**'
       - 'tools/**'
       - 'CMakeLists.txt'
-      - 'partitions.csv'
+      - 'partitions*.csv'
       - 'sdkconfig.defaults'
-      - 'sdkconfig.psram.defaults'
+      - 'sdkconfig.*.defaults'
       - '!**/*.md'
       - '.github/workflows/c5vrx5.yml'
   pull_request:
@@ -23,9 +23,9 @@ on:
       - 'research/**'
       - 'tools/**'
       - 'CMakeLists.txt'
-      - 'partitions.csv'
+      - 'partitions*.csv'
       - 'sdkconfig.defaults'
-      - 'sdkconfig.psram.defaults'
+      - 'sdkconfig.*.defaults'
       - '!**/*.md'
       - '.github/workflows/c5vrx5.yml'
 permissions:
@@ -34,29 +34,12 @@ concurrency:
   group: c5vrx5-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
-  build-psram:
+  version:
     runs-on: ubuntu-latest
-    container: espressif/idf:v6.0.2
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - name: Build opt-in XIAO PSRAM image
-        shell: bash
-        run: |
-          . "$IDF_PATH/export.sh"
-          idf.py -B build-psram -DSDKCONFIG=sdkconfig.psram \
-            "-DSDKCONFIG_DEFAULTS=sdkconfig.defaults;sdkconfig.psram.defaults" build
-  build:
-    runs-on: ubuntu-latest
-    container: espressif/idf:v6.0.2
     outputs:
       version: ${{ steps.version.outputs.version }}
       tag: ${{ steps.version.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Resolve version
         id: version
         shell: bash
@@ -72,6 +55,58 @@ jobs:
             echo "version=5.0.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
             echo "tag=c5vrx5-v5.0.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
           fi
+  # One image per board and memory layout besides the standard XIAO image
+  # (main/board.h, web/boards.js, docs/BOARDS.md; test/test_boards.py keeps
+  # them in step). Published as c5vrx5-<id>.app.bin and c5vrx5-<id>.full.bin.
+  boards:
+    needs: version
+    runs-on: ubuntu-latest
+    container: espressif/idf:v6.0.2
+    strategy:
+      matrix:
+        include:
+          - { id: xiao-psram, flash: 8MB, defaults: "sdkconfig.defaults;sdkconfig.psram.defaults" }
+          - { id: xiao-4mb, flash: 4MB, defaults: "sdkconfig.defaults;sdkconfig.flash4mb.defaults" }
+          - { id: devkitc, flash: 4MB, defaults: "sdkconfig.defaults;sdkconfig.flash4mb.defaults;sdkconfig.board-devkitc.defaults" }
+          - { id: devkitc-psram, flash: 8MB, defaults: "sdkconfig.defaults;sdkconfig.board-devkitc.defaults;sdkconfig.psram.defaults" }
+          - { id: pico, flash: 4MB, defaults: "sdkconfig.defaults;sdkconfig.flash4mb.defaults;sdkconfig.board-pico.defaults" }
+          - { id: nicemcu, flash: 4MB, defaults: "sdkconfig.defaults;sdkconfig.flash4mb.defaults;sdkconfig.board-nicemcu.defaults" }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Build ${{ matrix.id }}
+        shell: bash
+        run: |
+          . "$IDF_PATH/export.sh"
+          idf.py -B "build-${{ matrix.id }}" "-DSDKCONFIG=sdkconfig.${{ matrix.id }}" \
+            "-DSDKCONFIG_DEFAULTS=${{ matrix.defaults }}" \
+            -DC5VRX5_VERSION="${{ needs.version.outputs.version }}" \
+            -DC5VRX5_COMMIT="${{ github.event.pull_request.head.sha || github.sha }}" build
+          grep -qx 'CONFIG_ESPTOOLPY_FLASHSIZE="${{ matrix.flash }}"' "sdkconfig.${{ matrix.id }}"
+      - name: Package ${{ matrix.id }}
+        shell: bash
+        run: |
+          . "$IDF_PATH/export.sh"
+          b="build-${{ matrix.id }}"
+          mkdir -p release
+          cp "$b/c5vrx5.bin" "release/c5vrx5-${{ matrix.id }}.app.bin"
+          esptool.py --chip esp32c5 merge_bin -o "release/c5vrx5-${{ matrix.id }}.full.bin" \
+            --flash_mode dio --flash_size ${{ matrix.flash }} --flash_freq 80m \
+            0x2000 "$b/bootloader/bootloader.bin" 0x8000 "$b/partition_table/partition-table.bin" 0x10000 "$b/c5vrx5.bin"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: c5vrx5-board-${{ matrix.id }}-${{ github.event.pull_request.head.sha || github.sha }}
+          if-no-files-found: error
+          path: release/
+  build:
+    needs: version
+    runs-on: ubuntu-latest
+    container: espressif/idf:v6.0.2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Host tests (quiet test, VTX deviation profile, dropout classifier, AFC, gain fade)
         shell: bash
         working-directory: test
@@ -83,6 +118,8 @@ jobs:
           done
           cc -O2 -std=c11 -Wall -Wextra -Werror -I../main test_dc_trim.c -o /tmp/test_dc_trim
           /tmp/test_dc_trim
+          cc -O2 -std=c11 -Wall -Wextra -Werror -I../main test_board_pins.c -o /tmp/test_board_pins
+          /tmp/test_board_pins data/board_pin_cases.txt
           cc -O2 -std=c11 -Wall -Wextra -Werror -I../main test_dc_live.c -lm -o /tmp/test_dc_live
           /tmp/test_dc_live ../research/data/walk_2026-10-13
           cc -O2 -std=c11 -Wall -Wextra -Werror -I../main test_no_signal_raster.c ../main/menu_raster.c -lm -o /tmp/test_no_signal_raster
@@ -143,6 +180,7 @@ jobs:
           python3 test/test_settings.py
           python3 test/test_phy_observation_hook.py
           python3 test/test_bank1_watch_runtime.py
+          python3 test/test_boards.py
           python3 test/test_11p_runtime.py
           python3 test/test_dfilt_runtime.py
           python3 test/test_gain_map_context.py
@@ -182,7 +220,7 @@ jobs:
         shell: bash
         run: |
           . "$IDF_PATH/export.sh"
-          idf.py -DC5VRX5_VERSION="${{ steps.version.outputs.version }}" \
+          idf.py -DC5VRX5_VERSION="${{ needs.version.outputs.version }}" \
             -DC5VRX5_COMMIT="${{ github.event.pull_request.head.sha || github.sha }}" build
       - name: Package firmware for web flashing
         shell: bash
@@ -197,15 +235,14 @@ jobs:
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           printf '%s\n' '${{ github.event.pull_request.head.sha || github.sha }}' > release/COMMIT
           python3 tools/firmware_input_hash.py 5 > release/FIRMWARE_INPUT_SHA
-          printf '%s\n' '${{ steps.version.outputs.version }}' > release/VERSION
-          cd release && sha256sum * > SHA256SUMS
+          printf '%s\n' '${{ needs.version.outputs.version }}' > release/VERSION
       - uses: actions/upload-artifact@v4
         with:
           name: c5vrx5-${{ github.event.pull_request.head.sha || github.sha }}
           if-no-files-found: error
           path: release/
   publish:
-    needs: [build, build-psram]
+    needs: [version, build, boards]
     # Fork builds never get write-capable publication.
     if: >-
       (github.event_name != 'pull_request' && github.ref == 'refs/heads/main') ||
@@ -219,14 +256,21 @@ jobs:
         with:
           name: c5vrx5-${{ github.event.pull_request.head.sha || github.sha }}
           path: release/
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: c5vrx5-board-*-${{ github.event.pull_request.head.sha || github.sha }}
+          merge-multiple: true
+          path: release/
+      - name: Checksums
+        run: cd release && sha256sum * > SHA256SUMS
       - name: Publish C5VRX-5 build
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BUILD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          VERSION: ${{ needs.build.outputs.version }}
-          TAG: ${{ needs.build.outputs.tag }}
+          VERSION: ${{ needs.version.outputs.version }}
+          TAG: ${{ needs.version.outputs.tag }}
         run: |
           set -euo pipefail
           repo="$GITHUB_REPOSITORY"
@@ -264,4 +308,4 @@ jobs:
           fi
           gh release create "$TAG" release/* --repo "$repo" --target "$BUILD_SHA" --title "$title" \
             "${flags[@]}" \
-            --notes "C5VRX-5 ${VERSION} at ${BUILD_SHA}. Use Full firmware when switching from another generation."
+            --notes "C5VRX-5 ${VERSION} at ${BUILD_SHA}. Use Full firmware when switching from another generation. c5vrx5.bin and c5vrx5_merged.bin are the XIAO ESP32-C5 image; c5vrx5-<board>.app.bin and .full.bin are the images for other boards and memory layouts (docs/BOARDS.md)."
