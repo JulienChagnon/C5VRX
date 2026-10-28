@@ -91,6 +91,12 @@ XIAO ESP32-C5. DAC on D4..D9 (GPIO 23, 24, 11, 12, 8, 9; LSB first) with
 ([schematic](docs/hardware/c5vrx-dac-schematic.png)). The
 receiver uses the ESP32-C5's own Wi-Fi radio; no extra RF parts.
 
+Other ESP32-C5 boards (Espressif DevKitC-1, Waveshare ESP32-C5-Pico, NiceMCU
+ESP32-C5 Mini) have their own pin maps and images, and any other ESP32-C5
+board can be flashed with its own pins from the web flasher's pin editor.
+None of them is tested on hardware yet. The flasher draws each board with
+the resistor for every pin. See [Boards](docs/BOARDS.md).
+
 This development build moves the internal I-LSB loopback from D10/GPIO10
 to the user-LED GPIO27, and the Q-sign loopback from D3/GPIO7 to GPIO2.
 This reserves **D10 and D3 for future seventh/eighth DAC branches**. The LED
@@ -183,8 +189,13 @@ KiCad ERC/DRC and schematic/PCB parity checks are clean; REV C has not been buil
 ## Flashing
 
 - **Browser:** open the [web flasher](https://twotoz.github.io/C5VRX/) in
-  desktop Chrome or Edge, choose **C5VRX-5** and a build, then flash.
-  Use **Full firmware** when switching from another generation.
+  desktop Chrome or Edge, choose **C5VRX-5**, a build and your **Board**,
+  connect, then flash. **Flash and PSRAM** on Auto picks the image from the
+  connected chip (PSRAM if the chip has it, a 4 MB layout on 4 MB flash) and
+  refuses an image that does not fit. It shows where each resistor goes on
+  the selected board, and **Custom pins** writes other GPIOs into the
+  image ([Boards](docs/BOARDS.md)).
+  Use **Full firmware** when switching from another generation or image.
   Unmerged PR builds are marked as development builds.
 - **From source:** use ESP-IDF **6.0.2**, run `idf.py build` in the
   repository root, then `python tools/flash.py PORT` (for example `COM6`
@@ -210,10 +221,11 @@ KiCad ERC/DRC and schematic/PCB parity checks are clean; REV C has not been buil
 - **Local File** flashes your own `.bin`; **Legacy builds** contains archived
   C5VRX-3 firmware.
 
-## Optional XIAO PSRAM build
+## XIAO PSRAM image
 
-The standard release and web-flasher image also support boards without PSRAM.
-For a XIAO ESP32-C5HR8 with 8 MB PSRAM, build a separate image with ESP-IDF 6.0.2:
+The standard image also supports boards without PSRAM. For a XIAO
+ESP32-C5HR8 with 8 MB PSRAM, every release also has a PSRAM image, which the
+web flasher picks on Auto. To build it with ESP-IDF 6.0.2:
 
 ```sh
 idf.py -B build-psram -DSDKCONFIG=sdkconfig.psram "-DSDKCONFIG_DEFAULTS=sdkconfig.defaults;sdkconfig.psram.defaults" build

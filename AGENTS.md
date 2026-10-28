@@ -904,7 +904,11 @@ the project explicitly changes hosting architecture.
 
 - `.github/workflows/c5vrx5.yml` ("C5VRX-5 Build") is the only firmware
   workflow. It runs the host tests and research checks, builds the root
-  firmware with ESP-IDF v6.0.2 and publishes:
+  firmware with ESP-IDF v6.0.2 (the XIAO image, `c5vrx5.bin` and
+  `c5vrx5_merged.bin`) plus one image per other board and memory layout in
+  its `boards` matrix (`c5vrx5-<id>.app.bin` / `.full.bin`; `main/board.h`,
+  `web/boards.js`, `docs/BOARDS.md`, kept in step by `test/test_boards.py`;
+  only the XIAO is board tested) and publishes:
   - `c5vrx5-v5.0.<run number>` for a firmware change on `main` (immutable;
     never replace published version assets), marked as the repository's
     Latest release (an unchanged-input main run re-marks the newest one);
@@ -939,6 +943,20 @@ generations (2026-10-12). Their published releases stay as they are.
 
 - **C5VRX-5**: `c5vrx5-v5.*` releases newest first, then `c5vrx5-pr-*`
   prereleases (explicit confirmation before flashing an unmerged build).
+  The user picks the board (pins); the image (flash size, PSRAM) is Auto from
+  the chip's eFuse and flash ID after Connect, or chosen by hand. An image
+  larger than the chip's flash is refused; a PSRAM image on a chip without
+  in-package PSRAM needs a confirmation. Other-board images are mirrored to
+  Pages for the newest 5 main builds and the PR channels
+  (`BOARD_IMAGE_BUILDS`).
+- **Pins:** the firmware keeps its pins in one 32-byte table in the image
+  (`g_board_pins`, `main/board.c`), read once by `board_init()` before any
+  task. The flasher's pin editor rewrites it and fixes the image checksum
+  and SHA-256 (`web/image-pins.js`), and draws each board's wiring from
+  `web/boards.js` (`web/board-diagram.js`). Keep exactly one table with the
+  magic in the image, read pins only through `board_pins()`, and keep
+  `board_pins_problem()` and `web/boards.js` `pinProblem()` identical
+  (`test/data/board_pin_cases.txt`).
 - **Local File**: a user-supplied `.bin`.
 - **Legacy builds**: the newest 20 archived C5VRX-3 semantic releases
   (`v3.*`), frozen; no new legacy builds are produced.
