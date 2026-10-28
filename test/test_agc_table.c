@@ -136,6 +136,48 @@ int main(void)
           arc_gain_table_check_agc(&t, s_board, 60u * ARC_AGC_ENTRY_WORDS, &bad) == 60u && bad == 60);
     check("no words: nothing matches", arc_gain_table_check_agc(&t, NULL, 0u, &bad) == 0u);
 
+    /* DC words (arc_gain_entry_dc). The vendor writes one bank-1 pair per RF
+     * stage and one bank-2 pair per BB half (BB < 15 / >= 15) of the current
+     * frequency group: the board's rows must show exactly that structure. */
+    int stage_b1[ARC_RX_STAGE_COUNT][2], half_b2[2][2];
+    bool stage_seen[ARC_RX_STAGE_COUNT] = {false}, half_seen[2] = {false, false}, same = true;
+    for (unsigned g = 0; g <= ARC_5G_GAIN_MAX; ++g) {
+        arc_gain_tuple_t tu;
+        int b1[2], b2[2];
+        if (!arc_gain_tuple_decode(&t, (uint8_t)g, &tu)) { same = false; continue; }
+        arc_gain_entry_dc(&s_board[g * ARC_AGC_ENTRY_WORDS], b1, b2);
+        const unsigned s = tu.rf_stage, h = tu.bb_code >= 15u;
+        if (!stage_seen[s]) { stage_b1[s][0] = b1[0]; stage_b1[s][1] = b1[1]; stage_seen[s] = true; }
+        if (!half_seen[h]) { half_b2[h][0] = b2[0]; half_b2[h][1] = b2[1]; half_seen[h] = true; }
+        same &= b1[0] == stage_b1[s][0] && b1[1] == stage_b1[s][1];
+        same &= b2[0] == half_b2[h][0] && b2[1] == half_b2[h][1];
+    }
+    check("board rows: bank 1 per RF stage, bank 2 per BB half", same && half_seen[0] && half_seen[1]);
+    int b1[2], b2[2];
+    arc_gain_entry_dc(&s_board[83 * ARC_AGC_ENTRY_WORDS], b1, b2);
+    check("board G83 DC words 262/240 and 253/250",
+          b1[0] == 262 && b1[1] == 240 && b2[0] == 253 && b2[1] == 250);
+
+    /* Vendor packing (phy_wr_rx_gain_mem, 5 GHz): w0 = b2I<<31 | b1Q<<22 |
+     * b2Q<<13 | other, w1 = rf[4]<<31 | rf[3]<<30 | rf[2:0]<<27 | fine<<24 |
+     * BB<<17 | b1I<<8 | b2I>>1, w2 = rf >> 5. Bank 1 274/231 is the board's
+     * G83 on 5880 MHz (2026-10-27); bank 2 I odd puts its LSB in w0[31]. */
+    const uint32_t rf_c = 487u, bb_c = 127u, fine_c = 0u;
+    const uint32_t i1 = 274u, q1 = 231u, i2 = 225u, q2 = 266u;
+    const uint32_t row[ARC_AGC_ENTRY_WORDS] = {
+        (i2 & 1u) << 31 | q1 << 22 | q2 << 13 | 0x1abu,
+        ((rf_c >> 4) & 1u) << 31 | ((rf_c >> 3) & 1u) << 30 | (rf_c & 7u) << 27 | fine_c << 24 | bb_c << 17 |
+            i1 << 8 | i2 >> 1,
+        rf_c >> 5, 0u};
+    arc_gain_entry_dc(row, b1, b2);
+    check("packed row: bank 1 274/231, bank 2 225/266 (odd I)",
+          b1[0] == 274 && b1[1] == 231 && b2[0] == 225 && b2[1] == 266);
+    arc_gain_entry_from_agc(row, &rf, &bb, &fine);
+    check("packed row: RF/BB/fine unaffected by the DC words", rf == rf_c && bb == bb_c && fine == fine_c);
+    const uint32_t ones[ARC_AGC_ENTRY_WORDS] = {UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX};
+    arc_gain_entry_dc(ones, b1, b2);
+    check("all ones: every DC word is 9 bits (511)", b1[0] == 511 && b1[1] == 511 && b2[0] == 511 && b2[1] == 511);
+
     printf("%u/%u AGC table checks passed\n", s_run - s_fail, s_run);
     return s_fail ? 1 : 0;
 }

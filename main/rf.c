@@ -191,10 +191,11 @@ static unsigned s_hw_checked, s_hw_match;
 static int s_hw_first_bad = -1;
 static portMUX_TYPE s_agc_window_lock = portMUX_INITIALIZER_UNLOCKED;
 
-static void read_agc_memory(uint32_t *words, unsigned n)
+/* Words start..start+n-1 of the window into words[0..n-1]. */
+static void read_agc_range(uint32_t *words, unsigned start, unsigned n)
 {
-    for (unsigned first = 0; first < n; first += 64u) {
-        const unsigned count = n - first < 64u ? n - first : 64u;
+    for (unsigned first = start; first < start + n; first += 64u) {
+        const unsigned count = start + n - first < 64u ? start + n - first : 64u;
         taskENTER_CRITICAL(&s_agc_window_lock);
         const uint32_t mem_conf = REG32(LPCON_MEM_CONF), test_conf = REG32(SYSCON_TEST_CONF);
         const uint32_t clk_conf1 = REG32(SYSCON_CLK_CONF1), sel = REG32(LPCON_APB_MEM_SEL);
@@ -203,7 +204,7 @@ static void read_agc_memory(uint32_t *words, unsigned n)
         REG32(SYSCON_CLK_CONF1) = UINT32_MAX;
         REG32(LPCON_APB_MEM_SEL) = APB_SEL_AGC;
         __asm__ __volatile__("fence iorw, iorw" ::: "memory");
-        for (unsigned k = 0; k < count; ++k) words[first + k] = REG32(APB_MEM_WINDOW + 4u * (first + k));
+        for (unsigned k = 0; k < count; ++k) words[first - start + k] = REG32(APB_MEM_WINDOW + 4u * (first + k));
         REG32(LPCON_APB_MEM_SEL) = sel;
         REG32(LPCON_MEM_CONF) = mem_conf;
         REG32(SYSCON_TEST_CONF) = test_conf;
@@ -212,6 +213,8 @@ static void read_agc_memory(uint32_t *words, unsigned n)
         taskEXIT_CRITICAL(&s_agc_window_lock);
     }
 }
+
+static void read_agc_memory(uint32_t *words, unsigned n) { read_agc_range(words, 0, n); }
 
 static void check_table_against_hw(void)
 {
@@ -232,10 +235,81 @@ void rf_gain_table_hw(unsigned *checked, unsigned *match, int *first_bad)
     *first_bad = s_hw_first_bad;
 }
 
+/* FINDINGS 2026-10-27: for one whole session bank 1 of every top-stage row
+ * read 245/224, against 279/227 on every boot, while G48/G42 were normal:
+ * one source entry changed. The table is written by the boot RX DC
+ * calibration only and reloaded into the AGC memory by every channel setup
+ * (Ghidra, pinned libphy), so a change shows up in one of these layers.
+ * RAM: a hash of the table and one AGC row at a time (the standard image
+ * has about 2 KB of boot heap to spare). */
+static uint32_t s_vbank1_hash, s_bank1_sig, s_bank1_events;
+
+void rf_bank1_check(bool print)
+{
+    /* capture_table() already owns the recursive PHY lock; console polls
+     * must share it so a retune cannot split this snapshot or its state. */
+    phy_read_begin();
+    unsigned grp;
+    const int16_t *tab = phy_vendor_bank1_table(&grp);
+    if (!tab || !s_table.band5) {
+        phy_read_end();
+        if (print) printf("BANK1_CHECK supported=0\n");
+        return;
+    }
+    uint32_t hash = 2166136261u;
+    for (unsigned k = 0; k < PHY_VBANK1_GROUPS * PHY_VBANK1_STAGES * 2u; ++k)
+        hash = (hash ^ (uint16_t)tab[k]) * 16777619u;
+    if (!s_vbank1_hash) s_vbank1_hash = hash;
+    const unsigned tab_changed = hash != s_vbank1_hash;
+    unsigned mem_bad = 0;
+    int mem_first = -1, got[2] = {-1, -1}, want[2] = {-1, -1}, top[2] = {-1, -1}, b2[2];
+    for (unsigned g = 0; g <= s_table.max_index; ++g) {
+        arc_gain_tuple_t t;
+        if (!arc_gain_tuple_decode(&s_table, (uint8_t)g, &t)) continue;
+        uint32_t words[ARC_AGC_ENTRY_WORDS];
+        read_agc_range(words, g * ARC_AGC_ENTRY_WORDS, ARC_AGC_ENTRY_WORDS);
+        int b1[2];
+        arc_gain_entry_dc(words, b1, b2);
+        const int16_t *w = &tab[(grp * PHY_VBANK1_STAGES + t.rf_stage) * 2u];
+        if (g == s_table.max_index) { top[0] = b1[0]; top[1] = b1[1]; }
+        if ((b1[0] != w[0] || b1[1] != w[1]) && !mem_bad++) {
+            mem_first = (int)g;
+            got[0] = b1[0]; got[1] = b1[1]; want[0] = w[0]; want[1] = w[1];
+        }
+    }
+    int live1[2], live2[2];
+    const bool live = phy_dco_banks(live1, live2);
+    /* Anomalies only: a retune into another group legitimately moves top_row. */
+    const uint32_t sig = 1u + tab_changed * 65536u + mem_bad;
+    const bool changed = s_bank1_sig && sig != s_bank1_sig;
+    s_bank1_events += changed;
+    s_bank1_sig = sig;
+    /* Release ownership before USB formatting/output. Keep only the current
+     * group's nine pairs on the stack, never another full table in RAM. */
+    int16_t table_now[PHY_VBANK1_STAGES * 2u];
+    if (tab_changed && (print || changed))
+        memcpy(table_now, &tab[grp * PHY_VBANK1_STAGES * 2u], sizeof(table_now));
+    const unsigned rows = s_table.max_index + 1u, held = phy_dco_held();
+    const uint32_t events = s_bank1_events;
+    phy_read_end();
+    if (!print && !changed) return;
+    printf("BANK1_CHECK%s group=%u table_changed=%u", changed ? " CHANGED" : "", grp, tab_changed);
+    if (tab_changed) {   /* the boot values are in the boot log's first BANK1_CHECK */
+        printf(" table_now=");
+        for (unsigned s = 0; s < PHY_VBANK1_STAGES; ++s)
+            printf("%s%d/%d", s ? "," : "", table_now[s * 2u], table_now[s * 2u + 1u]);
+    }
+    printf(" mem_rows=%u mem_bad=%u", rows, mem_bad);
+    if (mem_first >= 0) printf(" first_bad=G%d mem=%d/%d want=%d/%d", mem_first, got[0], got[1], want[0], want[1]);
+    printf(" top_row=%d/%d live=%d/%d held=%u events=%lu\n", top[0], top[1], live ? live1[0] : -1, live ? live1[1] : -1,
+           held, (unsigned long)events);
+}
+
 static void capture_table(void)
 {
     arc_phy_capture_gain_table(&s_table);
     check_table_against_hw();
+    rf_bank1_check(false);
     ++s_table_generation;
 }
 

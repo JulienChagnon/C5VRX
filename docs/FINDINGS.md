@@ -49,6 +49,25 @@ against 6.35, no second with more than 1 cell, no DC fault. The recorded
 part ends at 36 s (the open flight-log block was lost at power-off), so the
 range edge is not in it.
 
+**Where bank 1 comes from** (static analysis of the pinned libphy, then a
+board check, 2026-10-27). Static: in work mode bank 1 is not computed live.
+`phy_wr_rx_gain_mem` writes one pair per AGC memory row from
+`phy_param+0x180`, a table of 7 frequency groups (`phy_freq_to_index`:
+borders 5240/5320/5560/5640/5755/5835 MHz) x 9 RF stages x I/Q. Every
+channel setup (`phy_chip_set_chan`, from `esp_wifi_set_channel` and
+`phy_set_freq`) reloads it; only the boot RX DC calibration
+(`phy_rfrx_rxdc_cal_new` from `phy_bb_init`) writes the table. The forced
+bank-1 writes in libphy (`phy_pbus_set_dco` and six direct writers) are all
+calibration paths under `phy_bb_init`/`phy_wakeup_init`; none is reachable
+from the PHY calls the receiver makes at run time. Board (VTX off, R7): the
+AGC memory rows decode to the table (84/84, `arc_gain_entry_dc`), the bus
+shows a forced gain's bank 1 at once (32/32 at 0 us, no race on a gain
+write), and every I in the table is 260 or more. So 245/224 was no table
+reload: the table or the AGC memory changed during that session, or
+something outside libphy wrote it; still open. `T` `BANK1_CHECK` compares
+the table with a hash taken at boot and every AGC memory row with the table,
+and the console prints `BANK1_CHECK CHANGED` within 5 s when either moves.
+
 ## LEVEL on the measured demod quality (2026-10-27)
 
 **Blackbox (sessions 245-249, walking with the VTX on, GAIN AUTO = KEEL-1).**

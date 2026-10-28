@@ -55,6 +55,11 @@ uint8_t arc_gain_highest_rf_stage_start(const arc_gain_table_t *table);
 #define ARC_AGC_ENTRY_WORDS 4u
 void arc_gain_entry_from_agc(const uint32_t w[ARC_AGC_ENTRY_WORDS], uint16_t *rf_code,
                              uint8_t *bb_code, uint8_t *fine_code);
+/* The row's PBUS DC words in the same entry, as vendor phy_wr_rx_gain_mem
+ * packs them (Ghidra, pinned libphy): bank 1 (per RF stage and frequency
+ * group) I = w1[16:8], Q = w0[30:22]; bank 2 I = w1[7:0] << 1 | w0[31],
+ * Q = w0[21:13]. */
+void arc_gain_entry_dc(const uint32_t w[ARC_AGC_ENTRY_WORDS], int bank1[2], int bank2[2]);
 /* Rows 0..max_index whose tuple equals the AGC entry; *first_bad is the first
  * row that differs (or is missing from words), -1 when none. */
 unsigned arc_gain_table_check_agc(const arc_gain_table_t *table, const uint32_t *words,

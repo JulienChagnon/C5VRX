@@ -2881,6 +2881,7 @@ void calibration_print(void)
                    g <= ARC_VENDOR_GAIN_MAX ? s_dco.e[g].code[1] : -1,
                    g <= ARC_VENDOR_GAIN_MAX ? s_dco.e[g].valid : 0u, g <= ARC_VENDOR_GAIN_MAX ? s_dco_banned[g] : 0u,
                    pin[0], pin[1], moved[0], moved[1], (unsigned long)overrides);
+        rf_bank1_check(true);
         printf("DC_FAULT live=%u reason=%s gain=%u age_ms=%lld episodes=%lu\n", dc_fault_live(),
                dc_fault_name(s_dcf_reason), s_dcf_gain,
                s_dcf_us ? (long long)((esp_timer_get_time() - s_dcf_us) / 1000) : -1LL, (unsigned long)s_dcf_episodes);

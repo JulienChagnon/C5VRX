@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """C5VRX/Twotoz: execute actual PHY ownership and gain invalidation ordering."""
 from pathlib import Path
+import os
 import re
+import shlex
 import subprocess
 import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 SDK = r'''
+#undef NDEBUG
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -36,7 +39,11 @@ HARNESS = r'''
 static void invalidate(void){assert(locks);++hooks;notified=true;}
 int main(void){
  phy_set_observation_hook(invalidate);
+ phy_read_begin();phy_read_begin();
+ assert(locks==2&&!hooks&&!phy_busy()&&phy_generation()==0);
+ phy_read_end();phy_read_end();assert(!locks);
  phy_begin();assert(hooks==1&&phy_busy());
+ phy_read_begin();phy_read_end();assert(hooks==1&&phy_busy()&&phy_generation()==0);
  phy_begin();assert(hooks==1);phy_end();assert(phy_busy());
  phy_end();assert(!phy_busy()&&phy_generation()==1&&!locks);
  notified=false;
@@ -61,7 +68,7 @@ class Ordering(unittest.TestCase):
             base = Path(directory)
             source = base / "order.c"
             source.write_text(SDK + phy + gain + HARNESS)
-            subprocess.run(["cc", "-O2", "-std=c11", "-Wall", "-Wextra", "-Werror",
+            subprocess.run(shlex.split(os.environ.get("CC", "cc")) + ["-O2", "-std=c11", "-Wall", "-Wextra", "-Werror",
                             str(source), "-o", str(base / "order")], check=True)
             subprocess.run([str(base / "order")], check=True)
 

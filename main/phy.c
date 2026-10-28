@@ -29,6 +29,9 @@ static void lock_take(void)
 }
 static void lock_give(void) { xSemaphoreGiveRecursive(s_lock); }
 
+void phy_read_begin(void) { lock_take(); }
+void phy_read_end(void) { lock_give(); }
+
 void phy_begin(void)
 {
     lock_take();
@@ -695,6 +698,27 @@ bool phy_dco_banks(int bank1[2], int bank2[2])
     return false;
 #endif
 }
+
+/* Vendor RX gain memory source (pinned libphy, phy_wr_rx_gain_mem): bank 1
+ * of a 5 GHz row is phy_param+0x180 [frequency group][RF stage of the row]
+ * [I, Q], filled by the boot RX DC calibration (phy_rfrx_rxdc_cal_new) and
+ * reloaded into the AGC memory by every channel setup (phy_chip_set_chan).
+ * The groups are the vendor's phy_freq_to_index, of its own current
+ * frequency (phy_param+0x120). */
+#ifdef C5VRX_PHY_PINNED
+extern unsigned char phy_param[];
+static unsigned vendor_freq_group(unsigned mhz)
+{
+    return mhz < 5241 ? 0 : mhz <= 5320 ? 1 : mhz <= 5560 ? 2 : mhz <= 5640 ? 3 : mhz <= 5755 ? 4 : mhz <= 5835 ? 5 : 6;
+}
+const int16_t *phy_vendor_bank1_table(unsigned *group)
+{
+    *group = vendor_freq_group(*(const uint16_t *)(phy_param + 0x120));
+    return (const int16_t *)(phy_param + 0x180);
+}
+#else
+const int16_t *phy_vendor_bank1_table(unsigned *group) { *group = 0; return NULL; }
+#endif
 
 bool phy_dco_held(void)
 {

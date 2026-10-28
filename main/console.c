@@ -176,6 +176,12 @@ static void console_task(void *arg)
             }
         }
         diag_poll();
+        /* Bank-1 watch: prints only when a layer changes (rf_bank1_check). */
+        static int64_t bank1_beat;
+        if (esp_timer_get_time() - bank1_beat >= 5000000 && !calibration_in_startup()) {
+            bank1_beat = esp_timer_get_time();
+            rf_bank1_check(false);
+        }
         /* Status beat for the web menu: it updates without a T request. */
         static int64_t status_beat;
         if (esp_timer_get_time() - status_beat >= 2000000) {

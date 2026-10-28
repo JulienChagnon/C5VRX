@@ -11,6 +11,10 @@
  * control decision taken before a retune is never applied after it. */
 void phy_begin(void);
 void phy_end(void);
+/* Recursive read-only ownership: serialize a diagnostic snapshot with PHY
+ * writers without invalidating observations or advancing the generation. */
+void phy_read_begin(void);
+void phy_read_end(void);
 uint32_t phy_generation(void);
 bool phy_busy(void);
 /* Non-blocking gain/offset ownership without a new generation. */
@@ -103,6 +107,12 @@ bool phy_dco_banks(int bank1[2], int bank2[2]);
  * the vendor had written (-1 none) and how often it was overridden. */
 void phy_dco_bank1_reset(uint8_t lo, uint8_t hi);
 uint32_t phy_dco_bank1_status(int pin[2], int moved[2]);
+/* The vendor's bank-1 source table, phy_param+0x180: 7 frequency groups x
+ * 9 RF stages x {I, Q}, written by the boot RX DC calibration only. *group:
+ * the group of the vendor's current frequency. NULL without the pinned PHY. */
+#define PHY_VBANK1_GROUPS 7u
+#define PHY_VBANK1_STAGES 9u
+const int16_t *phy_vendor_bank1_table(unsigned *group);
 #define PHY_DCO_TRY_MAX 8   /* codes per verified live trial (phy_dco_try_pair) */
 bool phy_dco_nudge(int di, int dq, int out[2]);
 /* Sample the actual current DAC pair twice; no mode change or assumed codes.
