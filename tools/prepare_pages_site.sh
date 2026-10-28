@@ -25,9 +25,19 @@ def versioned(name):
     digest = hashlib.sha256((site / name).read_bytes()).hexdigest()[:16]
     return f"{name}?v={digest}"
 
+modules = ("esptool.js", "serial-terminal.js", "receiver-console.js", "flight-log.js", "calibration-report.js", "boards.js", "board-diagram.js", "image-pins.js")
+# Modules that import other modules come first, so their own fingerprint
+# covers the fingerprinted imports.
+for name in ("board-diagram.js",):
+    module = site / name
+    source = module.read_text()
+    for dep in modules:
+        if dep != name:
+            source = source.replace(f"'./{dep}'", f"'./{versioned(dep)}'")
+    module.write_text(source)
 app = site / "app.js"
 source = app.read_text()
-for name in ("esptool.js", "serial-terminal.js", "receiver-console.js", "flight-log.js", "calibration-report.js"):
+for name in modules:
     source = source.replace(f"'./{name}'", f"'./{versioned(name)}'")
 app.write_text(source)
 html = site / "index.html"
@@ -81,6 +91,15 @@ jq '
 ' "${tmp_dir}/all-releases.json" > "${tmp_dir}/selected-releases.json"
 
 count="$(jq 'length' "${tmp_dir}/selected-releases.json")"
+# Images for boards other than the XIAO (c5vrx5-<board>.app.bin and
+# .full.bin, web/boards.js) are mirrored for the newest main builds and the
+# PR channels only, which bounds the Pages artifact; older builds keep the
+# standard image.
+board_builds="${BOARD_IMAGE_BUILDS:-5}"
+trim_tags="$(jq -c --argjson keep "${board_builds}" '[.[]
+  | select(.tag_name | test("^c5vrx5-v5[.][0-9]+[.][0-9]+$"))]
+  | sort_by(.published_at) | reverse | .[$keep:] | map(.tag_name)' \
+  "${tmp_dir}/selected-releases.json")"
 echo "Mirroring ${count} firmware release(s) into GitHub Pages artifact..."
 
 while IFS= read -r tag; do
@@ -93,14 +112,18 @@ while IFS= read -r tag; do
     jq --arg tag "${tag}" 'map(select(.tag_name != $tag))' \
       "${tmp_dir}/selected-releases.json" > "${tmp_dir}/remaining-releases.json"
     mv "${tmp_dir}/remaining-releases.json" "${tmp_dir}/selected-releases.json"
+  elif jq -e --arg tag "${tag}" 'index($tag) != null' <<< "${trim_tags}" > /dev/null; then
+    rm -f "${dest}"/c5vrx5-*.app.bin "${dest}"/c5vrx5-*.full.bin
   fi
 done < <(jq -r '.[].tag_name' "${tmp_dir}/selected-releases.json")
 
 # Preserve GitHub release metadata, but add a same-origin local_url for every
 # asset. web/app.js always prefers this URL in production.
-jq '
+jq --argjson trim "${trim_tags}" '
   [ .[]
     | . as $release
+    | .assets |= map(select(($trim | index($release.tag_name)) == null
+        or (.name | test("^c5vrx5-.+[.](app|full)[.]bin$") | not)))
     | .assets |= map(. + {
         local_url: ("firmware/" + $release.tag_name + "/" + .name)
       })

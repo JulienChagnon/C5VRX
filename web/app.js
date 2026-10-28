@@ -3,6 +3,9 @@ import { CalibrationCapture } from './calibration-report.js';
 import { SerialTerminal } from './serial-terminal.js';
 import { ReceiverConsole, MENU_COMMAND_KEYS } from './receiver-console.js';
 import { FlightLogCapture, decodeImage, summarize, secondsCsv } from './flight-log.js';
+import { BOARDS, findBoard, imageLabel, imageAssets, detectChip, autoImage, imageProblem, presetPins, samePins, pinProblem, pinWarnings, PIN_PROBLEM_TEXT, DAC_OHMS, IQ_NAMES, ohms, pinChoices } from './boards.js';
+import { boardSvg, ladderSvg, pinGridSvg, badPins } from './board-diagram.js';
+import { writeImagePins } from './image-pins.js';
 
 const $ = id => document.getElementById(id);
 
@@ -22,6 +25,16 @@ const paneLocal = $('paneLocal');
 const selectAlphaBuild = $('selectAlphaBuild');
 const selectAlphaPackageType = $('selectAlphaPackageType');
 const alphaBuildDetails = $('alphaBuildDetails');
+const selectBoard = $('selectBoard');
+const selectImage = $('selectImage');
+const boardInfo = $('boardInfo');
+const boardLayouts = $('boardLayouts');
+const selectLayout = $('selectLayout');
+const boardDiagram = $('boardDiagram');
+const dacDiagram = $('dacDiagram');
+const pinEditor = $('pinEditor');
+const pinFields = $('pinFields');
+const pinStatus = $('pinStatus');
 
 const selectRelease = $('selectRelease');
 const selectPackageType = $('selectPackageType');
@@ -51,6 +64,7 @@ let isFlashing = false;
 let githubReleases = [];
 let githubAlphaBuilds = [];
 let localFileBinary = null;
+let chipInfo = null;   // flash and PSRAM of the connected chip (boards.js detectChip)
 
 // Shown only when neither the Pages index nor the GitHub API answers.
 const FALLBACK_RELEASES = [
@@ -107,6 +121,14 @@ tabGithub.addEventListener('click', () => activateSource('github'));
 tabAlpha.addEventListener('click', () => activateSource('alpha'));
 tabLocal.addEventListener('click', () => activateSource('local'));
 selectAlphaBuild.addEventListener('change', () => onAlphaBuildSelected());
+selectBoard.addEventListener('change', () => {
+  try { globalThis.localStorage?.setItem('c5vrx-board', selectBoard.value); } catch { /* not kept */ }
+  refreshLayouts();
+  loadEditedPins();
+  if (findBoard(selectBoard.value).custom) pinEditor.open = true;
+  refreshImageOptions();
+});
+selectImage.addEventListener('change', () => renderBoardInfo());
 selectRelease.addEventListener('change', () => onReleaseSelected(parseInt(selectRelease.value, 10)));
 
 // Local file: the Browse button sits inside the drop zone and bubbles here.
@@ -267,8 +289,253 @@ function onAlphaBuildSelected() {
   const rel = githubAlphaBuilds[Number(selectAlphaBuild.value)];
   if (!rel) return;
   showDetails(alphaBuildDetails, ['infoAlphaBuildName', 'infoAlphaBuildDate', 'infoAlphaBuildTag', 'infoAlphaBuildAssets'], rel);
+  refreshImageOptions();
+}
+
+// ---- Board and image (web/boards.js) ---------------------------------------
+// The board gives the pins; the image adds flash size and PSRAM. Auto picks
+// the image from the connected chip (PSRAM when it has some, the largest
+// flash layout that fits) among the images the selected build contains.
+const selectedAlphaBuild = () => githubAlphaBuilds[parseInt(selectAlphaBuild.value, 10)];
+const releaseHasImage = (rel, image) => Boolean(rel && imageAssets(image, rel.assets || []));
+
+function chosenImage() {
+  const board = findBoard(selectBoard.value);
+  const rel = selectedAlphaBuild();
+  if (selectImage.value && selectImage.value !== 'auto') return board.images.find(image => image.id === selectImage.value) || null;
+  return autoImage(board, chipInfo, image => releaseHasImage(rel, image));
+}
+
+function refreshImageOptions() {
+  const board = findBoard(selectBoard.value);
+  const rel = selectedAlphaBuild();
+  const keep = selectImage.value;
+  const auto = autoImage(board, chipInfo, image => releaseHasImage(rel, image));
+  selectImage.replaceChildren();
+  const add = (value, text, disabled = false) => {
+    const opt = document.createElement('option');
+    opt.value = value;
+    opt.textContent = text;
+    opt.disabled = disabled;
+    selectImage.appendChild(opt);
+  };
+  add('auto', chipInfo ? `Auto${auto ? `: ${imageLabel(auto)}` : ''}` : 'Auto: chosen from the chip after Connect');
+  for (const image of board.images) {
+    const has = !rel || releaseHasImage(rel, image);
+    add(image.id, `${imageLabel(image)}${has ? '' : ' (not in this build)'}`, !has);
+  }
+  selectImage.value = board.images.some(image => image.id === keep && (!rel || releaseHasImage(rel, image))) ? keep : 'auto';
+  renderBoardInfo();
+}
+
+const escapeHtml = text => String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+// A short summary under the lists: what will be flashed, how sure we are of
+// the board, what the chip reported and whose pins are used. The wiring
+// itself is in the pictures below.
+function renderBoardInfo() {
+  const board = findBoard(selectBoard.value);
+  const image = chosenImage();
+  const rel = selectedAlphaBuild();
+  const rows = [];
+  const row = (label, html, cls = '') => rows.push(`<div class="info-row${cls}"><span class="info-label">${label}</span><span class="info-value">${html}</span></div>`);
+  const auto = selectImage.value === 'auto' || !selectImage.value;
+  if (auto && !chipInfo) {
+    row('Firmware', 'Chosen after Connect: with PSRAM if the chip has it, else the largest flash layout that fits');
+  } else if (image && (!rel || releaseHasImage(rel, image))) {
+    row('Firmware', `${escapeHtml(imageLabel(image))}${auto ? ' (Auto, from the chip)' : ''}`);
+  } else {
+    row('Firmware', 'This build has no image for this board and chip.', ' board-summary-problem');
+  }
+  const missing = rel ? board.images.filter(i => !releaseHasImage(rel, i)) : [];
+  if (missing.length) row('', `Not in this build: ${escapeHtml(missing.map(imageLabel).join(', '))}. Builds published after board support was added include them.`, ' board-summary-note');
+  const link = `<a href="${escapeHtml(board.pinout)}" target="_blank" rel="noopener noreferrer">${board.custom ? 'ESP32-C5 GPIO reference' : 'vendor pinout'}</a>`;
+  row('Board', `${board.tested ? 'Tested on hardware' : board.custom ? 'Your own pins' : 'Not tested on hardware yet'} · ${link}`);
+  row('Chip', chipInfo
+    ? escapeHtml([chipInfo.name || 'ESP32-C5', `${chipInfo.flashMb ?? '?'} MB flash`,
+      chipInfo.psramMb == null ? 'PSRAM unknown' : chipInfo.psramMb ? `${chipInfo.psramMb} MB PSRAM` : 'no PSRAM'].join(' · '))
+    : 'Connect to read its flash and PSRAM');
+  row('Pins', pinsEdited() ? 'Edited: written into the image when you flash' : 'The board\'s own');
+  if (board.note) row('Note', escapeHtml(board.note));
+  const problem = image && chipInfo ? imageProblem(image, chipInfo) : null;
+  if (problem) row('Check', escapeHtml(problem.text), ' board-summary-problem');
+  boardInfo.innerHTML = rows.join('');
+  renderPinStatus();
+  renderDiagrams();
   updateFlashButtonState();
 }
+
+// ---- Pins and wiring pictures (web/board-diagram.js, web/image-pins.js) ----
+// The board's own pins unless the pin editor changed them. Edited pins are
+// kept per board in this browser and written into the image's pin table
+// when flashing; the custom board always writes its pins.
+let editedPins = null;
+const pinInputs = [];
+const pinsKey = board => `c5vrx-pins-${board.id}`;
+
+function currentPins() {
+  return editedPins || presetPins(findBoard(selectBoard.value));
+}
+
+function pinsEdited() {
+  const board = findBoard(selectBoard.value);
+  return Boolean(board.custom || (editedPins && !samePins(editedPins, presetPins(board))));
+}
+
+function currentLayout(board) {
+  return board.layouts.find(layout => layout.id === selectLayout.value) || board.layouts[0] || null;
+}
+
+function loadEditedPins() {
+  const board = findBoard(selectBoard.value);
+  editedPins = null;
+  try {
+    const saved = JSON.parse(globalThis.localStorage?.getItem(pinsKey(board)) || 'null');
+    if (saved && Array.isArray(saved.dac) && Array.isArray(saved.iq) && saved.dac.length === 6 && saved.iq.length === 8) editedPins = saved;
+  } catch { /* the board's own pins */ }
+  fillPinInputs();
+}
+
+function saveEditedPins() {
+  const board = findBoard(selectBoard.value);
+  try {
+    if (editedPins && pinsEdited()) globalThis.localStorage?.setItem(pinsKey(board), JSON.stringify(editedPins));
+    else globalThis.localStorage?.removeItem(pinsKey(board));
+  } catch { /* kept for this page only */ }
+}
+
+function buildPinInputs() {
+  const groups = [
+    ['DAC: one resistor per pin into the video node', DAC_OHMS.map((value, k) => ['dac', k, `D${4 + k} · ${ohms(value)}`])],
+    ['IQ loopback: driven at 40 MHz, nothing connected', IQ_NAMES.map((name, k) => ['iq', k, `IQ bit ${k} (${name})`])],
+    ['Menu button (active low)', [['boot', 0, 'Button']]]
+  ];
+  for (const [title, fields] of groups) {
+    const heading = document.createElement('p');
+    heading.className = 'pin-group';
+    heading.textContent = title;
+    pinFields.appendChild(heading);
+    const grid = document.createElement('div');
+    grid.className = 'pin-grid';
+    for (const [group, index, text] of fields) {
+      const label = document.createElement('label');
+      const input = document.createElement('select');
+      input.dataset.group = group;
+      input.dataset.index = String(index);
+      input.setAttribute('aria-label', `${text} GPIO`);
+      input.addEventListener('change', onPinInput);
+      label.append(text, input);
+      grid.appendChild(label);
+      pinInputs.push(input);
+    }
+    pinFields.appendChild(grid);
+  }
+}
+
+// Every field lists GPIO0..28 named for the selected board and layout.
+function fillPinOptions() {
+  const board = findBoard(selectBoard.value);
+  const layout = currentLayout(board);
+  for (const input of pinInputs) {
+    input.replaceChildren();
+    for (const choice of pinChoices(board, layout, input.dataset.group)) {
+      const opt = document.createElement('option');
+      opt.value = String(choice.value);
+      opt.textContent = choice.label;
+      opt.disabled = choice.disabled;
+      input.appendChild(opt);
+    }
+  }
+}
+
+function fillPinInputs() {
+  fillPinOptions();
+  const pins = currentPins();
+  for (const input of pinInputs) {
+    const { group, index } = input.dataset;
+    input.value = String(group === 'boot' ? pins.boot : pins[group][Number(index)]);
+  }
+}
+
+function onPinInput() {
+  const pins = presetPins(findBoard(selectBoard.value));
+  for (const input of pinInputs) {
+    const value = input.value.trim() === '' ? NaN : Number(input.value);
+    if (input.dataset.group === 'boot') pins.boot = value;
+    else pins[input.dataset.group][Number(input.dataset.index)] = value;
+  }
+  editedPins = pins;
+  saveEditedPins();
+  renderBoardInfo();
+}
+
+function renderPinStatus() {
+  const board = findBoard(selectBoard.value);
+  const image = chosenImage();
+  const pins = currentPins();
+  const problem = pinProblem(pins, Boolean(image?.psram));
+  const bad = badPins(pins);
+  for (const input of pinInputs) {
+    const { group, index } = input.dataset;
+    const value = group === 'boot' ? pins.boot : pins[group][Number(index)];
+    input.classList.toggle('pin-bad', bad.has(value) || !Number.isInteger(value));
+  }
+  const lines = problem ? [PIN_PROBLEM_TEXT[problem]] : [];
+  lines.push(...pinWarnings(pins, board, currentLayout(board)));
+  if (!problem) lines.push(pinsEdited() ? 'These pins are written into the image when you flash.' : 'These are the board\'s own pins: the image is flashed unchanged.');
+  pinStatus.textContent = lines.join('\n');
+  pinStatus.classList.toggle('pin-error', Boolean(problem));
+}
+
+function renderDiagrams() {
+  const board = findBoard(selectBoard.value);
+  const pins = currentPins();
+  const layout = currentLayout(board);
+  const bad = badPins(pins);
+  boardDiagram.innerHTML = layout ? boardSvg(board, layout, pins, bad) : pinGridSvg(pins, bad);
+  dacDiagram.innerHTML = ladderSvg(pins);
+}
+
+function refreshLayouts() {
+  const board = findBoard(selectBoard.value);
+  selectLayout.replaceChildren();
+  for (const layout of board.layouts) {
+    const opt = document.createElement('option');
+    opt.value = layout.id;
+    opt.textContent = layout.name;
+    selectLayout.appendChild(opt);
+  }
+  let saved = null;
+  try { saved = globalThis.localStorage?.getItem(`c5vrx-layout-${board.id}`); } catch { /* the first layout */ }
+  selectLayout.value = board.layouts.some(layout => layout.id === saved) ? saved : board.layouts[0]?.id || '';
+  boardLayouts.hidden = board.layouts.length < 2;
+}
+
+for (const board of BOARDS) {
+  const opt = document.createElement('option');
+  opt.value = board.id;
+  opt.textContent = board.name;
+  selectBoard.appendChild(opt);
+}
+try {
+  const saved = globalThis.localStorage?.getItem('c5vrx-board');
+  if (BOARDS.some(board => board.id === saved)) selectBoard.value = saved;
+} catch { /* the first board */ }
+buildPinInputs();
+refreshLayouts();
+loadEditedPins();
+selectLayout.addEventListener('change', () => {
+  try { globalThis.localStorage?.setItem(`c5vrx-layout-${findBoard(selectBoard.value).id}`, selectLayout.value); } catch { /* not kept */ }
+  fillPinInputs();
+  renderBoardInfo();
+});
+$('btnResetPins').addEventListener('click', () => {
+  editedPins = null;
+  saveEditedPins();
+  fillPinInputs();
+  renderBoardInfo();
+});
+pinEditor.open = findBoard(selectBoard.value).custom === true;
 
 function populateReleaseDropdown(keepTag) {
   selectRelease.replaceChildren();
@@ -297,7 +564,9 @@ function updateFlashButtonState() {
   } else if (activeSource === 'github') {
     btnFlash.disabled = !githubReleases[parseInt(selectRelease.value, 10)];
   } else if (activeSource === 'alpha') {
-    btnFlash.disabled = !githubAlphaBuilds[parseInt(selectAlphaBuild.value, 10)];
+    const image = chosenImage();
+    btnFlash.disabled = !image || !releaseHasImage(selectedAlphaBuild(), image) || imageProblem(image, chipInfo)?.level === 'block' ||
+      pinProblem(currentPins(), image.psram) !== null;
   } else {
     btnFlash.disabled = localFileBinary === null;
   }
@@ -308,7 +577,8 @@ function getSelectedRemoteBuild() {
     return { release: githubReleases[parseInt(selectRelease.value, 10)], packageType: selectPackageType.value };
   }
   if (activeSource === 'alpha') {
-    return { release: githubAlphaBuilds[parseInt(selectAlphaBuild.value, 10)], packageType: selectAlphaPackageType.value };
+    return { release: selectedAlphaBuild(), packageType: selectAlphaPackageType.value, image: chosenImage(),
+      pins: pinsEdited() ? currentPins() : null };
   }
   return { release: null, packageType: null };
 }
@@ -493,9 +763,12 @@ async function connectDevice() {
 
     isConnected = true;
     btnConnectText.textContent = 'Disconnect';
-    const chipName = esploader.chip ? esploader.chip.CHIP_NAME : 'ESP32-C5';
+    chipInfo = await detectChip(esploader);
+    const chipName = chipInfo.name || (esploader.chip ? esploader.chip.CHIP_NAME : 'ESP32-C5');
     statStatus.textContent = `${chipName} connected · ready to flash`;
-    log(`Connected to ${chipName}.`);
+    log(`Connected to ${chipName}: ${chipInfo.flashMb ?? 'unknown'} MB flash, ` +
+      `${chipInfo.psramMb == null ? 'PSRAM unknown' : `${chipInfo.psramMb} MB PSRAM in the package`}.`);
+    refreshImageOptions();
   } catch (err) {
     if (err?.name === 'NotFoundError') {
       log('No port selected.');
@@ -522,6 +795,8 @@ async function disconnectDevice(message = 'No device connected') {
   transport = null;
   esploader = null;
   isConnected = false;
+  chipInfo = null;
+  refreshImageOptions();
   btnConnectText.textContent = 'Connect device';
   statStatus.textContent = message;
   syncDeviceControls();
@@ -534,6 +809,14 @@ async function collectRemoteImages(selected) {
   if (!rel) throw new Error('No release selected');
   const assets = rel.assets || [];
   log(`Fetching binaries for ${rel.tag_name} (${selected.packageType})…`);
+
+  if (selected.image && selected.image.asset !== 'standard') {
+    const files = imageAssets(selected.image, assets);
+    if (!files) throw new Error(`This build has no ${imageLabel(selected.image)} image for this board. Choose a newer build.`);
+    return selected.packageType === 'merged'
+      ? [{ data: new Uint8Array(await fetchReleaseAsset(files.full)), address: 0x0 }]
+      : [{ data: new Uint8Array(await fetchReleaseAsset(files.app)), address: 0x10000 }];
+  }
 
   if (selected.packageType !== 'merged') {
     const app = findApplicationAsset(assets);
@@ -567,6 +850,21 @@ btnFlash.addEventListener('click', async () => {
   const selected = getSelectedRemoteBuild();
   if (activeSource === 'alpha' && /^c5vrx5-pr-/.test(selected.release?.tag_name || '') &&
       !window.confirm('Flash an unmerged C5VRX-5 PR build? It may fail to boot or produce broken video.')) return;
+  if (activeSource === 'alpha') {
+    const problem = selected.image ? imageProblem(selected.image, chipInfo) : { level: 'block', text: 'This build has no image for this board.' };
+    if (problem?.level === 'block') {
+      log(problem.text, 'error');
+      alert(problem.text);
+      return;
+    }
+    if (problem?.level === 'ask' && !window.confirm(`${problem.text}\n\nFlash anyway?`)) return;
+    const pinsBad = selected.image && pinProblem(currentPins(), selected.image.psram);
+    if (pinsBad) {
+      log(PIN_PROBLEM_TEXT[pinsBad], 'error');
+      alert(PIN_PROBLEM_TEXT[pinsBad]);
+      return;
+    }
+  }
 
   isFlashing = true;
   syncDeviceControls();
@@ -584,13 +882,29 @@ btnFlash.addEventListener('click', async () => {
       fileArray = await collectRemoteImages(selected);
     }
 
+    if (selected.pins) {
+      // The application is at 0x10000: inside a merged image, or a file of its own.
+      const part = fileArray.find(f => f.address === 0x10000) || fileArray.find(f => f.address === 0x0);
+      const offset = part.address === 0x0 ? 0x10000 : 0;
+      const patched = await writeImagePins(part.data, offset, selected.pins);
+      part.data = patched.bytes;
+      log(`Pins written into the image (checksum and SHA-256 updated): DAC ${selected.pins.dac.join(',')}, ` +
+        `IQ ${selected.pins.iq.join(',')}, menu button ${selected.pins.boot}; the image had DAC ${patched.before.dac.join(',')}.`);
+    }
+    const flashBytes = (chipInfo?.flashMb ?? 0) * 1024 * 1024;
+    for (const f of fileArray) {
+      if (flashBytes && f.address + f.data.length > flashBytes) throw new Error(`The image does not fit in the board's ${chipInfo.flashMb} MB flash`);
+    }
+    if (selected.image) log(`Image: ${findBoard(selectBoard.value).name}, ${imageLabel(selected.image)}.`);
     const totalBytes = fileArray.reduce((acc, f) => acc + f.data.length, 0);
     log(`Writing ${fileArray.length} image(s), ${totalBytes.toLocaleString()} bytes.`);
     progressStatusText.textContent = 'Flashing…';
 
     await esploader.writeFlash({
       fileArray,
-      flashSize: '8MB',
+      // C5VRX-5 images carry their own flash size (4 or 8 MB layout); the
+      // archived legacy builds were always flashed as 8 MB.
+      flashSize: activeSource === 'github' ? '8MB' : 'keep',
       flashMode: 'dio',
       flashFreq: '80m',
       eraseAll: chkEraseAll.checked,
@@ -855,7 +1169,8 @@ setInterval(() => {
 
 function syncDeviceControls() {
   const supported = 'serial' in navigator;
-  for (const control of [tabGithub, tabAlpha, tabLocal, selectAlphaBuild, selectAlphaPackageType, selectRelease, selectPackageType, selectBaud, chkEraseAll, inputLocalFile, inputFlashOffset, $('btnBrowseFile')]) {
+  for (const input of pinInputs) input.disabled = isFlashing;
+  for (const control of [tabGithub, tabAlpha, tabLocal, selectAlphaBuild, selectBoard, selectImage, selectLayout, $('btnResetPins'), selectAlphaPackageType, selectRelease, selectPackageType, selectBaud, chkEraseAll, inputLocalFile, inputFlashOffset, $('btnBrowseFile')]) {
     control.disabled = isFlashing;
   }
   const terminalConnected = serialConsole.state === 'connected';

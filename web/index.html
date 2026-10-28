@@ -190,6 +190,31 @@
               </div>
             </details>
             <div class="field">
+              <label for="selectBoard">Board</label>
+              <select id="selectBoard" class="form-control"></select>
+            </div>
+            <div class="field">
+              <label for="selectImage">Flash and PSRAM</label>
+              <select id="selectImage" class="form-control"><option value="auto">Auto: chosen from the chip after Connect</option></select>
+            </div>
+            <div id="boardInfo" class="info-box board-summary" aria-live="polite"></div>
+            <details id="wiringDetails" class="pin-editor" open>
+              <summary>Wiring: where each resistor goes</summary>
+              <div id="boardLayouts" class="board-layouts" hidden>
+                <label for="selectLayout">Board revision</label>
+                <select id="selectLayout" class="form-control"></select>
+              </div>
+              <div id="boardDiagram" class="board-diagram"></div>
+              <div id="dacDiagram" class="board-diagram"></div>
+            </details>
+            <details id="pinEditor" class="pin-editor">
+              <summary>Custom pins: move the DAC, the IQ loopback or the menu button</summary>
+              <p class="pin-status">Each list shows the GPIO and, where this board prints one, its header label. The flasher writes your choice into the image when it flashes, the receiver reports it in <code>T</code> (BOARD line), and it stays saved in this browser.</p>
+              <div id="pinFields"></div>
+              <div class="pin-actions"><button type="button" id="btnResetPins" class="action">Use the board's own pins</button></div>
+              <p id="pinStatus" class="pin-status" aria-live="polite"></p>
+            </details>
+            <div class="field">
               <label for="selectAlphaPackageType">Package</label>
               <select id="selectAlphaPackageType" class="form-control">
                 <option value="merged">Full firmware</option>

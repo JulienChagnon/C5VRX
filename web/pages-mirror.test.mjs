@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -8,11 +8,13 @@ import { spawnSync } from 'node:child_process';
 // Exercise the production packager with real jq and mocked GitHub responses.
 function prepare({ empty = false, retry = false, failDownload = false } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'c5vrx-pages-'));
+  const files = ['c5vrx5.bin', 'c5vrx5_merged.bin', 'c5vrx5-devkitc.app.bin', 'c5vrx5-devkitc.full.bin'];
   const release = { tag_name: 'c5vrx5-v5.0.387', draft: false,
-    prerelease: false, published_at: '2026-10-22T12:00:00Z',
-    assets: ['c5vrx5.bin', 'c5vrx5_merged.bin'].map(name => ({ name })) };
+    prerelease: false, published_at: '2026-10-22T12:00:00Z', assets: files.map(name => ({ name })) };
+  // An older main build beyond BOARD_IMAGE_BUILDS keeps only the standard image.
+  const older = { ...release, tag_name: 'c5vrx5-v5.0.386', published_at: '2026-10-21T12:00:00Z' };
   // Two separate page arrays: gh --paginate output, without --slurp.
-  writeFileSync(join(dir, 'pages.json'), `${JSON.stringify([release])}\n[]\n`);
+  writeFileSync(join(dir, 'pages.json'), `${JSON.stringify([release, older])}\n[]\n`);
   writeFileSync(join(dir, 'gh'), `#!/usr/bin/env bash
 set -eu
 if [[ "$1" == api ]]; then
@@ -26,8 +28,7 @@ if [[ "$1" == api ]]; then
 elif [[ "$1 $2" == 'release download' ]]; then
   [[ "$FAIL_DOWNLOAD" != 1 ]] || exit 1
   while [[ "$1" != --dir ]]; do shift; done
-  printf firmware > "$2/c5vrx5.bin"
-  printf firmware > "$2/c5vrx5_merged.bin"
+  for name in ${files.join(' ')}; do printf firmware > "$2/$name"; done
 else
   exit 2
 fi
@@ -36,7 +37,7 @@ fi
     const result = spawnSync('bash', ['tools/prepare_pages_site.sh', join(dir, 'site')], {
       cwd: new URL('../', import.meta.url), encoding: 'utf8',
       env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, GH_TOKEN: 'mock',
-        GITHUB_REPOSITORY: 'Twotoz/C5VRX', MOCK_DIR: dir,
+        GITHUB_REPOSITORY: 'Twotoz/C5VRX', MOCK_DIR: dir, BOARD_IMAGE_BUILDS: '1',
         EMPTY: empty ? '1' : '0', RETRY: retry ? '1' : '0',
         FAIL_DOWNLOAD: failDownload ? '1' : '0' }
     });
@@ -44,6 +45,11 @@ fi
       const index = JSON.parse(readFileSync(join(dir, 'site/firmware/releases.json')));
       assert.equal(index[0].tag_name, release.tag_name);
       assert.equal(index[0].assets[0].local_url, `firmware/${release.tag_name}/c5vrx5.bin`);
+      assert.deepEqual(index[0].assets.map(a => a.name), files);
+      assert.deepEqual(index[1].assets.map(a => a.name), ['c5vrx5.bin', 'c5vrx5_merged.bin']);
+      assert.ok(existsSync(join(dir, `site/firmware/${release.tag_name}/c5vrx5-devkitc.full.bin`)));
+      assert.ok(!existsSync(join(dir, `site/firmware/${older.tag_name}/c5vrx5-devkitc.full.bin`)));
+      assert.ok(existsSync(join(dir, `site/firmware/${older.tag_name}/c5vrx5_merged.bin`)));
     }
     return result;
   } finally { rmSync(dir, { recursive: true, force: true }); }

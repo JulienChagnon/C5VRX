@@ -5,18 +5,23 @@ import vm from 'node:vm';
 import { CalibrationCapture } from './calibration-report.js';
 import { ReceiverConsole, MENU_COMMAND_KEYS } from './receiver-console.js';
 import { FlightLogCapture, decodeImage, summarize, secondsCsv } from './flight-log.js';
+import * as boardsModule from './boards.js';
+import * as diagramModule from './board-diagram.js';
+import * as imagePinsModule from './image-pins.js';
+import { fakeAppImage, mergedImage, XIAO_PINS } from './fake-image.mjs';
 
 // Exercise the actual click handler with a mock loader: never touch USB hardware.
 const source = fs.readFileSync(process.env.APP_SOURCE_PATH || new URL('./app.js', import.meta.url), 'utf8').replace(/^import .*;\r?\n/gm, '');
 function harness(sourceName, packageType = 'merged', confirmed = true) {
   const elements = new Map();
+  const makeElement = () => ({
+    style: {}, handlers: {}, value: '', textContent: '', checked: false, dataset: {}, innerHTML: '',
+    classList: { toggle() {}, add() {}, remove() {} },
+    addEventListener(name, fn) { this.handlers[name] = fn; },
+    setAttribute() {}, appendChild() {}, append() {}, replaceChildren() {}
+  });
   const get = id => {
-    if (!elements.has(id)) elements.set(id, {
-      style: {}, handlers: {}, value: '', textContent: '', checked: false,
-      classList: { toggle() {}, add() {}, remove() {} },
-      addEventListener(name, fn) { this.handlers[name] = fn; },
-      setAttribute() {}, appendChild() {}, replaceChildren() {}
-    });
+    if (!elements.has(id)) elements.set(id, makeElement());
     return elements.get(id);
   };
   const html = fs.readFileSync(new URL('./index.html', import.meta.url), 'utf8');
@@ -26,12 +31,14 @@ function harness(sourceName, packageType = 'merged', confirmed = true) {
     return element;
   });
   const downloads = [], flashes = [], alerts = [], commands = [], lifecycle = [], resets = [];
+  const files = {};   // release file name -> bytes the mock fetch serves
   const context = vm.createContext({
     console, URL, Date, TextDecoder, TextEncoder, CalibrationCapture, ReceiverConsole, MENU_COMMAND_KEYS, setTimeout, clearTimeout,
     FlightLogCapture, decodeImage, summarize, secondsCsv,
+    ...boardsModule, ...diagramModule, ...imagePinsModule, crypto: globalThis.crypto,
     setInterval: () => 0, clearInterval() {},
     document: { baseURI: 'https://c5vrx.com/', getElementById: get, visibilityState: 'visible',
-      querySelectorAll: selector => selector === '[data-command]' ? shortcuts : [], addEventListener() {}, createElement: () => get('option') },
+      querySelectorAll: selector => selector === '[data-command]' ? shortcuts : [], addEventListener() {}, createElement: makeElement },
     navigator: { serial: { addEventListener() {} } },
     window: { confirm: () => confirmed, matchMedia: () => ({ matches: true, addEventListener() {} }) },
     SerialTerminal: class {
@@ -41,7 +48,11 @@ function harness(sourceName, packageType = 'merged', confirmed = true) {
       async send(text) { commands.push(text); return true; }
     },
     alert: message => alerts.push(message),
-    fetch: async url => { downloads.push(url); return { ok: true, arrayBuffer: async () => new Uint8Array([1, 2, 3, 4]).buffer }; },
+    fetch: async url => {
+      downloads.push(url);
+      const data = files[url.split('/').pop()] || new Uint8Array([1, 2, 3, 4]);
+      return { ok: true, arrayBuffer: async () => data.slice().buffer };
+    },
     mockLoader: { writeFlash: async options => flashes.push(options),
       writeReg: async (...args) => resets.push(['writeReg', ...args]), after: async mode => resets.push(['after', mode]) }
   });
@@ -59,7 +70,7 @@ function harness(sourceName, packageType = 'merged', confirmed = true) {
     ] };
     githubReleases = [rel]; githubAlphaBuilds = [rel];
   `, context);
-  return { get, context, downloads, flashes, alerts, commands, lifecycle, resets, shortcuts, click: () => get('btnFlash').handlers.click() };
+  return { get, context, files, downloads, flashes, alerts, commands, lifecycle, resets, shortcuts, click: () => get('btnFlash').handlers.click() };
 }
 
 for (const remote of ['github', 'alpha']) {
@@ -165,9 +176,15 @@ test('a menu command is followed by one status refresh; browsing sends nothing',
 test('Pages deployment fingerprints every module app.js imports', () => {
   const app = fs.readFileSync(new URL('./app.js', import.meta.url), 'utf8');
   const script = fs.readFileSync(new URL('../tools/prepare_pages_site.sh', import.meta.url), 'utf8');
-  const listed = script.match(/for name in \(([^)]*)\):/)[1];
+  const listed = script.match(/modules = \(([^)]*)\)/)[1];
+  const nested = script.match(/for name in \(([^)]*)\):\n    module = /)[1];
   for (const [, name] of app.matchAll(/^import .* from '\.\/([^']+)';/gm)) {
     assert.ok(listed.includes(`"${name}"`), `${name} would be served from a stale cache`);
+    // A module that imports another module needs its imports fingerprinted too.
+    const module = fs.readFileSync(new URL(`./${name}`, import.meta.url), 'utf8');
+    for (const [, dep] of module.matchAll(/^import .* from '\.\/([^']+)';/gm)) {
+      assert.ok(listed.includes(`"${dep}"`) && nested.includes(`"${name}"`), `${name} imports ${dep} unfingerprinted`);
+    }
   }
 });
 
@@ -380,4 +397,162 @@ test('a loader that refuses the watchdog writes still gets the RTS reset', async
   h.context.mockLoader.writeReg = async () => { throw new Error('write failed'); };
   await h.click();
   assert.deepEqual(h.resets, [['after', 'hard_reset']]);
+});
+
+// Board images: the board and the detected chip choose the release files.
+function boardHarness({ board = 'xiao', image = 'auto', chip = null, packageType = 'merged', confirmed = true, variants = true } = {}) {
+  const h = harness('alpha', packageType, confirmed);
+  h.get('selectBoard').value = board;
+  h.get('selectImage').value = image;
+  const extra = variants ? ['xiao-psram', 'xiao-4mb', 'devkitc', 'devkitc-psram', 'pico', 'nicemcu']
+    .flatMap(id => [`c5vrx5-${id}.app.bin`, `c5vrx5-${id}.full.bin`]) : [];
+  vm.runInContext(`chipInfo = ${JSON.stringify(chip)};
+    githubAlphaBuilds[0].assets.push(...${JSON.stringify(extra)}.map(name => ({ name, local_url: 'firmware/alpha/' + name, size: 4 })));`, h.context);
+  return h;
+}
+const flashedFile = h => h.downloads.map(url => url.split('/').pop());
+
+test('auto flashes the XIAO PSRAM image on a chip with in-package PSRAM', async () => {
+  const h = boardHarness({ chip: { name: 'ESP32-C5HR8', flashMb: 8, psramMb: 8 } });
+  await h.click();
+  assert.deepEqual(flashedFile(h), ['c5vrx5-xiao-psram.full.bin']);
+  assert.equal(h.flashes[0].fileArray[0].address, 0);
+  assert.equal(h.flashes[0].flashSize, 'keep');
+});
+test('auto flashes the standard image on a XIAO-wired chip without PSRAM', async () => {
+  const h = boardHarness({ chip: { name: 'ESP32-C5N', flashMb: 8, psramMb: 0 } });
+  await h.click();
+  assert.deepEqual(flashedFile(h), ['c5vrx5_merged.bin']);
+});
+test('a 4 MB chip gets the 4 MB layout, full and app only', async () => {
+  const full = boardHarness({ board: 'devkitc', chip: { name: 'ESP32-C5N', flashMb: 4, psramMb: 0 } });
+  await full.click();
+  assert.deepEqual(flashedFile(full), ['c5vrx5-devkitc.full.bin']);
+  const app = boardHarness({ board: 'devkitc', packageType: 'app_only', chip: { name: 'ESP32-C5N', flashMb: 4, psramMb: 0 } });
+  await app.click();
+  assert.deepEqual(flashedFile(app), ['c5vrx5-devkitc.app.bin']);
+  assert.equal(app.flashes[0].fileArray[0].address, 0x10000);
+});
+test('an 8 MB image is refused on a 4 MB chip before anything is downloaded', async () => {
+  const h = boardHarness({ image: 'xiao', chip: { name: 'ESP32-C5HF4', flashMb: 4, psramMb: 0 } });
+  await h.click();
+  assert.equal(h.downloads.length, 0);
+  assert.equal(h.flashes.length, 0);
+  assert.match(h.alerts[0], /needs 8 MB of flash/);
+});
+test('a 4 MB chip with an older build that has only the 8 MB image flashes nothing', async () => {
+  const h = boardHarness({ chip: { name: 'ESP32-C5HF4', flashMb: 4, psramMb: 0 }, variants: false });
+  await h.click();
+  assert.equal(h.flashes.length, 0);
+  assert.match(h.alerts[0], /no image for this board/);
+});
+test('a PSRAM image on a chip without in-package PSRAM needs a confirmation', async () => {
+  const chip = { name: 'ESP32-C5N', flashMb: 8, psramMb: 0 };
+  const declined = boardHarness({ board: 'devkitc', image: 'devkitc-psram', chip, confirmed: false });
+  await declined.click();
+  assert.equal(declined.flashes.length, 0);
+  const accepted = boardHarness({ board: 'devkitc', image: 'devkitc-psram', chip });
+  await accepted.click();
+  assert.deepEqual(flashedFile(accepted), ['c5vrx5-devkitc-psram.full.bin']);
+});
+test('legacy builds keep the 8 MB flash size setting', async () => {
+  const h = harness('github');
+  await h.click();
+  assert.equal(h.flashes[0].flashSize, '8MB');
+});
+
+// Pin editor: edited pins are written into the image's pin table.
+async function pinHarness({ board = 'xiao', pins = null, packageType = 'merged', tables = 1, noMerged = false } = {}) {
+  const h = boardHarness({ board, packageType, chip: { name: 'ESP32-C5HR8', flashMb: 8, psramMb: 0 } });
+  const app = await fakeAppImage({ tables });
+  h.files['c5vrx5.bin'] = app;
+  h.files['c5vrx5_merged.bin'] = mergedImage(app);
+  vm.runInContext(`for (const a of githubAlphaBuilds[0].assets) a.size = 0;
+    ${noMerged ? "githubAlphaBuilds[0].assets = githubAlphaBuilds[0].assets.filter(a => !a.name.includes('merged'));" : ''}
+    editedPins = ${JSON.stringify(pins)};`, h.context);
+  return h;
+}
+const DEVKITC_PINS = { dac: [23, 24, 6, 10, 8, 9], iq: [1, 0, 25, 2, 26, 5, 3, 4], boot: 28 };
+const flashedPins = (h, part = 0, offset = 0x10000) => imagePinsModule.imagePins(h.flashes[0].fileArray[part].data, offset);
+
+test('edited pins go into the merged image at 0x10000, which still verifies', async () => {
+  const h = await pinHarness({ pins: DEVKITC_PINS });
+  await h.click();
+  assert.equal(h.flashes.length, 1, h.alerts.join());
+  assert.deepEqual(flashedPins(h), { ...DEVKITC_PINS, custom: true });
+  assert.deepEqual(await imagePinsModule.verifyAppImage(h.flashes[0].fileArray[0].data, 0x10000), { checksumOk: true, hashOk: true });
+});
+test('edited pins go into an app-only image at offset 0', async () => {
+  const h = await pinHarness({ pins: DEVKITC_PINS, packageType: 'app_only' });
+  await h.click();
+  assert.equal(h.flashes[0].fileArray[0].address, 0x10000);
+  assert.deepEqual(flashedPins(h, 0, 0).dac, DEVKITC_PINS.dac);
+});
+test('edited pins reach the application of a three-part flash', async () => {
+  const h = await pinHarness({ pins: DEVKITC_PINS, noMerged: true });
+  await h.click();
+  const app = h.flashes[0].fileArray.find(f => f.address === 0x10000);
+  assert.deepEqual(imagePinsModule.imagePins(app.data, 0).iq, DEVKITC_PINS.iq);
+});
+test('the board\'s own pins flash the image unchanged', async () => {
+  const h = await pinHarness({ pins: null });
+  await h.click();
+  assert.deepEqual(flashedPins(h), { ...XIAO_PINS, custom: false });
+});
+test('the custom board always writes its pins, even the XIAO map', async () => {
+  const h = await pinHarness({ board: 'custom', pins: null });
+  await h.click();
+  assert.deepEqual(flashedPins(h), { ...XIAO_PINS, custom: true });
+});
+test('pins the rules reject never reach a download', async () => {
+  const h = await pinHarness({ pins: { ...DEVKITC_PINS, dac: [23, 24, 6, 10, 8, 13] } });
+  await h.click();
+  assert.equal(h.downloads.length, 0);
+  assert.equal(h.flashes.length, 0);
+  assert.match(h.alerts[0], /USB/);
+});
+test('a build older than the pin table refuses edited pins and flashes nothing', async () => {
+  const h = await pinHarness({ pins: DEVKITC_PINS, tables: 0 });
+  await h.click();
+  assert.equal(h.flashes.length, 0);
+  assert.match(h.alerts[0], /older than the pin editor/);
+});
+test('the wiring pictures follow the edited pins', async () => {
+  // D6 moves from D6/GPIO11 to the XIAO's D10/GPIO10.
+  const h = await pinHarness({ pins: { ...XIAO_PINS, dac: [23, 24, 10, 12, 8, 9] } });
+  vm.runInContext('renderBoardInfo()', h.context);
+  const picture = h.get('boardDiagram').innerHTML;
+  assert.match(picture, /GPIO10<\/text><line class="bd-lead bd-lead-dac"[^>]*\/><rect class="bd-chip bd-chip-dac"[^>]*\/><text[^>]*>D6 · 2 kΩ</);
+  assert.match(picture, /GPIO11<\/text><circle/, 'GPIO11 is free now');
+  assert.match(picture, /Inside the board, nothing to wire: GPIO2, GPIO27, GPIO5, GPIO3, GPIO4, GPIO28 \(BOOT button\)/);
+  assert.match(h.get('dacDiagram').innerHTML, /GPIO10<\/text><text class="bd-silk"[^>]*>D6</);
+  assert.match(h.get('pinStatus').textContent, /written into the image/);
+});
+test('a DAC pin on no header is shown as unwirable and warned about', async () => {
+  const h = await pinHarness({ pins: DEVKITC_PINS });   // GPIO6 has no XIAO header pin
+  vm.runInContext('renderBoardInfo()', h.context);
+  assert.match(h.get('boardDiagram').innerHTML, /Not on a header, cannot be wired: D6 on GPIO6/);
+  assert.match(h.get('pinStatus').textContent, /D6 on GPIO6: not on this board's headers/);
+});
+test('a board without a layout gets the GPIO grid with every pin job', async () => {
+  const h = await pinHarness({ board: 'custom' });
+  vm.runInContext('renderBoardInfo()', h.context);
+  const grid = h.get('boardDiagram').innerHTML;
+  assert.match(grid, /GPIO23<\/text><text class="bd-cell-text bd-cell-text-dac"[^>]*>D4</);
+  assert.match(grid, /GPIO13<\/text><text class="bd-cell-text bd-cell-text-reserved"[^>]*>USB D-</);
+  assert.match(grid, /GPIO27<\/text><text class="bd-cell-text bd-cell-text-iq"[^>]*>IQ I4</);
+});
+test('the summary names the image, the chip and images a build lacks', async () => {
+  const before = boardHarness({ variants: false });
+  vm.runInContext('renderBoardInfo()', before.context);
+  const old = before.get('boardInfo').innerHTML;
+  assert.match(old, /Not in this build: 8 MB flash \+ PSRAM\./);
+  assert.match(old, /Connect to read its flash and PSRAM/);
+  const after = boardHarness({ chip: { name: 'ESP32-C5HR8', flashMb: 8, psramMb: 8 } });
+  vm.runInContext('renderBoardInfo()', after.context);
+  const now = after.get('boardInfo').innerHTML;
+  assert.match(now, /8 MB flash \+ PSRAM \(Auto, from the chip\)/);
+  assert.match(now, /ESP32-C5HR8 · 8 MB flash · 8 MB PSRAM/);
+  assert.match(now, /Tested on hardware · <a href="https:\/\/files\.seeedstudio\.com/);
+  assert.doesNotMatch(now, /Not in this build/);
 });
