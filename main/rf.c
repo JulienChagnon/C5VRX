@@ -246,9 +246,13 @@ static uint32_t s_vbank1_hash, s_bank1_sig, s_bank1_events;
 
 void rf_bank1_check(bool print)
 {
+    /* capture_table() already owns the recursive PHY lock; console polls
+     * must share it so a retune cannot split this snapshot or its state. */
+    phy_read_begin();
     unsigned grp;
     const int16_t *tab = phy_vendor_bank1_table(&grp);
     if (!tab || !s_table.band5) {
+        phy_read_end();
         if (print) printf("BANK1_CHECK supported=0\n");
         return;
     }
@@ -280,17 +284,25 @@ void rf_bank1_check(bool print)
     const bool changed = s_bank1_sig && sig != s_bank1_sig;
     s_bank1_events += changed;
     s_bank1_sig = sig;
+    /* Release ownership before USB formatting/output. Keep only the current
+     * group's nine pairs on the stack, never another full table in RAM. */
+    int16_t table_now[PHY_VBANK1_STAGES * 2u];
+    if (tab_changed && (print || changed))
+        memcpy(table_now, &tab[grp * PHY_VBANK1_STAGES * 2u], sizeof(table_now));
+    const unsigned rows = s_table.max_index + 1u, held = phy_dco_held();
+    const uint32_t events = s_bank1_events;
+    phy_read_end();
     if (!print && !changed) return;
     printf("BANK1_CHECK%s group=%u table_changed=%u", changed ? " CHANGED" : "", grp, tab_changed);
     if (tab_changed) {   /* the boot values are in the boot log's first BANK1_CHECK */
         printf(" table_now=");
         for (unsigned s = 0; s < PHY_VBANK1_STAGES; ++s)
-            printf("%s%d/%d", s ? "," : "", tab[(grp * PHY_VBANK1_STAGES + s) * 2u], tab[(grp * PHY_VBANK1_STAGES + s) * 2u + 1u]);
+            printf("%s%d/%d", s ? "," : "", table_now[s * 2u], table_now[s * 2u + 1u]);
     }
-    printf(" mem_rows=%u mem_bad=%u", s_table.max_index + 1u, mem_bad);
+    printf(" mem_rows=%u mem_bad=%u", rows, mem_bad);
     if (mem_first >= 0) printf(" first_bad=G%d mem=%d/%d want=%d/%d", mem_first, got[0], got[1], want[0], want[1]);
     printf(" top_row=%d/%d live=%d/%d held=%u events=%lu\n", top[0], top[1], live ? live1[0] : -1, live ? live1[1] : -1,
-           phy_dco_held(), (unsigned long)s_bank1_events);
+           held, (unsigned long)events);
 }
 
 static void capture_table(void)

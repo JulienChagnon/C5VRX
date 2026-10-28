@@ -11,6 +11,10 @@
  * control decision taken before a retune is never applied after it. */
 void phy_begin(void);
 void phy_end(void);
+/* Recursive read-only ownership: serialize a diagnostic snapshot with PHY
+ * writers without invalidating observations or advancing the generation. */
+void phy_read_begin(void);
+void phy_read_end(void);
 uint32_t phy_generation(void);
 bool phy_busy(void);
 /* Non-blocking gain/offset ownership without a new generation. */

@@ -29,6 +29,9 @@ static void lock_take(void)
 }
 static void lock_give(void) { xSemaphoreGiveRecursive(s_lock); }
 
+void phy_read_begin(void) { lock_take(); }
+void phy_read_end(void) { lock_give(); }
+
 void phy_begin(void)
 {
     lock_take();
