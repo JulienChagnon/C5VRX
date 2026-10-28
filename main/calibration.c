@@ -937,11 +937,39 @@ static void dco_index_load(void)
 static void dco_load_table(const dco_want_t *w);
 static void dco_preset_fill(void);
 
+/* Live DC fault: a row the servo cannot hold. It used to be silent (board
+ * 2026-10-27: G83 off the ADC for minutes after a walk, the menu clean and
+ * the calibration answering "VTX on"). Reasons: 1 the guard released a
+ * held row, 2 a row's trim sits at its limit with the DC still off. Shown
+ * as DC CAL! in the menu for DC_FAULT_SHOW_US after the last evidence, in
+ * T (DC_FAULT) and once per episode in the flight log (DC_CAL_NEEDED). */
+#define DC_FAULT_SHOW_US 10000000LL
+#define DC_FAULT_DC_MCELLS 1500
+static uint8_t s_dcf_reason, s_dcf_gain;
+static int64_t s_dcf_us;
+static uint32_t s_dcf_episodes;
+static const char *dc_fault_name(uint8_t r) { return r == 1 ? "released" : r == 2 ? "trim_limit" : "none"; }
+static bool dc_fault_live(void) { return s_dcf_reason && esp_timer_get_time() - s_dcf_us < DC_FAULT_SHOW_US; }
+static void dc_fault_mark(uint8_t reason, uint8_t g)
+{
+    if (!dc_fault_live()) {
+        ++s_dcf_episodes;
+        printf("DC_FAULT reason=%s gain=%u (the servo cannot hold this row: calibrate with the VTX off)\n",
+               dc_fault_name(reason), g);
+        const uint8_t data[2] = {reason, g};
+        flightlog_event(FLOG_E_DC_CAL_NEEDED, data, 2);
+    }
+    s_dcf_reason = reason;
+    s_dcf_gain = g;
+    s_dcf_us = esp_timer_get_time();
+}
+
 static void dco_select(void)
 {
     const dco_want_t want = dco_want_now();
     if (s_dco_serving_valid && s_dco_serving == want.key && dco_matches(&s_dco, &want)) return;
     (void)phy_dco_release();
+    phy_dco_bank1_reset(want.lo, want.hi);   /* this table's bank 1 (phy.c pin_bank1) */
     memset(s_dco_found_us, 0, sizeof(s_dco_found_us));
     memset(s_dco_banned, 0, sizeof(s_dco_banned));
     memset(s_dco_ban_until, 0, sizeof(s_dco_ban_until));
@@ -1151,6 +1179,13 @@ static const char *noise_check(unsigned *env_out, int *clip_out)
 }
 
 static bool noise_like(void) { return noise_check(NULL, NULL) == NULL; }
+/* Quiet enough for a DC search: noise, or IQ pushed onto one rail per axis
+ * by the DC the search is about to correct (dsp_quiet_reason "dc_rails"). */
+static bool dc_searchable(void)
+{
+    const char *why = noise_check(NULL, NULL);
+    return !why || !strcmp(why, "dc_rails");
+}
 static bool carrier_like(void)
 {
     unsigned env = 0;
@@ -1467,8 +1502,9 @@ unsigned calibration_dc_needed(char *buf, size_t size)
     /* Keep a proven recommendation visible while the user navigates the
      * menu (where passive measurement is intentionally suspended). */
     const bool bad = s_cal_notice && s_cal_notice_freq == rf_frequency_mhz() && s_cal_notice_key == live_filter_key();
-    if (size) snprintf(buf, size, "%s", bad ? "BASEMAP" : "");
-    return bad;
+    const bool fault = dc_fault_live();
+    if (size) snprintf(buf, size, "%s", fault ? "FAULT" : bad ? "BASEMAP" : "");
+    return bad || fault;
 }
 
 static void dc_health_print(void)
@@ -1526,7 +1562,7 @@ static void dco_startup(bool manual, int64_t deadline)
     /* Template rows from another channel are replaced only when the own
      * channel can be measured without a detour (VTX off at boot); rows of
      * another filter also go to a quiet channel. */
-    const bool refine = !manual && !missing && templ && (stale || flagged || (!carrier && noise_like()));
+    const bool refine = !manual && !missing && templ && (stale || flagged || (!carrier && dc_searchable()));
     if (!manual && !missing && !refine) {
         printf("DCO startup skip=complete rows=%u floor_rows=%u template_rows=%u\n", dco_valid_rows(),
                dco_rows(DCO_ROW_FLOOR), templ);
@@ -1535,7 +1571,7 @@ static void dco_startup(bool manual, int64_t deadline)
     unsigned done = 0;
     const char *why;
     const char *where = refine ? "own_refine" : "own";
-    if (!carrier && noise_like()) {
+    if (!carrier && dc_searchable()) {
         why = dco_quiet_rows(manual, refine, deadline, refine ? "OWN CHANNEL, VTX OFF" : "KEEP THE VTX OFF", &done);
     } else {
         /* A carrier on the own channel: measure on a quiet channel; only if
@@ -1717,6 +1753,7 @@ static void dco_service(void)
             bad_ticks = 0;
             ++s_dco_aborts;
             printf("DCO hold abort gain=%u\n", g);
+            dc_fault_mark(1u, g);
         }
     } else if (s_gain.state != DG_SETTLE) {
         dco_post_gain(g);
@@ -1890,7 +1927,12 @@ static void servo_service(void)
         if (!dc_servo_mean(si, sq, samples, dc)) continue;
         const int pneg[2] = {dc_servo_pneg(neg[0], samples), dc_servo_pneg(neg[1], samples)};
         ++s_servo_estimates;
-        if (g == s_current_gain) { s_servo_dc[0] = dc[0]; s_servo_dc[1] = dc[1]; s_servo_dc_us = esp_timer_get_time(); }
+        if (g == s_current_gain) {
+            s_servo_dc[0] = dc[0]; s_servo_dc[1] = dc[1]; s_servo_dc_us = esp_timer_get_time();
+            const int lim = dc_trim_max(g);
+            for (int a = 0; a < 2; ++a)
+                if (abs(dc[a]) > DC_FAULT_DC_MCELLS && abs(dco_offset(g, (unsigned)a)) >= lim) dc_fault_mark(2u, g);
+        }
         if (s_dco.e[g].valid != DCO_ROW_OK || s_dco_banned[g]) {
             ++s_servo_skip[1];
             dc_servo_forget_step(&s_servo, sr);
@@ -2830,11 +2872,18 @@ void calibration_print(void)
     {
         int b1[2], b2[2];
         const uint8_t g = s_current_gain;
+        int pin[2], moved[2];
+        const uint32_t overrides = phy_dco_bank1_status(pin, moved);
         if (phy_dco_banks(b1, b2))
-            printf("DCO_BANKS bank1=%d/%d bank2=%d/%d gain=%u row_codes=%d/%d row_valid=%u banned=%u\n", b1[0], b1[1],
+            printf("DCO_BANKS bank1=%d/%d bank2=%d/%d gain=%u row_codes=%d/%d row_valid=%u banned=%u "
+                   "bank1_pin=%d/%d vendor_moved_to=%d/%d overrides=%lu\n", b1[0], b1[1],
                    b2[0], b2[1], g, g <= ARC_VENDOR_GAIN_MAX ? s_dco.e[g].code[0] : -1,
                    g <= ARC_VENDOR_GAIN_MAX ? s_dco.e[g].code[1] : -1,
-                   g <= ARC_VENDOR_GAIN_MAX ? s_dco.e[g].valid : 0u, g <= ARC_VENDOR_GAIN_MAX ? s_dco_banned[g] : 0u);
+                   g <= ARC_VENDOR_GAIN_MAX ? s_dco.e[g].valid : 0u, g <= ARC_VENDOR_GAIN_MAX ? s_dco_banned[g] : 0u,
+                   pin[0], pin[1], moved[0], moved[1], (unsigned long)overrides);
+        printf("DC_FAULT live=%u reason=%s gain=%u age_ms=%lld episodes=%lu\n", dc_fault_live(),
+               dc_fault_name(s_dcf_reason), s_dcf_gain,
+               s_dcf_us ? (long long)((esp_timer_get_time() - s_dcf_us) / 1000) : -1LL, (unsigned long)s_dcf_episodes);
     }
     printf("CAL_POLICY auto_cal=0 auto_dc_trim=1 manual=F full=B health_cpu_us=%lld context=%lu\n",
            s_health_us, (unsigned long)s_basemap_context);

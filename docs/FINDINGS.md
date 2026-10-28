@@ -7,6 +7,48 @@ scripts and data live in that branch under `v4/docs/PICTURE_CLIFF_STUDY.md`,
 Synthetic results are host simulations; board results are labelled as such.
 Measured range is not established.
 
+## DC fault after a walk: vendor bank 1 copied into the hold (board, 2026-10-27)
+
+**Symptom.** A walk on LEVEL (session 272) lost the picture at -50..-70
+dBm (C/N 8-16 dB): DC 1.5-4.4 cells for seconds, video 23 %. Afterwards,
+VTX off: G83 clip_pm 1000, the servo trim at +96/+71 (its limit), the guard
+releasing G83 over and over (`DCO hold abort`), no DC search, nothing in
+the menu. A manual calibration with the VTX off ended `CAL_RESULT
+dc=incomplete why=need_vtx_off`.
+
+**Evidence.** IQ snapshots per fixed row (VTX off): G83 I = -8 in all 8190
+samples (the ADC at negative full scale, not 7.5 cells as the servo read),
+G72 I half on the rail, G66 and below fine: one I offset ahead of the gain.
+`DCO_BANKS`: bank 1 (the vendor's coarse DC words, blocks 2/3 bank 1) was
+245/224; after a reboot 279/227, the same for every row G54-G83 (one RF
+stage; G48 275/246, G42 270/258), and every row was fine again. The boot RF
+calibration measured 279 again, so 245 was no physical change.
+
+**Root cause.** `phy_dco_hold()` copied the live PBUS words, bank 1
+included, into debug mode at every hold, and every gain write releases and
+re-holds (`rf_set_gain`). The table's bank-2 codes are only valid on the
+bank 1 they were measured with; a vendor rewrite of bank 1 while released
+was frozen in and moved every row at once, beyond the servo's +-96 trim.
+
+**Fixes.**
+- `phy.c pin_bank1()`: bank 1 is pinned per DC table (channel, filter,
+  gain span; `phy_dco_bank1_reset` from `dco_select`): the first hold takes
+  it, every later debug entry (hold, searches, trials) forces it. `T`
+  `DCO_BANKS ... bank1_pin= vendor_moved_to= overrides=`.
+- The quiet test names IQ on one rail per axis `dc_rails` (DC pushing the
+  cloud) instead of `rails` (a large signal on both): the DC calibration
+  runs on it (`dc_searchable`) instead of stopping as `need_vtx_off`.
+- A row the servo cannot hold is a DC fault: the guard released it, or its
+  trim sits at the limit with more than 1.5 cells left. `DC CAL!` in the
+  menu for 10 s after the last evidence, `DC_FAULT` in `T` and on the
+  console, and one `dc_cal_needed` flight-log event per episode.
+
+**After the fix** (session 275, same walk and a hand test): video 75.9 %
+against 40.2 % (-70..-45 dBm: 76.0 against 23.3 %), largest DC 0.95 cells
+against 6.35, no second with more than 1 cell, no DC fault. The recorded
+part ends at 36 s (the open flight-log block was lost at power-off), so the
+range edge is not in it.
+
 ## LEVEL on the measured demod quality (2026-10-27)
 
 **Blackbox (sessions 245-249, walking with the VTX on, GAIN AUTO = KEEL-1).**

@@ -691,7 +691,11 @@ guard in `dco_service()` releases/bans a row only where the servo cannot trim
 it (a ban used to lock the servo out of railing edge rows for 2-32 s); the
 servo brackets the sign bit where its share saturates (double / halve, hold a
 one-code crossing) and decides on 4096 samples there. Do not restore the
-unconditional rail ban. Manual calibration ends on CALIBRATION OK /
+unconditional rail ban. Bank 1 of the DC words is pinned per DC table
+(`phy.c pin_bank1`): never copy the live bank 1 into a hold again (a vendor
+rewrite moved every row beyond the trim, docs/FINDINGS.md "DC fault after a
+walk"). One-sided rails are `dc_rails` (a DC fault the search fixes), not a
+carrier; a row the servo cannot hold raises DC_FAULT (menu DC CAL!). Manual calibration ends on CALIBRATION OK /
 INCOMPLETE (`CAL_RESULT`). The AFC porch window is 1.2-3.6 us after the
 detected sync end (the PAL-set 3.4-4.4 us read NTSC active video).
 

@@ -133,18 +133,28 @@ static inline unsigned dsp_quiet_limit(int clip_pm)
 static inline const char *dsp_quiet_reason(const uint8_t *s, size_t n, unsigned *env_out, int *clip_out)
 {
     if (n < 64u) return "probe_failed";
-    unsigned origin = 0, rail = 0;
+    unsigned origin = 0, rail = 0, lo_i = 0, hi_i = 0, lo_q = 0, hi_q = 0;
     for (size_t k = 0; k < n; ++k) {
         int i = dsp_i(s[k]), q = dsp_q(s[k]);
         origin += (i == 0 || i == -1) && (q == 0 || q == -1);
         rail += i == -8 || i == 7 || q == -8 || q == 7;
+        lo_i += i == -8; hi_i += i == 7; lo_q += q == -8; hi_q += q == 7;
     }
     int clip = (int)(rail * 1000u / n);
     unsigned env = dsp_envelope_ratio_x100(s, n);
     if (env_out) *env_out = env;
     if (clip_out) *clip_out = clip;
     if (origin * 2u > n) return "origin";
-    if (rail * 10u > n * 3u) return "rails";     /* > 30 %: not a usable noise measurement */
+    /* > 30 % on the rails: not a usable noise measurement. On one rail per
+     * axis (the other under 1 % of it) it is DC pushing the cloud, which the
+     * DC search corrects, not a signal folding over both: "dc_rails" (board
+     * 2026-10-27, I at -8 in every sample: the calibration that would have
+     * fixed it stopped as "need_vtx_off"). */
+    if (rail * 10u > n * 3u) {
+        const bool one_i = lo_i < hi_i ? lo_i * 100u <= hi_i : hi_i * 100u <= lo_i;
+        const bool one_q = lo_q < hi_q ? lo_q * 100u <= hi_q : hi_q * 100u <= lo_q;
+        return one_i && one_q ? "dc_rails" : "rails";
+    }
     return env <= dsp_quiet_limit(clip) ? NULL : "envelope";
 }
 

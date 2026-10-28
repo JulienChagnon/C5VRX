@@ -98,6 +98,10 @@ int main(void)
     expect("dead iq (origin)", s, "origin");
     make(s, 12.0, 0.0, -100.0);
     expect("railing iq", s, "rails");
+    /* DC pushing the cloud onto one rail per axis: the DC search's job,
+     * not a carrier (board 2026-10-27, G83 I at -8 in every sample). */
+    make(s, 2.0, -12.0, -100.0);
+    expect("dc on one rail", s, "dc_rails");
     printf("%s (%d failures)\n", s_fail ? "FAILED" : "PASSED", s_fail);
     return s_fail != 0;
 }
