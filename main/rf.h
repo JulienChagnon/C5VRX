@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include "esp_err.h"
 #include "arc_phy.h"
+#include "board.h"
 
 /* Shared MODEM_DIAG output / PARLIO RX input order: Q low..high, I low..high.
  * I's low bit uses the XIAO user-LED GPIO27 instead of D10/GPIO10, freeing
@@ -16,8 +17,9 @@
  * IQ-owned and cannot export the optional sample clock (PR #257).
  * GPIO27 is exclusively IQ-owned: do not drive it as a status LED. The LED/resistor remains connected; 40 MS/s capture and
  * sampling-phase margin on an unmodified XIAO still need board validation.
- * These are GPIO-matrix loopbacks; no external IQ wiring is required. */
-#define RF_IQ_GPIO_NUMS {1, 0, 25, 2, 27, 5, 3, 4}
+ * These are GPIO-matrix loopbacks; no external IQ wiring is required.
+ * The XIAO map is above; other boards and the web flasher's pin editor set
+ * their own: MODEM_DIAG routing and PARLIO RX both read board_pins()->iq. */
 
 esp_err_t rf_start(void);
 /* Stop the dump writer and Wi-Fi, request a USB download boot and restart,

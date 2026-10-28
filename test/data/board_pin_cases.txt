@@ -1,0 +1,37 @@
+# Pin map rules shared by the firmware (main/board.h board_pins_problem)
+# and the web flasher (web/boards.js pinProblem): test/test_board_pins.c and
+# web/boards.test.mjs both check every line.
+# psram  dac D4..D9  iq bits 0..7  boot  expected (ok or the first problem)
+0 23,24,11,12,8,9 1,0,25,2,27,5,3,4 28 ok
+1 23,24,11,12,8,9 1,0,25,2,27,5,3,4 28 ok
+0 23,24,6,10,8,9 1,0,25,2,26,5,3,4 28 ok
+1 23,24,6,10,8,9 1,0,25,2,26,5,3,4 28 ok
+0 10,15,11,12,8,9 1,0,25,2,26,5,3,4 28 ok
+1 10,15,11,12,8,9 1,0,25,2,26,5,3,4 28 psram_cs
+0 4,5,6,7,8,9 1,0,25,10,27,26,3,24 28 ok
+1 4,5,6,7,8,9 1,0,25,10,27,26,3,24 28 ok
+# a menu button on another pin is fine
+0 23,24,11,12,8,9 1,0,25,2,27,5,3,4 10 ok
+# range
+0 23,24,11,12,8,29 1,0,25,2,27,5,3,4 28 range
+0 23,24,11,12,8,9 1,0,25,2,27,5,3,-1 28 range
+0 23,24,11,12,8,9 1,0,25,2,27,5,3,4 -1 range
+# USB console
+0 23,24,11,13,8,9 1,0,25,2,27,5,3,4 28 usb
+0 23,24,11,12,8,9 1,0,25,2,27,5,3,14 28 usb
+# flash/PSRAM bus
+0 23,24,11,12,8,16 1,0,25,2,27,5,3,4 28 flash
+0 23,24,11,12,8,9 1,0,25,2,27,22,3,4 28 flash
+# duplicates, inside a group and across groups
+0 23,23,11,12,8,9 1,0,25,2,27,5,3,4 28 duplicate
+0 23,24,11,12,8,9 1,0,25,2,27,5,3,9 28 duplicate
+0 23,24,11,12,8,9 1,0,25,2,27,5,3,4 4 duplicate
+# GPIO28 only as the menu button
+0 23,24,11,12,8,28 1,0,25,2,27,5,3,4 10 boot_strap
+0 23,24,11,12,8,9 1,0,25,2,27,5,3,28 10 boot_strap
+# GPIO15 with PSRAM only
+0 23,24,11,12,8,9 1,0,25,2,27,5,3,15 28 ok
+1 23,24,11,12,8,9 1,0,25,2,27,5,3,15 28 psram_cs
+1 23,24,11,12,8,9 1,0,25,2,27,5,3,4 15 psram_cs
+# the first rule wins: USB is checked before duplicates
+0 13,13,11,12,8,9 1,0,25,2,27,5,3,4 28 usb

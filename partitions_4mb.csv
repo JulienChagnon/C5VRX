@@ -1,0 +1,6 @@
+# 4 MB flash (ESP32-C5 N4 modules, C5HF4): 2 MB app, the same 1.5 MB flight log.
+# Name,   Type, SubType, Offset,   Size,     Flags
+nvs,      data, nvs,     0x9000,   0x6000,
+phy_init, data, phy,     0xf000,   0x1000,
+factory,  app,  factory, 0x10000,  0x200000,
+flightlog,data, 0x99,    0x210000, 0x180000,

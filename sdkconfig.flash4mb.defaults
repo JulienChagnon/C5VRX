@@ -1,0 +1,5 @@
+# 4 MB flash layout (partitions_4mb.csv) for ESP32-C5 boards with 4 MB.
+# Also boots on 8 MB and larger chips (ESP-IDF uses the header size).
+CONFIG_ESPTOOLPY_FLASHSIZE_8MB=n
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_4mb.csv"

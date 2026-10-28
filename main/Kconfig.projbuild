@@ -1,0 +1,18 @@
+menu "C5VRX-5 board"
+    choice C5VRX_BOARD
+        prompt "Board pinout"
+        default C5VRX_BOARD_XIAO
+        help
+            DAC, IQ loopback and menu button GPIOs (main/board.h, docs/BOARDS.md).
+            Flash size and PSRAM are separate sdkconfig overlays.
+
+        config C5VRX_BOARD_XIAO
+            bool "Seeed Studio XIAO ESP32-C5, or any board wired like it"
+        config C5VRX_BOARD_DEVKITC
+            bool "Espressif ESP32-C5-DevKitC-1"
+        config C5VRX_BOARD_PICO
+            bool "Waveshare ESP32-C5-Pico"
+        config C5VRX_BOARD_NICEMCU
+            bool "NiceMCU ESP32-C5 Mini"
+    endchoice
+endmenu

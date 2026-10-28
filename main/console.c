@@ -32,13 +32,20 @@ void firmware_print(void)
     const esp_app_desc_t *d = esp_app_get_description();
     char elf[65] = "";
     (void)esp_app_get_elf_sha256(elf, sizeof(elf));
-    printf("FIRMWARE id=%s version=%s commit=%s elf_sha256=%s built=\"%s %s\" idf=%s cal_dump=1\n", firmware_id(), d->version,
-           C5VRX5_COMMIT, elf[0] ? elf : "unknown", d->date, d->time, d->idf_ver);
+#ifdef CONFIG_SPIRAM
+    const int psram = 1;
+#else
+    const int psram = 0;
+#endif
+    printf("FIRMWARE id=%s version=%s commit=%s elf_sha256=%s built=\"%s %s\" idf=%s cal_dump=1 board=%s psram=%d\n",
+           firmware_id(), d->version, C5VRX5_COMMIT, elf[0] ? elf : "unknown", d->date, d->time, d->idf_ver,
+           BOARD_ID, psram);
 }
 
 static void status(void)
 {
     firmware_print();
+    board_print();
     const uint8_t gm = receiver_gain_mode();
     printf("C5VRX5 version=%s demod=%s lane=ultrafine gain_owner=%s "
            "uptime_s=%lld heap_internal=%u heap_largest=%u heap_min=%u heap_dma=%u heap_dma_largest=%u heap_lp=%u heap_psram=%u fw=%s\n",

@@ -7,6 +7,7 @@
 #include "driver/usb_serial_jtag_vfs.h"
 #include "esp_app_desc.h"
 #include "esp_timer.h"
+#include "board.h"
 #include "rf.h"
 #include "phy.h"
 
@@ -46,10 +47,13 @@ void app_main(void)
     setvbuf(stdout, NULL, _IONBF, 0);
     fcntl(fileno(stdout), F_SETFL, fcntl(fileno(stdout), F_GETFL, 0) | O_NONBLOCK);
     usb_serial_jtag_vfs_use_nonblocking();
+    /* The pin table before any task: the console's T prints it. */
+    board_init();
     /* The console first: flashing (download key) and diagnostics must stay
      * reachable whatever a later boot step does. */
     console_start();
     firmware_print();   /* first log line names the exact build */
+    board_print();
     if(!control_prepare()) {
         s_boot_stage="control_memory";
         printf("CONTROL stack reservation failed; USB status/download remain available\n");

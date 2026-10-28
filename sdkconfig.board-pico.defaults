@@ -1,0 +1,2 @@
+# Waveshare ESP32-C5-Pico pin map (main/board.h, docs/BOARDS.md).
+CONFIG_C5VRX_BOARD_PICO=y

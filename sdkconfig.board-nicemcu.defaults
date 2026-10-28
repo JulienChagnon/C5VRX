@@ -1,0 +1,2 @@
+# NiceMCU ESP32-C5 Mini pin map (main/board.h, docs/BOARDS.md).
+CONFIG_C5VRX_BOARD_NICEMCU=y

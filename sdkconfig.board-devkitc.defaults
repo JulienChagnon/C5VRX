@@ -1,0 +1,2 @@
+# Espressif ESP32-C5-DevKitC-1 pin map (main/board.h, docs/BOARDS.md).
+CONFIG_C5VRX_BOARD_DEVKITC=y

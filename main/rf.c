@@ -43,7 +43,6 @@
 static const char *TAG = "c5vrx5_rf";
 
 /* PARLIO RX data pins, in data-bit order: Q on bits 0..3, I on 4..7. */
-static const gpio_num_t s_iq_pins[8] = RF_IQ_GPIO_NUMS;
 /* Ultrafine lane: sign bit 9 plus ADC bits 6..4, i.e. 16-code steps in a
  * +-128 window (+12 dB over the coarse {9,8,7,6} slice, an exact
  * power-of-two scale inside the window). Q on DIAG[4,5,6,9], I on
@@ -85,8 +84,9 @@ static esp_err_t lock_rx_only(void)
 
 static esp_err_t route_modem_iq(unsigned lane)
 {
+    const int8_t *iq = board_pins()->iq;
     uint64_t mask = 0;
-    for (unsigned k = 0; k < 8; ++k) mask |= 1ULL << s_iq_pins[k];
+    for (unsigned k = 0; k < 8; ++k) mask |= 1ULL << iq[k];
     const gpio_config_t cfg = {
         .pin_bit_mask = mask,
         .mode = GPIO_MODE_INPUT_OUTPUT,
@@ -97,7 +97,7 @@ static esp_err_t route_modem_iq(unsigned lane)
     esp_err_t err = gpio_config(&cfg);
     if (err != ESP_OK) return err;
     for (unsigned k = 0; k < 8; ++k)
-        esp_rom_gpio_connect_out_signal(s_iq_pins[k], MODEM_DIAG0_IDX + s_lane_diag[lane][k], false, false);
+        esp_rom_gpio_connect_out_signal(iq[k], MODEM_DIAG0_IDX + s_lane_diag[lane][k], false, false);
     __asm__ __volatile__("fence iorw, iorw" ::: "memory");
     s_lane = lane;
     return ESP_OK;

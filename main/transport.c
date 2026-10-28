@@ -45,8 +45,9 @@ static const void *tracker_program(void) { return s_p64; }
 /* 6-bit resistor DAC, LSB first (XIAO D4..D9; 8.2k/3.9k/2k/1k/470R/240R
  * plus 200R). Do not change the tested pin order. D10/GPIO10 and D3/GPIO7
  * are reserved for future seventh/eighth branches; keep them disconnected
- * here until a complete wider-DAC implementation is hardware-validated. */
-static const int s_dac_gpio[8] = {23, 24, 11, 12, 8, 9, -1, -1};
+ * here until a complete wider-DAC implementation is hardware-validated.
+ * Other boards and the web flasher's pin editor put the same six branches
+ * on their own pins: board_pins()->dac. */
 
 DMA_ATTR __attribute__((aligned(64))) uint8_t s_raw_ring[RAW_RING_BYTES];
 static parlio_rx_unit_handle_t s_rx;
@@ -102,7 +103,7 @@ static esp_err_t disable_tx(void)
 
 static esp_err_t prepare_rx(void)
 {
-    const parlio_rx_unit_config_t cfg = {
+    parlio_rx_unit_config_t cfg = {
         .trans_queue_depth = 1u,
         .max_recv_size = sizeof(s_raw_ring),
         .dma_burst_size = 32u,
@@ -112,10 +113,10 @@ static esp_err_t prepare_rx(void)
         .clk_in_gpio_num = -1,
         .clk_out_gpio_num = -1,
         .valid_gpio_num = -1,
-        /* Share MODEM_DIAG routing's GPIO27 I-LSB / GPIO2 Q-sign pin order. */
-        .data_gpio_nums = RF_IQ_GPIO_NUMS,
         .flags = {.free_clk = true, .clk_gate_en = false, .allow_pd = false},
     };
+    /* Share MODEM_DIAG routing's pin order (rf.c route_modem_iq). */
+    for (unsigned k = 0; k < 8u; ++k) cfg.data_gpio_nums[k] = board_pins()->iq[k];
     esp_err_t err = parlio_new_rx_unit(&cfg, &s_rx);
     if (err != ESP_OK) return err;
     const parlio_rx_soft_delimiter_config_t delim = {
@@ -146,7 +147,7 @@ static esp_err_t prepare_tx(void)
         .shift_edge = PARLIO_SHIFT_EDGE_NEG,
         .bit_pack_order = PARLIO_BIT_PACK_ORDER_LSB,
     };
-    for (unsigned k = 0; k < 8u; ++k) cfg.data_gpio_nums[k] = s_dac_gpio[k];
+    for (unsigned k = 0; k < 8u; ++k) cfg.data_gpio_nums[k] = k < 6u ? board_pins()->dac[k] : -1;
     esp_err_t err = parlio_new_tx_unit(&cfg, &s_tx);
     if (err != ESP_OK) return err;
     const bitscrambler_config_t bs = {.dir = BITSCRAMBLER_DIR_TX, .attach_to = SOC_BITSCRAMBLER_ATTACH_PARL_IO};

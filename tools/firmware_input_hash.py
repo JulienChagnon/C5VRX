@@ -12,13 +12,16 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 INPUT_DIRS = ('main/',)
-INPUT_FILES = ('CMakeLists.txt', 'partitions.csv', 'sdkconfig.defaults', 'sdkconfig.psram.defaults', 'dependencies.lock',
-               '.github/workflows/c5vrx5.yml', 'tools/firmware_input_hash.py')
+INPUT_FILES = ('CMakeLists.txt', 'dependencies.lock', '.github/workflows/c5vrx5.yml', 'tools/firmware_input_hash.py')
 
 
 def firmware_input(path):
     if path.endswith('.md'):
         return False
+    # Every board image: partition tables and sdkconfig overlays.
+    if '/' not in path and ((path.startswith('partitions') and path.endswith('.csv')) or
+                            (path.startswith('sdkconfig.') and path.endswith('.defaults'))):
+        return True
     return path.startswith(INPUT_DIRS) or path in INPUT_FILES
 
 
