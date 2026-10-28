@@ -137,6 +137,14 @@ void arc_gain_entry_from_agc(const uint32_t w[ARC_AGC_ENTRY_WORDS], uint16_t *rf
     *fine_code = (uint8_t)((w[1] >> 24) & 7u);
 }
 
+void arc_gain_entry_dc(const uint32_t w[ARC_AGC_ENTRY_WORDS], int bank1[2], int bank2[2])
+{
+    bank1[0] = (int)((w[1] >> 8) & 0x1ffu);
+    bank1[1] = (int)((w[0] >> 22) & 0x1ffu);
+    bank2[0] = (int)(((w[1] & 0xffu) << 1) | (w[0] >> 31));
+    bank2[1] = (int)((w[0] >> 13) & 0x1ffu);
+}
+
 unsigned arc_gain_table_check_agc(const arc_gain_table_t *table, const uint32_t *words,
                                   unsigned n_words, int *first_bad)
 {
